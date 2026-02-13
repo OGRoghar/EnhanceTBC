@@ -11,8 +11,6 @@ local LDBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
 if not LDB or not LDBIcon then return end
 
 local ICON_PATH = "Interface\\AddOns\\EnhanceTBC\\Media\\Images\\minimap.tga"
-
--- Crop coords for circular minimap mask (reduces "tiny icon" look)
 local ICON_COORDS = { 0.08, 0.92, 0.08, 0.92 }
 
 local dataObject
@@ -36,34 +34,15 @@ local function EnsureDataObject()
       if button == "LeftButton" then
         if ETBC.OpenConfig then
           ETBC:OpenConfig()
-        elseif ETBC.UI and ETBC.UI.ConfigWindow and ETBC.UI.ConfigWindow.Toggle then
-          ETBC.UI.ConfigWindow:Toggle()
-        elseif ETBC.SlashCommand then
-          ETBC:SlashCommand("")
-        end
-      elseif button == "RightButton" then
-        if ETBC.db and ETBC.db.profile and ETBC.db.profile.general then
-          ETBC.db.profile.general.enabled = not ETBC.db.profile.general.enabled
-          if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
-            ETBC.ApplyBus:Notify("general")
-          end
         end
       end
     end,
 
     OnTooltipShow = function(tooltip)
       if not tooltip or not tooltip.AddLine then return end
-
       tooltip:AddLine("|cff33ff99EnhanceTBC|r")
       tooltip:AddLine(" ")
       tooltip:AddLine("|cffffffffLeft Click:|r Open Config")
-      tooltip:AddLine("|cffffffffRight Click:|r Toggle Addon")
-      tooltip:AddLine(" ")
-
-      if ETBC.db and ETBC.db.profile and ETBC.db.profile.general then
-        local state = ETBC.db.profile.general.enabled and "|cff00ff00Enabled|r" or "|cffff0000Disabled|r"
-        tooltip:AddLine("Status: " .. state)
-      end
     end,
   })
 end

@@ -9,46 +9,67 @@ local AceDBOptions = LibStub("AceDBOptions-3.0")
 
 ETBC = AceAddon:NewAddon(ETBC, ADDON_NAME, "AceEvent-3.0", "AceConsole-3.0", "AceHook-3.0", "AceTimer-3.0")
 
--- ---------------------------------------------------------
--- Config opening (single source of truth)
--- ---------------------------------------------------------
+function ETBC:OnInitialize()
+  self.db = AceDB:New("EnhanceTBCDB", ETBC.defaults, true)
+
+  -- Root options AFTER DB exists
+  local options = ETBC:BuildOptions()
+  AceConfig:RegisterOptionsTable(ADDON_NAME, options)
+
+  -- Profiles (AceDBOptions)
+  local profiles = AceDBOptions:GetOptionsTable(self.db)
+  options.args.profiles = profiles
+  options.args.profiles.order = 999
+  options.args.profiles.name = "Profiles"
+
+  -- Blizzard Options category (nice to keep)
+  AceConfigDialog:AddToBlizOptions(ADDON_NAME, "EnhanceTBC")
+
+  -- Slash commands
+  self:RegisterChatCommand("etbc", "SlashCommand")
+  self:RegisterChatCommand("enhancetbc", "SlashCommand")
+
+  -- Minimap icon (safe to call AFTER db exists)
+  if self.InitMinimapIcon then
+    self:InitMinimapIcon()
+  end
+
+  self:Debug("Initialized")
+end
+
+function ETBC:OnEnable()
+  if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAll then
+    ETBC.ApplyBus:NotifyAll()
+  end
+end
+
 function ETBC:OpenConfig()
-  -- Prefer our custom window if present
-  if self.UI and self.UI.ConfigWindow and self.UI.ConfigWindow.Toggle then
-    self.UI.ConfigWindow:Toggle()
+  -- Always prefer the stable UI.ConfigWindow wrapper
+  if ETBC.UI and ETBC.UI.ConfigWindow and ETBC.UI.ConfigWindow.Toggle then
+    ETBC.UI.ConfigWindow:Toggle()
     return
   end
 
-  -- Fallback to Blizzard options
-  if AceConfigDialog and AceConfigDialog.Open then
-    -- This opens AceConfigDialog's own window, not embedded.
-    -- Safe fallback if our custom UI isn't loaded yet.
+  -- Fallback: AceConfigDialog direct
+  if AceConfigDialog then
     AceConfigDialog:Open(ADDON_NAME)
     return
   end
 
-  -- Ultimate fallback
-  if InterfaceOptionsFrame_OpenToCategory then
-    InterfaceOptionsFrame_OpenToCategory("EnhanceTBC")
-    InterfaceOptionsFrame_OpenToCategory("EnhanceTBC")
-  end
+  -- Last fallback: Blizzard options
+  InterfaceOptionsFrame_OpenToCategory("EnhanceTBC")
+  InterfaceOptionsFrame_OpenToCategory("EnhanceTBC")
 end
 
--- ---------------------------------------------------------
--- Slash
--- ---------------------------------------------------------
 function ETBC:SlashCommand(input)
   input = (input or ""):lower()
-
-  if input == "" or input == "config" or input == "options" then
+  if input == "config" or input == "" then
     self:OpenConfig()
     return
   end
 
   if input == "reset" then
-    if self.db and self.db.ResetProfile then
-      self.db:ResetProfile()
-    end
+    self.db:ResetProfile()
     if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAll then
       ETBC.ApplyBus:NotifyAll()
     end
@@ -56,52 +77,5 @@ function ETBC:SlashCommand(input)
     return
   end
 
-  if input == "minimap" then
-    if self.ToggleMinimapIcon then
-      self:ToggleMinimapIcon()
-      self:Print("Toggled minimap icon.")
-    end
-    return
-  end
-
-  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap")
-end
-
--- ---------------------------------------------------------
--- AceAddon lifecycle
--- ---------------------------------------------------------
-function ETBC:OnInitialize()
-  self.db = AceDB:New("EnhanceTBCDB", ETBC.defaults, true)
-
-  -- Build the root options AFTER DB exists
-  local options = ETBC:BuildOptions()
-  AceConfig:RegisterOptionsTable(ADDON_NAME, options)
-
-  -- Profiles
-  local profiles = AceDBOptions:GetOptionsTable(self.db)
-  options.args.profiles = profiles
-  options.args.profiles.order = 999
-  options.args.profiles.name = "Profiles"
-
-  -- Blizzard Interface Options
-  AceConfigDialog:AddToBlizOptions(ADDON_NAME, "EnhanceTBC")
-
-  -- Slash commands
-  self:RegisterChatCommand("etbc", "SlashCommand")
-  self:RegisterChatCommand("enhancetbc", "SlashCommand")
-
-  -- Minimap icon: init AFTER db exists
-  if self.InitMinimapIcon then
-    self:InitMinimapIcon()
-  end
-
-  if self.Debug then
-    self:Debug("Initialized")
-  end
-end
-
-function ETBC:OnEnable()
-  if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAll then
-    ETBC.ApplyBus:NotifyAll()
-  end
+  self:Print("Commands: /etbc (open), /etbc reset")
 end

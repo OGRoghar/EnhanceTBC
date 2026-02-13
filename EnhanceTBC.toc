@@ -20,7 +20,7 @@ Libs\AceDB-3.0\AceDB-3.0.xml
 Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 
-# --- AceConfig (LOAD LUA FILES DIRECTLY to avoid broken XML include paths) ---
+# --- AceConfig: load LUA directly (avoid XML include path issues) ---
 Libs\AceConfigRegistry-3.0\AceConfigRegistry-3.0.lua
 Libs\AceConfigCmd-3.0\AceConfigCmd-3.0.lua
 Libs\AceConfigDialog-3.0\AceConfigDialog-3.0.lua
@@ -41,13 +41,15 @@ Libs\LibDeflate\LibDeflate.lua
 Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Libs\LibDBIcon-1.0\lib.xml
 
+
 # ==========================================================
 # Locales
 # ==========================================================
 locales\enUS.lua
 
+
 # ==========================================================
-# Core Bootstrap (must load before Settings/Modules)
+# Core Bootstrap (must load before Settings/Modules/UI)
 # ==========================================================
 Core\Defaults.lua
 Core\Print.lua
@@ -56,18 +58,15 @@ Core\Theme.lua
 Core\ApplyBus.lua
 Core\SettingsRegistry.lua
 Core\Init.lua
+
 Options\Options.lua
+
 Core\EnhanceTBC.lua
 Core\MinimapButton.lua
 
-# ==========================================================
-# UI
-# ==========================================================
-UI\ConfigWindow.lua
-UI\Theme.lua
 
 # ==========================================================
-# Settings
+# Settings (register groups here)
 # ==========================================================
 Settings\Settings_General.lua
 Settings\Settings_UI.lua
@@ -90,14 +89,15 @@ Settings\Settings_Vendor.lua
 Settings\Settings_Mailbox.lua
 Settings\Settings_Visibility.lua
 
+
 # ==========================================================
-# Modules
+# Modules (apply bus consumers)
 # ==========================================================
 Modules\UI.lua
+Modules\Minimap.lua
 Modules\Castbar.lua
 Modules\UnitFrames.lua
 Modules\ActionBars.lua
-Modules\Minimap.lua
 
 Modules\Auras.lua
 Modules\ActionTracker.lua
@@ -111,6 +111,16 @@ Modules\Sound.lua
 Modules\Tooltip.lua
 Modules\Vendor.lua
 
-# Visibility (ONLY include files that truly exist and work)
+
+# ==========================================================
+# UI (custom config window LAST so everything exists)
+# ==========================================================
+UI\Theme.lua
+UI\ConfigWindow.lua
+
+
+# ==========================================================
+# Visibility (ONLY include if these files exist + are stable)
+# ==========================================================
 Visibility\Visibility_Helper.lua
 Visibility\Visibility.lua
