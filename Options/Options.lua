@@ -3,11 +3,22 @@
 
 local ADDON_NAME, ETBC = ...
 
-local function SafeCall(fn)
-  if type(fn) ~= "function" then return nil end
-  local ok, v = pcall(fn)
-  if ok then return v end
-  return nil
+local function SafeCall(fn, selfArg)
+  if type(fn) ~= "function" then return nil, "not a function" end
+  local ok, v = pcall(fn, selfArg)
+  if ok then return v, nil end
+  return nil, v
+end
+
+local function ErrorArgs(msg)
+  return {
+    _err = {
+      type = "description",
+      name = "|cffff5555Error:|r " .. tostring(msg or "unknown"),
+      order = 1,
+      width = "full",
+    },
+  }
 end
 
 function ETBC:BuildOptions()
@@ -56,38 +67,33 @@ function ETBC:BuildOptions()
       local key = tostring(g.key)
       local name = tostring(g.name)
 
-      opts.args.modules.args[key] = {
+      -- Always create a container group for this module
+      local modGroup = {
         type = "group",
         name = name,
         order = tonumber(g.order) or 1000,
         args = {},
       }
 
-      -- Support two patterns:
-      --  A) g.options() returns a full AceConfig group (type/name/args)
-      --  B) g.options() returns just args-table
-      local built = SafeCall(g.options)
-      if type(built) == "table" then
-        if built.type == "group" and type(built.args) == "table" then
-          -- use returned group (but keep our ordering/name if missing)
-          opts.args.modules.args[key] = built
-          opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
-          opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
-        elseif type(built.args) == "table" and built.type then
-          -- group-like
-          opts.args.modules.args[key] = built
-          opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
-          opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
-        else
-          -- assume "args table"
-          opts.args.modules.args[key].args = built
-        end
+      -- Build options safely. Pass g as self to support `function group:options()`
+      local built, err = SafeCall(g.options, g)
+
+      if type(built) ~= "table" then
+        modGroup.args = ErrorArgs(err or "Failed to build options for this module.")
+        opts.args.modules.args[key] = modGroup
       else
-        opts.args.modules.args[key].args._err = {
-          type = "description",
-          name = "Failed to build options for this module.",
-          order = 1,
-        }
+        -- Pattern A: options() returns a full AceConfig group table
+        if built.type == "group" and type(built.args) == "table" then
+          -- Keep name/order if missing
+          built.name = built.name or name
+          built.order = built.order or (tonumber(g.order) or 1000)
+          opts.args.modules.args[key] = built
+
+        -- Pattern B: options() returns just an args-table (your Settings_Auras style)
+        else
+          modGroup.args = built
+          opts.args.modules.args[key] = modGroup
+        end
       end
     end
   end

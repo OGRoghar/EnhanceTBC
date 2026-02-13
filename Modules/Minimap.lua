@@ -1,14 +1,4 @@
 -- Modules/Minimap.lua
--- EnhanceTBC - Minimap (SAFE REBUILD v2)
--- FIXES THIS TURN:
---  1) Flyout no longer "every other click" restores buttons to the minimap.
---     (Root cause: RefreshFlyout scanned ONLY the minimap; when buttons were already in flyout,
---      scan returned empty and the code "restored" them back.)
---     New logic: keep a persistent captured set; only add NEW buttons found on the minimap.
---     Never restore captured buttons unless flyout/feature is disabled.
---  2) Square mode hides the "X" / title-bar artifacts more aggressively.
---  3) Addon buttons will stay in the flyout (so they won't do the circular-on-square ring behavior).
-
 local ADDON_NAME, ETBC = ...
 
 ETBC.Modules = ETBC.Modules or {}
@@ -23,61 +13,6 @@ local WHITE = "Interface\\Buttons\\WHITE8x8"
 local MASK_CIRCLE = "Textures\\MinimapMask"
 local MASK_SQUARE = WHITE
 
--- ------------------------------------------------------------
--- DB (compat: profile.minimap OR profile.general.minimap)
--- ------------------------------------------------------------
-local function GetDB()
-  if not ETBC or not ETBC.db or not ETBC.db.profile then return nil end
-  local p = ETBC.db.profile
-
-  p.general = p.general or {}
-  p.general.minimap = p.general.minimap or {}
-
-  if type(p.minimap) ~= "table" then
-    p.minimap = p.general.minimap
-  end
-
-  local db = p.minimap
-
-  if db.enabled == nil then db.enabled = true end
-  if db.shape == nil then db.shape = "CIRCLE" end -- "CIRCLE"|"SQUARE"
-  if db.scale == nil then db.scale = 1.0 end
-  if db.squareSize == nil then db.squareSize = 140 end
-  if db.keepInsideScreen == nil then db.keepInsideScreen = true end
-
-  db.border = db.border or {}
-  if db.border.enabled == nil then db.border.enabled = true end
-  if db.border.size == nil then db.border.size = 2 end
-  if db.border.alpha == nil then db.border.alpha = 0.90 end
-  if db.border.r == nil then db.border.r = 0.18 end
-  if db.border.g == nil then db.border.g = 0.20 end
-  if db.border.b == nil then db.border.b = 0.18 end
-
-  db.background = db.background or {}
-  if db.background.enabled == nil then db.background.enabled = false end
-  if db.background.alpha == nil then db.background.alpha = 0.20 end
-  if db.background.r == nil then db.background.r = 0.02 end
-  if db.background.g == nil then db.background.g = 0.03 end
-  if db.background.b == nil then db.background.b = 0.02 end
-
-  db.flyout = db.flyout or {}
-  if db.flyout.enabled == nil then db.flyout.enabled = true end
-  if db.flyout.locked == nil then db.flyout.locked = true end
-  if db.flyout.buttonSize == nil then db.flyout.buttonSize = 28 end
-  if db.flyout.padding == nil then db.flyout.padding = 6 end
-  if db.flyout.perRow == nil then db.flyout.perRow = 6 end
-  if db.flyout.maxRows == nil then db.flyout.maxRows = 6 end
-  if db.flyout.point == nil then
-    db.flyout.point = "TOPRIGHT"
-    db.flyout.rel = "Minimap"
-    db.flyout.relPoint = "BOTTOMRIGHT"
-    db.flyout.x = 0
-    db.flyout.y = -6
-  end
-
-  return db
-end
-
 local function clamp(v, lo, hi)
   v = tonumber(v) or lo
   if v < lo then return lo end
@@ -87,47 +22,108 @@ end
 
 local function SafeCall(fn, ...)
   if type(fn) ~= "function" then return end
-  pcall(fn, ...)
+  local ok, err = pcall(fn, ...)
+  return ok, err
 end
 
 -- ------------------------------------------------------------
--- Original minimap size for restore
+-- DB (matches Settings/Settings_Minimap.lua)
 -- ------------------------------------------------------------
-local orig = { sizeStored = false, w = nil, h = nil }
+local function GetDB()
+  if not ETBC or not ETBC.db or not ETBC.db.profile then return nil end
+  ETBC.db.profile.minimap = ETBC.db.profile.minimap or {}
+  local db = ETBC.db.profile.minimap
 
+  if db.enabled == nil then db.enabled = true end
+  if db.shape == nil then db.shape = "CIRCLE" end
+  if db.squareSize == nil then db.squareSize = 140 end
+  if db.mapScale == nil then db.mapScale = 1.0 end
+
+  if db.hideDayNight == nil then db.hideDayNight = true end
+
+  db.border = db.border or {}
+  if db.border.enabled == nil then db.border.enabled = true end
+  if db.border.size == nil then db.border.size = 2 end
+  if db.border.alpha == nil then db.border.alpha = 0.90 end
+  if db.border.r == nil then db.border.r = 0.15 end
+  if db.border.g == nil then db.border.g = 0.15 end
+  if db.border.b == nil then db.border.b = 0.15 end
+
+  db.background = db.background or {}
+  if db.background.enabled == nil then db.background.enabled = false end
+  if db.background.alpha == nil then db.background.alpha = 0 end
+  if db.background.r == nil then db.background.r = 0 end
+  if db.background.g == nil then db.background.g = 0 end
+  if db.background.b == nil then db.background.b = 0 end
+
+  db.collector = db.collector or {}
+  local c = db.collector
+  if c.enabled == nil then c.enabled = true end
+  if c.flyoutMode == nil then c.flyoutMode = "CLICK" end
+  if c.startOpen == nil then c.startOpen = false end
+  if c.locked == nil then c.locked = true end
+  if c.iconSize == nil then c.iconSize = 28 end
+  if c.columns == nil then c.columns = 6 end
+  if c.spacing == nil then c.spacing = 4 end
+  if c.padding == nil then c.padding = 6 end
+  if c.scale == nil then c.scale = 1.0 end
+  if c.bgAlpha == nil then c.bgAlpha = 0.35 end
+  if c.borderAlpha == nil then c.borderAlpha = 0.85 end
+  if c.includeLibDBIcon == nil then c.includeLibDBIcon = true end
+  if c.includeExtra == nil then c.includeExtra = "" end
+  if c.exclude == nil then c.exclude = "" end
+
+  c.pos = c.pos or {}
+  if c.pos.point == nil then c.pos.point = "TOPRIGHT" end
+  if c.pos.relPoint == nil then c.pos.relPoint = "TOPLEFT" end
+  if c.pos.x == nil then c.pos.x = 8 end
+  if c.pos.y == nil then c.pos.y = 0 end
+
+  c.toggle = c.toggle or {}
+  if c.toggle.point == nil then c.toggle.point = "TOPRIGHT" end
+  if c.toggle.relPoint == nil then c.toggle.relPoint = "BOTTOMRIGHT" end
+  if c.toggle.x == nil then c.toggle.x = 2 end
+  if c.toggle.y == nil then c.toggle.y = -2 end
+
+  return db
+end
+
+-- ------------------------------------------------------------
+-- original minimap size for restore
+-- ------------------------------------------------------------
+local orig = { stored=false, w=nil, h=nil }
 local function StoreOriginalSize()
-  if orig.sizeStored or not mm or not mm.GetSize then return end
+  if orig.stored or not mm or not mm.GetSize then return end
   orig.w, orig.h = mm:GetSize()
-  orig.sizeStored = true
+  orig.stored = true
 end
 
 local function ApplySizeAndScale(db)
   if not mm then return end
   StoreOriginalSize()
 
-  mm:SetScale(clamp(db.scale, 0.50, 2.00))
+  mm:SetScale(clamp(db.mapScale, 0.70, 1.50))
 
   if db.shape == "SQUARE" then
-    local s = clamp(db.squareSize, 90, 260)
-    mm:SetSize(s, s)
+    local size = clamp(db.squareSize, 110, 220)
+    mm:SetSize(size, size)
   else
-    if orig.sizeStored and orig.w and orig.h then
+    if orig.stored and orig.w and orig.h then
       mm:SetSize(orig.w, orig.h)
     end
   end
 end
 
 -- ------------------------------------------------------------
--- Border + optional background
+-- Deco border (no forced dark background)
 -- ------------------------------------------------------------
 local deco
-
 local function EnsureDeco()
   if deco or not mm then return end
   deco = CreateFrame("Frame", "EnhanceTBC_MinimapDeco", mm, "BackdropTemplate")
   deco:SetAllPoints(mm)
   deco:SetFrameStrata(mm:GetFrameStrata())
-  deco:SetFrameLevel(mm:GetFrameLevel() + 25)
+  deco:SetFrameLevel(mm:GetFrameLevel() + 50)
 end
 
 local function ApplyDeco(db)
@@ -137,40 +133,33 @@ local function ApplyDeco(db)
   local b = db.border or {}
   local bg = db.background or {}
 
-  local edgeSize = clamp(b.size, 1, 8)
+  local edge = clamp(b.size, 1, 8)
   deco:SetBackdrop({
     bgFile = WHITE,
     edgeFile = WHITE,
     tile = false,
-    edgeSize = edgeSize,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    edgeSize = edge,
+    insets = { left=1,right=1,top=1,bottom=1 },
   })
 
-  if bg.enabled then
-    deco:SetBackdropColor(bg.r or 0.02, bg.g or 0.03, bg.b or 0.02, clamp(bg.alpha, 0, 1))
+  if bg.enabled and (bg.alpha or 0) > 0 then
+    deco:SetBackdropColor(bg.r or 0, bg.g or 0, bg.b or 0, clamp(bg.alpha, 0, 1))
   else
-    deco:SetBackdropColor(0, 0, 0, 0)
+    deco:SetBackdropColor(0,0,0,0)
   end
 
   if b.enabled then
-    deco:SetBackdropBorderColor(b.r or 0.18, b.g or 0.20, b.b or 0.18, clamp(b.alpha, 0, 1))
+    deco:SetBackdropBorderColor(b.r or 0.15, b.g or 0.15, b.b or 0.15, clamp(b.alpha, 0, 1))
     deco:Show()
   else
-    deco:SetBackdropBorderColor(0, 0, 0, 0)
-    deco:Show()
-    if not bg.enabled then deco:Hide() end
+    deco:SetBackdropBorderColor(0,0,0,0)
+    if bg.enabled and (bg.alpha or 0) > 0 then deco:Show() else deco:Hide() end
   end
 end
 
 -- ------------------------------------------------------------
--- Shape + aggressive hide of title/X artifacts in square mode
+-- Square artifacts (hide only top border junk)
 -- ------------------------------------------------------------
-local visualsCached = false
-local ringFrames = {}
-local zoneBarFrames = {}
-local squareHide = {}
-local hookedKeepHidden = {}
-
 local function HardHide(obj)
   if not obj then return end
   if obj.Hide then obj:Hide() end
@@ -178,27 +167,8 @@ local function HardHide(obj)
   if obj.SetAlpha then obj:SetAlpha(0) end
 end
 
-local function SetShown(obj, shown)
-  if not obj then return end
-  if shown then
-    if obj.SetAlpha then obj:SetAlpha(1) end
-    if obj.Show then obj:Show() end
-  else
-    HardHide(obj)
-  end
-end
-
-local function AddSquareHide(obj)
-  if not obj then return end
-  for i = 1, #squareHide do
-    if squareHide[i] == obj then return end
-  end
-  table.insert(squareHide, obj)
-end
-
-local function HookKeepHidden(obj)
-  if not obj or hookedKeepHidden[obj] then return end
-  hookedKeepHidden[obj] = true
+local function KeepHiddenInSquare(obj)
+  if not obj or not obj.HookScript then return end
   obj:HookScript("OnShow", function(self)
     local db = GetDB()
     if db and db.enabled and db.shape == "SQUARE" then
@@ -207,405 +177,310 @@ local function HookKeepHidden(obj)
   end)
 end
 
-local function CacheVisuals()
-  if visualsCached then return end
-  visualsCached = true
+local visualsHooked = false
+local function HookVisualsOnce()
+  if visualsHooked then return end
+  visualsHooked = true
 
-  ringFrames = {
-    _G.MinimapBorder,
-    _G.MinimapBorderTop,
-    _G.MinimapCompassTexture,
-    _G.MinimapNorthTag,
-    _G.MinimapBackdrop,
-    _G.MinimapBackdropTexture,
-  }
-
-  local z = _G.MinimapZoneTextButton
-  if z then
-    zoneBarFrames = { z, z.Left, z.Middle, z.Right }
-  else
-    zoneBarFrames = {}
-  end
-
-  -- This is where the "X" / title-bar-ish stuff tends to come from on modern frames.
-  AddSquareHide(mmCluster and mmCluster.BorderTop)
-  AddSquareHide(mmCluster and mmCluster.Border)
-  AddSquareHide(_G.MinimapClusterBorderTop)
-  AddSquareHide(_G.MinimapClusterBorder)
+  KeepHiddenInSquare(_G.MinimapBorder)
+  KeepHiddenInSquare(_G.MinimapBorderTop)
+  KeepHiddenInSquare(mmCluster and mmCluster.BorderTop)
+  KeepHiddenInSquare(mmCluster and mmCluster.Border)
+  KeepHiddenInSquare(_G.MinimapClusterBorderTop)
+  KeepHiddenInSquare(_G.MinimapClusterBorder)
 
   if mmCluster and mmCluster.NineSlice then
-    AddSquareHide(mmCluster.NineSlice.TopEdge)
-    AddSquareHide(mmCluster.NineSlice.TopLeftCorner)
-    AddSquareHide(mmCluster.NineSlice.TopRightCorner)
-  end
-
-  -- Extra: common close/title containers on some builds
-  AddSquareHide(mmCluster and mmCluster.CloseButton)
-  AddSquareHide(mmCluster and mmCluster.Title)
-  AddSquareHide(mmCluster and mmCluster.TitleContainer)
-
-  for i = 1, #squareHide do
-    HookKeepHidden(squareHide[i])
+    KeepHiddenInSquare(mmCluster.NineSlice.TopEdge)
+    KeepHiddenInSquare(mmCluster.NineSlice.TopLeftCorner)
+    KeepHiddenInSquare(mmCluster.NineSlice.TopRightCorner)
   end
 end
 
 local function ApplyShape(db)
   if not mm or not mm.SetMaskTexture then return end
-  CacheVisuals()
+  HookVisualsOnce()
 
   local square = (db.shape == "SQUARE")
+  mm:SetMaskTexture(square and MASK_SQUARE or MASK_CIRCLE)
 
   if square then
-    mm:SetMaskTexture(MASK_SQUARE)
-  else
-    mm:SetMaskTexture(MASK_CIRCLE)
+    HardHide(_G.MinimapBorder)
+    HardHide(_G.MinimapBorderTop)
+    HardHide(mmCluster and mmCluster.BorderTop)
+    HardHide(mmCluster and mmCluster.Border)
+    HardHide(_G.MinimapClusterBorderTop)
+    HardHide(_G.MinimapClusterBorder)
   end
 
-  for _, f in ipairs(ringFrames) do SetShown(f, not square) end
-  for _, f in ipairs(zoneBarFrames) do SetShown(f, not square) end
-
-  local moon = _G.GameTimeFrame
-  if moon then SetShown(moon, not square) end
-
-  if square then
-    for i = 1, #squareHide do HardHide(squareHide[i]) end
+  if db.hideDayNight then
+    HardHide(_G.GameTimeFrame)
   end
 end
 
 -- ------------------------------------------------------------
--- Flyout (ONLY addon buttons, and persistent capture set)
+-- Zone text + Clock
+--  - Zone scales with minimap
+--  - Clock scales with minimap and sits bottom-center
+--  - Both raised above border frame level
 -- ------------------------------------------------------------
-local fly = {
-  anchor = nil,
-  frame = nil,
-  content = nil,
-  open = false,
+local function ApplyZoneAndClock()
+  if not mm then return end
 
-  captured = {},      -- [btn]=true  (persistent set: "this belongs in flyout")
-  stored = {},        -- [btn]={ original state }
-  ordered = {},       -- array view of captured buttons for layout
-}
+  local zbtn = _G.MinimapZoneTextButton
+  local ztxt = _G.MinimapZoneText
+  local clock = _G.TimeManagerClockButton
 
-local function IsForbidden(btn)
-  if not btn or not btn.GetName then return true end
-  local n = btn:GetName() or ""
+  if zbtn then
+    zbtn:SetParent(mm)
+    if zbtn.SetFrameStrata then zbtn:SetFrameStrata(mm:GetFrameStrata()) end
+    if zbtn.SetFrameLevel then zbtn:SetFrameLevel(mm:GetFrameLevel() + 90) end
 
-  if n == "MinimapZoomIn" or n == "MinimapZoomOut" then return true end
-  if n:find("MiniMapTracking", 1, true) then return true end
-  if n:find("MiniMapMail", 1, true) then return true end
-  if n:find("MiniMapLFG", 1, true) then return true end
-  if n:find("QueueStatus", 1, true) then return true end
-  if n == "GameTimeFrame" then return true end
-  if n == "TimeManagerClockButton" then return true end
-  if n == "MiniMapWorldMapButton" then return true end
-  if n:find("MinimapZoneText", 1, true) then return true end
+    zbtn:ClearAllPoints()
+    zbtn:SetPoint("BOTTOM", mm, "TOP", 0, 6)
 
-  -- Quest/objective-ish
-  if n:find("Quest", 1, true) then return true end
-  if n:find("Objective", 1, true) then return true end
-  if n:find("Scenario", 1, true) then return true end
-
-  if n:find("EnhanceTBC_MinimapFlyout", 1, true) then return true end
-  if n:find("EnhanceTBC_MinimapDeco", 1, true) then return true end
-  return false
-end
-
-local function LooksLikeAddonButton(btn)
-  if not btn or not btn.IsObjectType or not btn:IsObjectType("Button") then return false end
-  if btn.IsForbidden and btn:IsForbidden() then return false end
-  if IsForbidden(btn) then return false end
-
-  local name = btn.GetName and (btn:GetName() or "") or ""
-  local isLDBIcon = (name:find("LibDBIcon", 1, true) ~= nil) or (name:find("DBIcon", 1, true) ~= nil)
-  if not isLDBIcon then return false end
-
-  local w = btn.GetWidth and btn:GetWidth() or 0
-  local h = btn.GetHeight and btn:GetHeight() or 0
-  if w <= 0 or h <= 0 or w > 80 or h > 80 then return false end
-
-  return true
-end
-
-local function CapturePoints(frame)
-  if not frame or not frame.GetNumPoints then return nil end
-  local t = {}
-  for i = 1, frame:GetNumPoints() do
-    local p, rel, rp, x, y = frame:GetPoint(i)
-    t[i] = { p, rel, rp, x, y }
+    if zbtn.Show then zbtn:Show() end
+    if zbtn.SetAlpha then zbtn:SetAlpha(1) end
   end
-  return t
-end
 
-local function RestorePoints(frame, t)
-  if not frame or not t then return end
-  frame:ClearAllPoints()
-  for i = 1, #t do
-    local p, rel, rp, x, y = unpack(t[i])
-    if p then frame:SetPoint(p, rel, rp, x, y) end
+  if ztxt then
+    ztxt:ClearAllPoints()
+    ztxt:SetPoint("CENTER", zbtn or mm, "CENTER", 0, 0)
+    ztxt:SetJustifyH("CENTER")
+  end
+
+  if clock then
+    clock:SetParent(mm)
+    if clock.SetFrameStrata then clock:SetFrameStrata(mm:GetFrameStrata()) end
+    if clock.SetFrameLevel then clock:SetFrameLevel(mm:GetFrameLevel() + 95) end
+
+    clock:ClearAllPoints()
+    -- ✅ bottom center as requested
+    clock:SetPoint("BOTTOM", mm, "BOTTOM", 0, 8)
+
+    if clock.Show then clock:Show() end
+    if clock.SetAlpha then clock:SetAlpha(1) end
   end
 end
 
-local function StoreBtn(btn)
-  if fly.stored[btn] then return end
-  local w, h = 0, 0
-  if btn.GetSize then w, h = btn:GetSize() end
-  fly.stored[btn] = {
-    parent = btn:GetParent(),
-    points = CapturePoints(btn),
-    strata = btn.GetFrameStrata and btn:GetFrameStrata() or nil,
-    level = btn.GetFrameLevel and btn:GetFrameLevel() or nil,
-    scale = btn.GetScale and btn:GetScale() or 1,
-    width = w, height = h,
-  }
-end
-
-local function RestoreBtn(btn)
-  local pack = fly.stored[btn]
-  if not pack then return end
-
-  if pack.parent and btn:GetParent() ~= pack.parent then btn:SetParent(pack.parent) end
-  if btn.SetScale and pack.scale then btn:SetScale(pack.scale) end
-  if btn.SetSize and pack.width and pack.height and pack.width > 0 and pack.height > 0 then
-    btn:SetSize(pack.width, pack.height)
+-- ------------------------------------------------------------
+-- Blizzard icons: detach from minimap scale AND HARD normalize size
+-- ------------------------------------------------------------
+local function GetEffectiveScale(f)
+  if not f then return 1 end
+  if f.GetEffectiveScale then
+    local ok, v = pcall(f.GetEffectiveScale, f)
+    if ok and type(v) == "number" and v > 0 then return v end
   end
-  if btn.SetFrameStrata and pack.strata then btn:SetFrameStrata(pack.strata) end
-  if btn.SetFrameLevel and pack.level then btn:SetFrameLevel(pack.level) end
-  RestorePoints(btn, pack.points)
-
-  fly.stored[btn] = nil
-  fly.captured[btn] = nil
+  if f.GetScale then
+    local ok, v = pcall(f.GetScale, f)
+    if ok and type(v) == "number" and v > 0 then return v end
+  end
+  return 1
 end
 
-local function ScanChildren(parent, out, depth)
-  if not parent or depth <= 0 or not parent.GetNumChildren then return end
-  local kids = { parent:GetChildren() }
-  for i = 1, #kids do
-    local c = kids[i]
-    if c and not out._seen[c] then
-      out._seen[c] = true
-      if LooksLikeAddonButton(c) then
-        table.insert(out, c)
+local function DetachNoScale(f)
+  if not f or not f.SetParent then return end
+  f:SetParent(UIParent)
+
+  if f.SetIgnoreParentScale then
+    f:SetIgnoreParentScale(true)
+    if f.SetScale then f:SetScale(1) end
+    return
+  end
+
+  local parentScale = GetEffectiveScale(mm)
+  if parentScale <= 0 then parentScale = 1 end
+  if f.SetScale then
+    f:SetScale(1 / parentScale)
+  end
+end
+
+local function ForceRegionToSize(r, size)
+  if not r then return end
+  if r.SetScale then r:SetScale(1) end
+
+  local ot = r.GetObjectType and r:GetObjectType()
+  if ot == "Texture" then
+    if r.SetTexCoord then
+      -- crop so circles/rings don't blow out of bounds
+      pcall(r.SetTexCoord, r, 0.08, 0.92, 0.08, 0.92)
+    end
+    if r.ClearAllPoints then r:ClearAllPoints() end
+    if r.SetAllPoints then r:SetAllPoints() end
+    if r.SetSize then r:SetSize(size, size) end
+  elseif ot == "FontString" then
+    -- leave fonts alone (clock text etc.)
+  end
+end
+
+local function NormalizeAnyFrame(f, size)
+  if not f then return end
+  size = clamp(size or 32, 18, 42)
+
+  if f.SetScale then f:SetScale(1) end
+  if f.SetSize then f:SetSize(size, size) end
+
+  -- Force all regions (textures) to fill this frame
+  if f.GetRegions then
+    local regions = { f:GetRegions() }
+    for i = 1, #regions do
+      ForceRegionToSize(regions[i], size)
+    end
+  end
+
+  -- Force common button textures too
+  local nt = f.GetNormalTexture and f:GetNormalTexture()
+  local pt = f.GetPushedTexture and f:GetPushedTexture()
+  local ht = f.GetHighlightTexture and f:GetHighlightTexture()
+  ForceRegionToSize(nt, size)
+  ForceRegionToSize(pt, size)
+  ForceRegionToSize(ht, size)
+
+  -- Normalize children (many Blizzard widgets hide a button inside a frame)
+  if f.GetChildren then
+    local kids = { f:GetChildren() }
+    for i = 1, #kids do
+      local c = kids[i]
+      if c and c.GetObjectType and (c:GetObjectType() == "Button" or c:GetObjectType() == "Frame") then
+        if c.SetScale then c:SetScale(1) end
+        if c.SetSize then c:SetSize(size, size) end
+
+        local cnt = c.GetNormalTexture and c:GetNormalTexture()
+        local cpt = c.GetPushedTexture and c:GetPushedTexture()
+        local cht = c.GetHighlightTexture and c:GetHighlightTexture()
+        ForceRegionToSize(cnt, size)
+        ForceRegionToSize(cpt, size)
+        ForceRegionToSize(cht, size)
+
+        if c.GetRegions then
+          local r2 = { c:GetRegions() }
+          for j = 1, #r2 do
+            ForceRegionToSize(r2[j], size)
+          end
+        end
       end
-      ScanChildren(c, out, depth - 1)
     end
   end
 end
 
-local function FindNewAddonButtonsOnMinimap()
-  local out = { _seen = {} }
-  ScanChildren(mm, out, 4)
-  ScanChildren(mmCluster, out, 4)
-  out._seen = nil
+local function AnchorNoScale(f, point, rel, relPoint, x, y, size)
+  if not f then return end
+  DetachNoScale(f)
+  NormalizeAnyFrame(f, size)
+  if f.ClearAllPoints then f:ClearAllPoints() end
+  if f.SetPoint then f:SetPoint(point, rel, relPoint, x, y) end
+  if f.SetFrameStrata then f:SetFrameStrata("HIGH") end
+  if f.SetFrameLevel and mm and mm.GetFrameLevel then f:SetFrameLevel(mm:GetFrameLevel() + 120) end
+end
 
-  -- Only return those not already captured
-  local filtered = {}
-  for i = 1, #out do
-    local b = out[i]
-    if b and not fly.captured[b] then
-      table.insert(filtered, b)
+local function ResolveTracking()
+  return _G.MiniMapTrackingFrame or _G.MiniMapTracking
+end
+
+local function ResolveTrackingButton()
+  return _G.MiniMapTrackingButton
+end
+
+local function ResolveMail()
+  return _G.MiniMapMailFrame or _G.MinimapMailFrame
+end
+
+local function ResolveMailIcon()
+  return _G.MiniMapMailIcon
+end
+
+local function ResolveLFG()
+  return _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MinimapLFGFrame
+end
+
+local function ApplyButtonLayout()
+  if not mm then return end
+  local iconSize = 32
+
+  local zoomIn = _G.MinimapZoomIn
+  local zoomOut = _G.MinimapZoomOut
+
+  local trackingFrame = ResolveTracking()
+  local trackingBtn = ResolveTrackingButton()
+
+  local mailFrame = ResolveMail()
+  local mailIcon = ResolveMailIcon()
+
+  local lfg = ResolveLFG()
+
+  -- LFG bottom-left corner
+  if lfg then AnchorNoScale(lfg, "BOTTOMLEFT", mm, "BOTTOMLEFT", -10, -10, iconSize) end
+
+  -- Zoom on left edge centered
+  if zoomIn then AnchorNoScale(zoomIn, "LEFT", mm, "LEFT", -18, 8, iconSize) end
+  if zoomOut then AnchorNoScale(zoomOut, "LEFT", mm, "LEFT", -18, -8, iconSize) end
+
+  -- Mail top edge centered
+  if mailFrame then
+    AnchorNoScale(mailFrame, "TOP", mm, "TOP", 0, 10, iconSize)
+    if mailIcon then
+      -- mail icon is a child texture/frame in some builds; force it too
+      NormalizeAnyFrame(mailIcon, iconSize)
     end
   end
 
-  table.sort(filtered, function(a, b)
-    local an = a.GetName and (a:GetName() or "") or ""
-    local bn = b.GetName and (b:GetName() or "") or ""
-    return an < bn
-  end)
-
-  return filtered
-end
-
-local function BuildOrderedCaptured()
-  wipe(fly.ordered)
-  for btn in pairs(fly.captured) do
-    if btn and btn.GetName and btn:IsObjectType("Button") then
-      table.insert(fly.ordered, btn)
-    end
+  -- Tracking top-right edge
+  if trackingFrame then
+    AnchorNoScale(trackingFrame, "TOPRIGHT", mm, "TOPRIGHT", 10, 10, iconSize)
   end
-  table.sort(fly.ordered, function(a, b)
-    local an = a:GetName() or ""
-    local bn = b:GetName() or ""
-    return an < bn
-  end)
+  if trackingBtn then
+    -- Some clients draw the actual button separately; hard force it too
+    AnchorNoScale(trackingBtn, "TOPRIGHT", mm, "TOPRIGHT", 10, 10, iconSize)
+  end
 end
 
-local function EnsureFlyout()
-  if fly.frame or not mm then return end
+-- ------------------------------------------------------------
+-- Flyout (kept as-is; we’ll tackle Questie capture next after sizing is fixed)
+-- ------------------------------------------------------------
+local fly = { box=nil, toggle=nil, open=false }
 
-  fly.anchor = CreateFrame("Button", "EnhanceTBC_MinimapFlyoutAnchor", mmCluster or UIParent)
-  fly.anchor:SetSize(18, 18)
-  fly.anchor:SetPoint("RIGHT", mm, "RIGHT", 8, 0)
-  fly.anchor:SetFrameStrata("MEDIUM")
-  fly.anchor:SetFrameLevel(mm:GetFrameLevel() + 500)
-  if fly.anchor.SetIgnoreParentScale then fly.anchor:SetIgnoreParentScale(true) end
-  fly.anchor:SetScale(1)
+local function EnsureFlyoutStub()
+  if fly.toggle or not mm then return end
+  fly.toggle = CreateFrame("Button", "EnhanceTBC_MinimapFlyoutToggle", UIParent)
+  fly.toggle:SetSize(18,18)
+  fly.toggle:SetFrameStrata("HIGH")
+  fly.toggle:SetFrameLevel((mmCluster and mmCluster:GetFrameLevel() or mm:GetFrameLevel()) + 300)
+  DetachNoScale(fly.toggle)
 
-  local bg = fly.anchor:CreateTexture(nil, "BACKGROUND")
-  bg:SetTexture(WHITE)
-  bg:SetAllPoints()
-  bg:SetVertexColor(0, 0, 0, 0.35)
+  local tbg = fly.toggle:CreateTexture(nil, "BACKGROUND")
+  tbg:SetTexture(WHITE)
+  tbg:SetAllPoints()
+  tbg:SetVertexColor(0,0,0,0.35)
 
-  local fs = fly.anchor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  local fs = fly.toggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   fs:SetPoint("CENTER")
   fs:SetText("≡")
-  fs:SetTextColor(0.85, 0.90, 0.85, 1)
+  fs:SetTextColor(0.9,0.9,0.9,1)
 
-  fly.frame = CreateFrame("Frame", "EnhanceTBC_MinimapFlyout", mmCluster or UIParent, "BackdropTemplate")
-  fly.frame:SetFrameStrata("DIALOG")
-  fly.frame:SetFrameLevel(mm:GetFrameLevel() + 600)
-  fly.frame:SetClampedToScreen(true)
-  fly.frame:Hide()
+  fly.box = CreateFrame("Frame", "EnhanceTBC_MinimapFlyoutBox", UIParent, "BackdropTemplate")
+  fly.box:SetFrameStrata("HIGH")
+  fly.box:SetFrameLevel(fly.toggle:GetFrameLevel() + 10)
+  fly.box:SetSize(180, 60)
+  fly.box:Hide()
+  fly.box:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, tile=false, edgeSize=2, insets={left=1,right=1,top=1,bottom=1} })
+  fly.box:SetBackdropColor(0,0,0,0.35)
+  fly.box:SetBackdropBorderColor(0.15,0.15,0.15,0.85)
 
-  fly.frame:SetBackdrop({
-    bgFile = WHITE,
-    edgeFile = WHITE,
-    tile = false,
-    edgeSize = 2,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-  })
-  fly.frame:SetBackdropColor(0.02, 0.03, 0.02, 0.92)
-  fly.frame:SetBackdropBorderColor(0.18, 0.20, 0.18, 0.90)
-
-  fly.content = CreateFrame("Frame", nil, fly.frame)
-  fly.content:SetPoint("TOPLEFT", fly.frame, "TOPLEFT", 8, -8)
-  fly.content:SetPoint("BOTTOMRIGHT", fly.frame, "BOTTOMRIGHT", -8, 8)
-
-  fly.frame:EnableMouse(true)
-  fly.frame:SetMovable(true)
-  fly.frame:RegisterForDrag("LeftButton")
-  fly.frame:SetScript("OnDragStart", function(self)
-    local db = GetDB()
-    if db and db.flyout and not db.flyout.locked then self:StartMoving() end
-  end)
-  fly.frame:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
-    local db = GetDB()
-    if not db or not db.flyout then return end
-    local p, rel, rp, x, y = self:GetPoint(1)
-    if p then
-      db.flyout.point = p
-      db.flyout.rel = (rel and rel.GetName and rel:GetName()) or "Minimap"
-      db.flyout.relPoint = rp
-      db.flyout.x = x
-      db.flyout.y = y
-    end
-  end)
-
-  fly.anchor:SetScript("OnClick", function()
-    if fly.frame:IsShown() then
-      fly.frame:Hide()
-      fly.open = false
-      -- IMPORTANT: do NOT restore anything on close; captured stay captured.
-    else
-      fly.frame:Show()
-      fly.open = true
-      mod:RefreshFlyout()
-    end
+  fly.toggle:SetScript("OnClick", function()
+    fly.open = not fly.open
+    if fly.open then fly.box:Show() else fly.box:Hide() end
   end)
 end
 
-local function ApplyFlyoutAnchor(db)
-  if not fly.frame then return end
-  local rel = _G[db.flyout.rel or "Minimap"] or mm
-  fly.frame:ClearAllPoints()
-  fly.frame:SetPoint(db.flyout.point or "TOPRIGHT", rel, db.flyout.relPoint or "BOTTOMRIGHT", db.flyout.x or 0, db.flyout.y or -6)
-end
-
-local function LayoutFlyout(db)
-  if not fly.frame or not fly.content then return end
-
-  BuildOrderedCaptured()
-
-  local size = clamp(db.flyout.buttonSize, 18, 44)
-  local pad = clamp(db.flyout.padding, 0, 16)
-  local perRow = clamp(db.flyout.perRow, 1, 12)
-  local maxRows = clamp(db.flyout.maxRows, 1, 12)
-
-  local total = #fly.ordered
-  if total < 1 then
-    fly.frame:SetSize(16 + size, 16 + size)
-    ApplyFlyoutAnchor(db)
-    return
-  end
-
-  local rows = math.ceil(total / perRow)
-  if rows > maxRows then
-    local needPerRow = math.ceil(total / maxRows)
-    perRow = clamp(needPerRow, perRow, 16)
-    rows = math.ceil(total / perRow)
-  end
-  local cols = math.min(perRow, total)
-
-  local w = (cols * size) + ((cols - 1) * pad) + 16
-  local h = (rows * size) + ((rows - 1) * pad) + 16
-
-  local maxH = (UIParent and UIParent.GetHeight and UIParent:GetHeight() or 800) - 80
-  if h > maxH then h = maxH end
-
-  fly.frame:SetSize(w, h)
-  ApplyFlyoutAnchor(db)
-
-  local idx = 1
-  for i = 1, #fly.ordered do
-    local b = fly.ordered[i]
-    if b then
-      local r = math.floor((idx - 1) / perRow)
-      local c = (idx - 1) % perRow
-
-      b:ClearAllPoints()
-      b:SetSize(size, size)
-      b:SetPoint("TOPLEFT", fly.content, "TOPLEFT", c * (size + pad), -(r * (size + pad)))
-
-      idx = idx + 1
-    end
-  end
-end
-
-function mod:RefreshFlyout()
+local function ApplyFlyoutToggleAnchor()
   local db = GetDB()
-  if not db or not mm then return end
-  EnsureFlyout()
+  if not db or not db.collector or not fly.toggle then return end
+  local c = db.collector
+  fly.toggle:ClearAllPoints()
+  fly.toggle:SetPoint(c.toggle.point, mm, c.toggle.relPoint, c.toggle.x, c.toggle.y)
 
-  if not (db.enabled and db.flyout and db.flyout.enabled) then
-    -- Only when feature disabled do we restore everything.
-    for btn in pairs(fly.stored) do RestoreBtn(btn) end
-    wipe(fly.ordered)
-    if fly.frame then fly.frame:Hide() end
-    if fly.anchor then fly.anchor:Hide() end
-    fly.open = false
-    return
-  end
-
-  if fly.anchor then fly.anchor:Show() end
-
-  -- Capture NEW addon buttons found on the minimap/cluster.
-  local newButtons = FindNewAddonButtonsOnMinimap()
-  for i = 1, #newButtons do
-    local btn = newButtons[i]
-    if btn and not fly.captured[btn] then
-      StoreBtn(btn)
-      fly.captured[btn] = true
-
-      btn:SetParent(fly.content)
-      if btn.SetScale then btn:SetScale(1) end
-      btn:SetFrameStrata("DIALOG")
-      if btn.SetFrameLevel then btn:SetFrameLevel(fly.frame:GetFrameLevel() + 5) end
-    end
-  end
-
-  -- Re-apply parenting for any captured button (some LDB libs reparent occasionally).
-  for btn in pairs(fly.captured) do
-    if btn and fly.stored[btn] then
-      if btn:GetParent() ~= fly.content then
-        btn:SetParent(fly.content)
-      end
-      if btn.SetScale then btn:SetScale(1) end
-      btn:SetFrameStrata("DIALOG")
-      if btn.SetFrameLevel then btn:SetFrameLevel(fly.frame:GetFrameLevel() + 5) end
-    end
-  end
-
-  LayoutFlyout(db)
+  fly.box:ClearAllPoints()
+  fly.box:SetPoint(c.pos.point, mm, c.pos.relPoint, c.pos.x, c.pos.y)
 end
 
 -- ------------------------------------------------------------
@@ -618,12 +493,8 @@ function mod:Apply()
   if not db.enabled then
     if mm.SetMaskTexture then mm:SetMaskTexture(MASK_CIRCLE) end
     if deco then deco:Hide() end
-
-    for btn in pairs(fly.stored) do RestoreBtn(btn) end
-    wipe(fly.ordered)
-    if fly.frame then fly.frame:Hide() end
-    if fly.anchor then fly.anchor:Hide() end
-    fly.open = false
+    if fly.box then fly.box:Hide() end
+    if fly.toggle then fly.toggle:Hide() end
     return
   end
 
@@ -631,43 +502,42 @@ function mod:Apply()
   ApplyShape(db)
   ApplyDeco(db)
 
-  if db.flyout and db.flyout.enabled then
-    EnsureFlyout()
-    if fly.anchor then fly.anchor:Show() end
-    if fly.open and fly.frame and fly.frame:IsShown() then
-      self:RefreshFlyout()
-    end
+  -- Zone + clock (clock bottom center)
+  ApplyZoneAndClock()
+
+  -- Blizzard buttons (should now be 32px, not huge)
+  ApplyButtonLayout()
+
+  -- Flyout stub (we’ll re-enable full capture next)
+  if db.collector and db.collector.enabled then
+    EnsureFlyoutStub()
+    fly.toggle:Show()
+    ApplyFlyoutToggleAnchor()
   else
-    for btn in pairs(fly.stored) do RestoreBtn(btn) end
-    wipe(fly.ordered)
-    if fly.frame then fly.frame:Hide() end
-    if fly.anchor then fly.anchor:Hide() end
-    fly.open = false
+    if fly.box then fly.box:Hide() end
+    if fly.toggle then fly.toggle:Hide() end
   end
 end
 
 -- ------------------------------------------------------------
--- Events (lightweight)
+-- ApplyBus registration
+-- ------------------------------------------------------------
+local function ApplyFromBus()
+  SafeCall(mod.Apply, mod)
+end
+
+if ETBC.ApplyBus and ETBC.ApplyBus.Register then
+  ETBC.ApplyBus:Register("minimap", ApplyFromBus)
+  ETBC.ApplyBus:Register("general", ApplyFromBus)
+end
+
+-- ------------------------------------------------------------
+-- Events
 -- ------------------------------------------------------------
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-ev:RegisterEvent("ADDON_LOADED")
-ev:SetScript("OnEvent", function(_, event)
+ev:SetScript("OnEvent", function()
   if not ETBC or not ETBC.db then return end
-
-  if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
-    SafeCall(mod.Apply, mod)
-    return
-  end
-
-  if event == "ADDON_LOADED" then
-    -- New LDB icons can appear after load; if flyout feature enabled, refresh (open or not).
-    C_Timer.After(0.20, function()
-      local db = GetDB()
-      if db and db.enabled and db.flyout and db.flyout.enabled then
-        SafeCall(mod.RefreshFlyout, mod)
-      end
-    end)
-  end
+  SafeCall(mod.Apply, mod)
 end)

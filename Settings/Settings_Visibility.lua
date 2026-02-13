@@ -25,13 +25,13 @@ local function EnsureDB()
   return db
 end
 
-local function NotifyAll()
+local function Notify()
   if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
     ETBC.ApplyBus:Notify("visibility")
   end
 end
 
-local function NewCondGroup(name, getT, setT, orderBase, descPrefix)
+local function NewCondGroup(name, getT, setT, orderBase)
   local function Toggle(key, label, order)
     return {
       type = "toggle",
@@ -40,14 +40,13 @@ local function NewCondGroup(name, getT, setT, orderBase, descPrefix)
       width = "full",
       get = function()
         local t = getT()
-        return t and t[key] and true or false
+        return (t and t[key]) and true or false
       end,
       set = function(_, v)
         local t = setT()
         if t then t[key] = v and true or false end
-        NotifyAll()
+        Notify()
       end,
-      desc = descPrefix and (descPrefix .. label) or nil,
     }
   end
 
@@ -57,21 +56,19 @@ local function NewCondGroup(name, getT, setT, orderBase, descPrefix)
     inline = true,
     order = orderBase,
     args = {
-      enabled = Toggle("enabled", "Enable these conditions", 1),
-      inCombat = Toggle("inCombat", "Only in combat", 10),
-      outOfCombat = Toggle("outOfCombat", "Only out of combat", 11),
-      inInstance = Toggle("inInstance", "Only in instances", 12),
-      inRaid = Toggle("inRaid", "Only in raids", 13),
-      inParty = Toggle("inParty", "Only in party", 14),
-      solo = Toggle("solo", "Only when solo", 15),
-      inBattleground = Toggle("inBattleground", "Only in battlegrounds", 16),
+      enabled        = Toggle("enabled",        "Enable these conditions", 1),
+      inCombat       = Toggle("inCombat",       "Only in combat",          10),
+      outOfCombat    = Toggle("outOfCombat",    "Only out of combat",      11),
+      inInstance     = Toggle("inInstance",     "Only in instances",       12),
+      inRaid         = Toggle("inRaid",         "Only in raids",           13),
+      inParty        = Toggle("inParty",        "Only in party",           14),
+      solo           = Toggle("solo",           "Only when solo",          15),
+      inBattleground = Toggle("inBattleground", "Only in battlegrounds",   16),
     },
   }
 end
 
 local function GetKnownModules()
-  -- Keep this list stable and lightweight; only modules you actually use should be here.
-  -- If you add more modules later, add their keys here.
   return {
     { key = "auras",         name = "Auras" },
     { key = "actiontracker", name = "ActionTracker" },
@@ -98,27 +95,13 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
   options = function()
     local db = EnsureDB()
     if not db then
-      -- DB not ready: return a harmless placeholder to avoid hard errors.
       return {
-        type = "group",
-        name = "Visibility",
-        args = {
-          msg = {
-            type = "description",
-            name = "Visibility is not ready yet (database not initialized). Reload if this persists.",
-            order = 1,
-          },
+        _msg = {
+          type = "description",
+          name = "Visibility is not ready yet (database not initialized). Reload if this persists.",
+          order = 1,
         },
       }
-    end
-
-    local function GlobalTable()
-      return db.global
-    end
-
-    local function GlobalTableWritable()
-      db.global = db.global or {}
-      return db.global
     end
 
     local args = {}
@@ -132,7 +115,7 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
       get = function() return db.enabled and true or false end,
       set = function(_, v)
         db.enabled = v and true or false
-        NotifyAll()
+        Notify()
       end,
     }
 
@@ -146,22 +129,20 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
 
     args.global = NewCondGroup(
       "Global Conditions (default)",
-      GlobalTable,
-      GlobalTableWritable,
-      10,
-      nil
+      function() return db.global end,
+      function() db.global = db.global or {}; return db.global end,
+      10
     )
 
     args.perModuleHeader = { type = "header", name = "Per-Module Overrides", order = 49 }
 
     local modGroupArgs = {}
-
     local mods = GetKnownModules()
+
     for i, m in ipairs(mods) do
       local key = m.key
       local name = m.name
 
-      -- Ensure module table exists so getters don't crash
       db.modules[key] = db.modules[key] or {
         enabled = false,
         inCombat = false,
@@ -173,21 +154,11 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
         inBattleground = false,
       }
 
-      local function GetMod()
-        return db.modules[key]
-      end
-
-      local function SetMod()
-        db.modules[key] = db.modules[key] or {}
-        return db.modules[key]
-      end
-
       modGroupArgs[key] = NewCondGroup(
         name,
-        GetMod,
-        SetMod,
-        i,
-        nil
+        function() return db.modules[key] end,
+        function() db.modules[key] = db.modules[key] or {}; return db.modules[key] end,
+        i
       )
     end
 
@@ -207,8 +178,7 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
       order = 91,
       func = function()
         db.modules = {}
-        -- Recreate empty tables next open; safe now
-        NotifyAll()
+        Notify()
       end,
     }
 
