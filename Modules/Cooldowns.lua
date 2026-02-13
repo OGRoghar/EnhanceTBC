@@ -1,0 +1,384 @@
+-- Modules/CooldownText.lua
+-- EnhanceTBC - Cooldown Text Engine (OmniCC-lite)
+-- Hooks cooldown timer setters and overlays a FontString on the owner frame.
+-- Lightweight: one global OnUpdate that updates tracked cooldowns at an interval.
+
+local ADDON_NAME, ETBC = ...
+
+ETBC.Modules = ETBC.Modules or {}
+local mod = {}
+ETBC.Modules.CooldownText = mod
+
+local driver
+local tracked = {}   -- [cooldownFrame] = state
+local ordered = {}   -- compact list for faster iteration
+local hooked = false
+
+local function GetDB()
+  ETBC.db.profile.cooldowns = ETBC.db.profile.cooldowns or {}
+  return ETBC.db.profile.cooldowns
+end
+
+local function LSM_Fetch(kind, key, fallback)
+  if ETBC.LSM and ETBC.LSM.Fetch then
+    local ok, v = pcall(ETBC.LSM.Fetch, ETBC.LSM, kind, key)
+    if ok and v then return v end
+  end
+  return fallback
+end
+
+local function IsActionButtonOwner(owner)
+  if not owner or not owner.GetName then return false end
+  local n = owner:GetName() or ""
+  if n:find("^ActionButton") then return true end
+  if n:find("^MultiBar") then return true end
+  if n:find("^BonusActionButton") then return true end
+  if n:find("^PetActionButton") then return true end
+  if n:find("^ShapeshiftButton") then return true end
+  return false
+end
+
+local function IsAuraOwner(owner)
+  if not owner or not owner.GetName then return false end
+  local n = owner:GetName() or ""
+  if n:find("^BuffButton") then return true end
+  if n:find("^DebuffButton") then return true end
+  if n:find("^TempEnchant") then return true end
+  if n:find("^TargetFrameBuff") then return true end
+  if n:find("^TargetFrameDebuff") then return true end
+  if n:find("^FocusFrameBuff") then return true end
+  if n:find("^FocusFrameDebuff") then return true end
+  return false
+end
+
+local function ShouldHandleCooldown(cooldown)
+  local db = GetDB()
+  if not db.enabled then return false end
+  if not cooldown or type(cooldown) ~= "table" then return false end
+  if cooldown.IsForbidden and cooldown:IsForbidden() then return false end
+  if cooldown.GetParent == nil then return false end
+
+  local owner = cooldown:GetParent()
+  if not owner or (owner.IsForbidden and owner:IsForbidden()) then return false end
+
+  -- Filter by owner types
+  if IsActionButtonOwner(owner) then
+    return db.actionButtons and true or false
+  end
+
+  if IsAuraOwner(owner) then
+    return db.buffsDebuffs and true or false
+  end
+
+  return db.otherCooldownFrames and true or false
+end
+
+local function EnsureFS(owner)
+  owner._etbc_cdtext = owner._etbc_cdtext or {}
+  if owner._etbc_cdtext.fs and owner._etbc_cdtext.fs.SetText then
+    return owner._etbc_cdtext.fs
+  end
+
+  local fs = owner:CreateFontString(nil, "OVERLAY")
+  fs:SetPoint("CENTER", owner, "CENTER", 0, 0)
+  fs:SetText("")
+  fs:Hide()
+
+  owner._etbc_cdtext.fs = fs
+  return fs
+end
+
+local function ApplyFont(fs, owner)
+  local db = GetDB()
+  local fontPath = LSM_Fetch("font", db.font, "Fonts\\FRIZQT__.TTF")
+  local size = tonumber(db.size) or 16
+  local outline = db.outline or ""
+
+  -- Optional scale by icon size
+  if db.scaleByIcon and owner and owner.GetWidth then
+    local w = owner:GetWidth() or 36
+    local h = owner:GetHeight() or 36
+    local base = math.min(w, h)
+    local scale = base / 36
+    local minS = tonumber(db.minScale) or 0.7
+    local maxS = tonumber(db.maxScale) or 1.1
+    if scale < minS then scale = minS end
+    if scale > maxS then scale = maxS end
+    size = math.floor(size * scale + 0.5)
+    if size < 8 then size = 8 end
+  end
+
+  fs:SetFont(fontPath, size, outline)
+
+  if db.shadow then
+    fs:SetShadowOffset(1, -1)
+    fs:SetShadowColor(0, 0, 0, 0.85)
+  else
+    fs:SetShadowOffset(0, 0)
+  end
+end
+
+local function FormatTime(remain)
+  local db = GetDB()
+  if remain <= 0 then return "" end
+
+  if db.showTenths and remain <= (db.tenthsThreshold or 3.0) then
+    return string.format("%.1f", remain)
+  end
+
+  local r
+  if db.roundUp then
+    r = math.ceil(remain)
+  else
+    r = math.floor(remain + 0.0001)
+  end
+
+  if r >= (db.mmssThreshold or 60) then
+    local m = math.floor(r / 60)
+    local s = r - (m * 60)
+    return string.format("%d:%02d", m, s)
+  end
+
+  return tostring(r)
+end
+
+local function PickColor(remain)
+  local db = GetDB()
+  local nowT = db.nowThreshold or 2.0
+  local soonT = db.soonThreshold or 5.0
+
+  if remain <= nowT then
+    local c = db.colorNow or { 1, 0.35, 0.35 }
+    return c[1], c[2], c[3]
+  end
+
+  if remain <= soonT then
+    local c = db.colorSoon or { 1, 0.85, 0.25 }
+    return c[1], c[2], c[3]
+  end
+
+  local c = db.colorNormal or { 0.9, 0.95, 0.9 }
+  return c[1], c[2], c[3]
+end
+
+local function IsProbablyGCD(duration)
+  -- GCD is usually ~1.0-1.5. We don’t want to hide legitimate 1.5 CDs, so use a narrow range.
+  return duration and duration > 0 and duration <= 1.7
+end
+
+local function Track(cooldown, start, duration, enable, modRate)
+  local db = GetDB()
+
+  if not ShouldHandleCooldown(cooldown) then
+    -- If we were tracking, clean up
+    if tracked[cooldown] then
+      local st = tracked[cooldown]
+      if st and st.fs then st.fs:Hide() end
+      tracked[cooldown] = nil
+    end
+    return
+  end
+
+  local owner = cooldown:GetParent()
+  local fs = EnsureFS(owner)
+  ApplyFont(fs, owner)
+
+  tracked[cooldown] = tracked[cooldown] or {}
+  local st = tracked[cooldown]
+  st.cooldown = cooldown
+  st.owner = owner
+  st.fs = fs
+  st.start = tonumber(start) or 0
+  st.duration = tonumber(duration) or 0
+  st.enable = enable and true or false
+  st.modRate = tonumber(modRate) or 1
+  st.lastText = nil
+  st.lastColorKey = nil
+
+  -- Hide if we shouldn't show swipe
+  if cooldown.SetDrawSwipe and (db.showSwipe == false) then
+    pcall(cooldown.SetDrawSwipe, cooldown, false)
+  elseif cooldown.SetDrawSwipe then
+    pcall(cooldown.SetDrawSwipe, cooldown, true)
+  end
+end
+
+local function RebuildOrdered()
+  wipe(ordered)
+  local count = 0
+  local maxT = GetDB().maxTracked or 400
+  for cd, st in pairs(tracked) do
+    if cd and st and st.owner and st.fs then
+      count = count + 1
+      if count <= maxT then
+        ordered[count] = st
+      else
+        -- over cap: stop tracking extras
+        st.fs:Hide()
+        tracked[cd] = nil
+      end
+    else
+      tracked[cd] = nil
+    end
+  end
+end
+
+local function UpdateOne(st, now)
+  local db = GetDB()
+  local cd = st.cooldown
+  local owner = st.owner
+  local fs = st.fs
+
+  if not cd or not owner or not fs then return false end
+  if not owner:IsShown() then fs:Hide(); return true end
+
+  if db.hideWhenPaused and st.modRate and st.modRate == 0 then
+    fs:Hide()
+    return true
+  end
+
+  if not st.enable or st.start <= 0 or st.duration <= 0 then
+    if db.hideWhenNoDuration then fs:Hide() end
+    return true
+  end
+
+  if st.duration < (db.minDuration or 2.5) or st.duration > (db.maxDuration or 3600) then
+    fs:Hide()
+    return true
+  end
+
+  if db.hideWhenGCD and IsProbablyGCD(st.duration) then
+    fs:Hide()
+    return true
+  end
+
+  local remain = (st.start + st.duration) - now
+  if remain <= 0 then
+    fs:Hide()
+    return true
+  end
+
+  local text = FormatTime(remain)
+  if text == "" then
+    fs:Hide()
+    return true
+  end
+
+  if not fs:IsShown() then fs:Show() end
+
+  if st.lastText ~= text then
+    fs:SetText(text)
+    st.lastText = text
+  end
+
+  local r, g, b = PickColor(remain)
+  -- Key for color changes only when needed
+  local key = (remain <= (db.nowThreshold or 2.0) and "now") or (remain <= (db.soonThreshold or 5.0) and "soon") or "norm"
+  if st.lastColorKey ~= key then
+    fs:SetTextColor(r, g, b)
+    st.lastColorKey = key
+  end
+
+  return true
+end
+
+local elapsed = 0
+local needRebuild = true
+
+local function EnsureDriver()
+  if driver then return end
+  driver = CreateFrame("Frame", "EnhanceTBC_CooldownTextDriver", UIParent)
+end
+
+local function StartDriver()
+  EnsureDriver()
+  driver:SetScript("OnUpdate", function(_, dt)
+    local db = GetDB()
+    if not db.enabled then return end
+
+    elapsed = elapsed + dt
+    local interval = db.updateInterval or 0.08
+    if elapsed < interval then return end
+    elapsed = 0
+
+    if needRebuild then
+      RebuildOrdered()
+      needRebuild = false
+    end
+
+    local now = GetTime()
+    for i = 1, #ordered do
+      UpdateOne(ordered[i], now)
+    end
+  end)
+end
+
+local function StopDriver()
+  if not driver then return end
+  driver:SetScript("OnUpdate", nil)
+end
+
+-- Hooks
+local function HookCooldownSetters()
+  if hooked then return end
+  hooked = true
+
+  if type(_G.CooldownFrame_Set) == "function" then
+    hooksecurefunc("CooldownFrame_Set", function(cooldown, start, duration, enable, forceShowDrawEdge, modRate)
+      Track(cooldown, start, duration, enable, modRate)
+      needRebuild = true
+    end)
+  end
+
+  if type(_G.CooldownFrame_SetTimer) == "function" then
+    hooksecurefunc("CooldownFrame_SetTimer", function(cooldown, start, duration, enable, modRate)
+      Track(cooldown, start, duration, enable, modRate)
+      needRebuild = true
+    end)
+  end
+
+  -- Some frames call :SetCooldown directly
+  if _G.Cooldown and _G.Cooldown.SetCooldown and not _G.Cooldown._etbcHooked then
+    _G.Cooldown._etbcHooked = true
+    hooksecurefunc(_G.Cooldown, "SetCooldown", function(cooldown, start, duration, enable, forceShowDrawEdge, modRate)
+      Track(cooldown, start, duration, enable, modRate)
+      needRebuild = true
+    end)
+  end
+end
+
+local function ClearAllText()
+  for cd, st in pairs(tracked) do
+    if st and st.fs then st.fs:Hide() end
+    tracked[cd] = nil
+  end
+  wipe(ordered)
+  needRebuild = true
+end
+
+local function Apply()
+  local db = GetDB()
+  local generalEnabled = ETBC.db.profile.general and ETBC.db.profile.general.enabled
+
+  EnsureDriver()
+  HookCooldownSetters()
+
+  if not (generalEnabled and db.enabled) then
+    ClearAllText()
+    StopDriver()
+    return
+  end
+
+  -- Re-style existing tracked FS with new font options
+  for _, st in pairs(tracked) do
+    if st and st.fs and st.owner then
+      ApplyFont(st.fs, st.owner)
+    end
+  end
+
+  StartDriver()
+  needRebuild = true
+end
+
+ETBC.ApplyBus:Register("cooldowns", Apply)
+ETBC.ApplyBus:Register("general", Apply)
