@@ -190,11 +190,18 @@ local function ApplyPointToFrame(key)
   frame:SetPoint(use.point or "CENTER", relFrame, use.relPoint or "CENTER", use.x or 0, use.y or 0)
 end
 
+local function HandleFrameNameForKey(key)
+  key = tostring(key or "")
+  key = key:gsub("[^%w_]", "_")
+  if key == "" then key = "Unnamed" end
+  return "EnhanceTBC_MoverHandle_" .. key
+end
+
 local function CreateHandle(key, entry)
   local frame = entry.frame
   if not frame then return end
 
-  local h = CreateFrame("Frame", "EnhanceTBC_MoverHandle_" .. key, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  local h = CreateFrame("Frame", HandleFrameNameForKey(key), UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   h:SetFrameStrata("DIALOG")
   h:SetClampedToScreen(true)
   h:EnableMouse(true)

@@ -55,6 +55,7 @@ Core\Compat.lua
 Core\Theme.lua
 Core\ApplyBus.lua
 Core\SettingsRegistry.lua
+Core\Mover.lua
 Core\Init.lua
 Options\Options.lua
 Core\EnhanceTBC.lua
