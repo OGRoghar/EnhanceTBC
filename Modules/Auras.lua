@@ -112,14 +112,16 @@ local function EnsureFrames()
     f:SetMovable(true)
     f:RegisterForDrag("LeftButton")
 
-    f:SetBackdrop({
-      bgFile = "Interface/Buttons/WHITE8x8",
-      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-      edgeSize = 14,
-      insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    f:SetBackdropColor(0.03, 0.08, 0.03, 0.55)
-    f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
+    if f.SetBackdrop then
+      f:SetBackdrop({
+        bgFile = "Interface/Buttons/WHITE8x8",
+        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+        edgeSize = 14,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+      })
+      f:SetBackdropColor(0.03, 0.08, 0.03, 0.55)
+      f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
+    end
 
     f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.text:SetPoint("CENTER", f, "CENTER", 0, 0)
@@ -216,10 +218,12 @@ local function AcquireIcon()
   icon.border:ClearAllPoints()
   icon.border:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
   icon.border:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
-  icon.border:SetBackdrop({
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    edgeSize = 14,
-  })
+  if icon.border.SetBackdrop then
+    icon.border:SetBackdrop({
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      edgeSize = 14,
+    })
+  end
 
   icon:SetScript("OnEnter", function(self)
     local db = ETBC.db.profile.auras
@@ -322,7 +326,9 @@ local function ApplyVisuals(icon, common, layout, data)
       br, bg, bb, ba = dc.r, dc.g, dc.b, (dc.a or 1)
     end
 
-    icon.border:SetBackdropBorderColor(br, bg, bb, ba)
+    if icon.border.SetBackdropBorderColor then
+      icon.border:SetBackdropBorderColor(br, bg, bb, ba)
+    end
   else
     icon.border:Hide()
   end

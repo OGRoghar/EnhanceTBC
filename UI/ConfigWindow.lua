@@ -562,8 +562,6 @@ local function GetDefaultModuleKey(groups, preferred)
   return groups[1].key
 end
 
-=======
-
 local function NewDebounceTimer(delay, fn)
   local timer = { _cancelled = false }
 

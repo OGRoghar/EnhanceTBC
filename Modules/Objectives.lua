@@ -42,18 +42,22 @@ local function SetBackdrop(frame, bgA, borderA)
   frame._etbcBG:SetPoint("TOPLEFT", frame, "TOPLEFT", -6, 6)
   frame._etbcBG:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 6, -6)
 
-  frame._etbcBG:SetBackdrop({
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    tile = false,
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-  })
+  if frame._etbcBG.SetBackdrop then
+    frame._etbcBG:SetBackdrop({
+      bgFile = "Interface\\Buttons\\WHITE8x8",
+      edgeFile = "Interface\\Buttons\\WHITE8x8",
+      tile = false,
+      edgeSize = 1,
+      insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
 
-  frame._etbcBG:SetBackdropColor(0, 0, 0, bgA or 0.35)
-  frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, borderA or 0.95)
+    frame._etbcBG:SetBackdropColor(0, 0, 0, bgA or 0.35)
+    frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, borderA or 0.95)
+  end
+
   frame._etbcBG:Show()
 end
+
 
 local function UpdateBackdrop(frame)
   local db = GetDB()
@@ -61,8 +65,12 @@ local function UpdateBackdrop(frame)
 
   if db.background then
     SetBackdrop(frame, db.bgAlpha or 0.35, db.borderAlpha or 0.95)
-    frame._etbcBG:SetBackdropColor(0, 0, 0, db.bgAlpha or 0.35)
-    frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, db.borderAlpha or 0.95)
+    if frame._etbcBG.SetBackdropColor then
+      frame._etbcBG:SetBackdropColor(0, 0, 0, db.bgAlpha or 0.35)
+    end
+    if frame._etbcBG.SetBackdropBorderColor then
+      frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, db.borderAlpha or 0.95)
+    end
     frame._etbcBG:Show()
   else
     if frame._etbcBG then frame._etbcBG:Hide() end

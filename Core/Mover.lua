@@ -104,6 +104,19 @@ local function SetSaved(key, t)
   db.frames[key] = t
 end
 
+local function FindKeyForEntry(entry)
+  if type(entry) ~= "table" then return nil end
+  if entry.key and registry[entry.key] == entry then
+    return entry.key
+  end
+  for key, v in pairs(registry) do
+    if v == entry then
+      return key
+    end
+  end
+  return nil
+end
+
 local function EnsureGridFrame()
   if gridFrame then return end
   gridFrame = CreateFrame("Frame", "EnhanceTBC_MoverGrid", UIParent)
@@ -221,14 +234,16 @@ local function CreateHandle(key, entry)
   h:SetMovable(true)
   h:RegisterForDrag("LeftButton")
 
-  h:SetBackdrop({
-    bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 14,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 },
-  })
-  h:SetBackdropColor(0.03, 0.06, 0.03, 0.80)
-  h:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.85)
+  if h.SetBackdrop then
+    h:SetBackdrop({
+      bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      tile = true, tileSize = 16, edgeSize = 14,
+      insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    h:SetBackdropColor(0.03, 0.06, 0.03, 0.80)
+    h:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.85)
+  end
 
   local label = h:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   label:SetPoint("CENTER", h, "CENTER", 0, 0)
@@ -381,6 +396,7 @@ function M:Register(key, frame, opts)
   if not frame then return end
 
   registry[key] = registry[key] or {}
+  registry[key].key = key
   registry[key].frame = frame
   registry[key].opts = opts or registry[key].opts or {}
 
@@ -402,6 +418,40 @@ function M:Register(key, frame, opts)
   end
 
   UpdateAllHandles()
+end
+
+function M:GetRegistered()
+  return registry
+end
+
+function M:ApplyAnchorFromHandle(entry, point, relPoint, x, y)
+  local key = FindKeyForEntry(entry)
+  if not key then return end
+
+  local rel = "UIParent"
+  SetSaved(key, {
+    point = point or "CENTER",
+    rel = rel,
+    relPoint = relPoint or "CENTER",
+    x = x or 0,
+    y = y or 0,
+  })
+  ApplyPointToFrame(key)
+end
+
+function M:ResetEntry(entry)
+  local key = FindKeyForEntry(entry)
+  if not key then return end
+  self:Reset(key)
+end
+
+function M:ResetAll()
+  self:Reset("all")
+end
+
+function M:AutoRegisterKnown()
+  -- Compatibility no-op: some UI layers call this to allow modules to lazily
+  -- register movers. Individual modules can still register directly.
 end
 
 function M:Apply(key)
@@ -473,6 +523,7 @@ function M:Nudge(key, dx, dy)
   local frame = entry.frame
   local db = GetDB()
 
+  if not frame.GetPoint then return end
   local point, rel, relPoint, x, y = frame:GetPoint(1)
   if not point then return end
 
