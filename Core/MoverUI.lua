@@ -108,13 +108,20 @@ local function BuildGuides(db)
 end
 
 local function FlashHandleBorder(f)
-  if not f then return end
+  if not f or not f.SetBackdropBorderColor then return end
   f:SetBackdropBorderColor(1.0, 0.9, 0.2, 1.0)
-  C_Timer.After(0.12, function()
+
+  local function restore()
     if f and f.SetBackdropBorderColor then
       f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
     end
-  end)
+  end
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0.12, restore)
+  else
+    restore()
+  end
 end
 
 local function EnsureHandle(key)
@@ -148,11 +155,14 @@ local function EnsureHandle(key)
   f.hint:SetText("Left-drag • Right reset")
 
   f:SetScript("OnDragStart", function(self)
+    if not self.StartMoving then return end
     self:StartMoving()
   end)
 
   f:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
+    if self.StopMovingOrSizing then
+      self:StopMovingOrSizing()
+    end
     if not self._entry then return end
 
     local point, _, relPoint, x, y = self:GetPoint(1)

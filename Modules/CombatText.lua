@@ -489,15 +489,14 @@ end
 
 local function RegisterMover()
   if not (ETBC.Mover and ETBC.Mover.Register) then return end
-  ETBC.Mover:Register("combattext", {
-    name = "CombatText",
-    category = "CombatText",
-    sizeW = 220,
-    sizeH = 44,
-    getFrame = function() return anchor end,
-    getAnchorDB = function() return ETBC.db.profile.combattext.anchor end,
-    resetAnchor = { point = "CENTER", relPoint = "CENTER", x = 0, y = 120 },
-    onApplied = function() ETBC.ApplyBus:Notify("combattext") end,
+  ETBC.Mover:Register("combattext", anchor, {
+    default = {
+      point = "CENTER",
+      rel = "UIParent",
+      relPoint = "CENTER",
+      x = 0,
+      y = 120,
+    },
   })
 end
 

@@ -81,6 +81,19 @@ local function ResolveRelFrame(relNameOrFrame)
   return UIParent
 end
 
+local function SetShownCompat(frame, shown)
+  if not frame then return end
+  if frame.SetShown then
+    frame:SetShown(shown and true or false)
+    return
+  end
+  if shown then
+    if frame.Show then frame:Show() end
+  else
+    if frame.Hide then frame:Hide() end
+  end
+end
+
 local function GetSaved(key)
   local db = GetDB()
   return db.frames[key]
@@ -190,11 +203,18 @@ local function ApplyPointToFrame(key)
   frame:SetPoint(use.point or "CENTER", relFrame, use.relPoint or "CENTER", use.x or 0, use.y or 0)
 end
 
+local function HandleFrameNameForKey(key)
+  key = tostring(key or "")
+  key = key:gsub("[^%w_]", "_")
+  if key == "" then key = "Unnamed" end
+  return "EnhanceTBC_MoverHandle_" .. key
+end
+
 local function CreateHandle(key, entry)
   local frame = entry.frame
   if not frame then return end
 
-  local h = CreateFrame("Frame", "EnhanceTBC_MoverHandle_" .. key, UIParent, "BackdropTemplate")
+  local h = CreateFrame("Frame", HandleFrameNameForKey(key), UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   h:SetFrameStrata("DIALOG")
   h:SetClampedToScreen(true)
   h:EnableMouse(true)
@@ -221,7 +241,7 @@ local function CreateHandle(key, entry)
     self:SetAlpha(db.handleAlpha or 0.85)
     self:SetScale(db.handleScale or 1.0)
     if self._label then
-      self._label:SetShown(db.showFrameNames and true or false)
+      SetShownCompat(self._label, db.showFrameNames and true or false)
       if db.showFrameNames then self._label:SetText(key) end
     end
   end)
@@ -251,7 +271,8 @@ local function CreateHandle(key, entry)
 
   h:SetScript("OnDragStart", function(self)
     if not CanMoveNow() then return end
-    if frame:IsProtected() and InCombat() then return end
+    if frame.IsProtected and frame:IsProtected() and InCombat() then return end
+    if not frame.StartMoving then return end
     frame:StartMoving()
   end)
 
@@ -262,6 +283,7 @@ local function CreateHandle(key, entry)
 
     -- Save snapped position based on current point relative to UIParent
     local db = GetDB()
+    if not frame.GetPoint then return end
     local point, rel, relPoint, x, y = frame:GetPoint(1)
     if not point then return end
 
@@ -321,6 +343,10 @@ local function UpdateAllHandles()
   local db = GetDB()
   for key, entry in pairs(registry) do
     local frame = entry.frame
+    if frame and frame.SetClampedToScreen then
+      frame:SetClampedToScreen(db.clampToScreen and true or false)
+    end
+
     local h = handles[key]
     if not h then
       h = CreateHandle(key, entry)
@@ -332,7 +358,7 @@ local function UpdateAllHandles()
     h:SetAlpha(db.handleAlpha or 0.85)
     h:SetScale(db.handleScale or 1.0)
     if h._label then
-      h._label:SetShown(db.showFrameNames and true or false)
+      SetShownCompat(h._label, db.showFrameNames and true or false)
       if db.showFrameNames then h._label:SetText(key) end
     end
 
@@ -361,7 +387,10 @@ function M:Register(key, frame, opts)
   -- Ensure movable settings are correct on the target frame
   if frame.SetMovable then frame:SetMovable(true) end
   if frame.EnableMouse then frame:EnableMouse(false) end -- handle does input
-  if frame.SetClampedToScreen then frame:SetClampedToScreen(true) end
+  if frame.SetClampedToScreen then
+    local db = GetDB()
+    frame:SetClampedToScreen(db.clampToScreen and true or false)
+  end
 
   -- Apply saved/default anchor now
   ApplyPointToFrame(key)

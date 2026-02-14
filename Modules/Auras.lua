@@ -69,6 +69,19 @@ local function Snap(n, grid)
   return math.ceil((n / grid) - 0.5) * grid
 end
 
+local function SetShownCompat(frame, shown)
+  if not frame then return end
+  if frame.SetShown then
+    frame:SetShown(shown and true or false)
+    return
+  end
+  if shown then
+    if frame.Show then frame:Show() end
+  else
+    if frame.Hide then frame:Hide() end
+  end
+end
+
 local function EnsureFrames()
   EnsureDriver()
 
@@ -117,11 +130,14 @@ local function EnsureFrames()
     f.hint:SetText("Drag to move")
 
     f:SetScript("OnDragStart", function(self)
+      if not self.StartMoving then return end
       self:StartMoving()
     end)
 
     f:SetScript("OnDragStop", function(self)
-      self:StopMovingOrSizing()
+      if self.StopMovingOrSizing then
+        self:StopMovingOrSizing()
+      end
 
       local db = ETBC.db.profile.auras
       local grid = GetGridSize()
@@ -136,12 +152,12 @@ local function EnsureFrames()
 
       -- Save into the correct anchorDB (set by f.anchorDB)
       local a = self.anchorDB
-      if a then
-        a.point = point or a.point
-        a.relPoint = relPoint or a.relPoint
-        a.x = x
-        a.y = y
-      end
+      if not a then return end
+
+      a.point = point or a.point
+      a.relPoint = relPoint or a.relPoint
+      a.x = x
+      a.y = y
 
       -- Re-anchor the handle to the snapped position
       self:ClearAllPoints()
@@ -485,8 +501,8 @@ local function UpdateMoveHandles(db)
   debuffHandle:ClearAllPoints()
   debuffHandle:SetPoint(db.debuffs.anchor.point, UIParent, db.debuffs.anchor.relPoint, db.debuffs.anchor.x, db.debuffs.anchor.y)
 
-  buffHandle:SetShown(db.buffs.enabled)
-  debuffHandle:SetShown(db.debuffs.enabled)
+  SetShownCompat(buffHandle, db.buffs.enabled)
+  SetShownCompat(debuffHandle, db.debuffs.enabled)
 end
 
 local function Apply()
@@ -518,8 +534,8 @@ local function Apply()
   debuffContainer:ClearAllPoints()
   debuffContainer:SetPoint("TOPLEFT", debuffAnchor, "TOPLEFT", 0, 0)
 
-  buffContainer:SetShown(db.buffs.enabled)
-  debuffContainer:SetShown(db.debuffs.enabled)
+  SetShownCompat(buffContainer, db.buffs.enabled)
+  SetShownCompat(debuffContainer, db.debuffs.enabled)
 
   UpdateMoveHandles(db)
 
