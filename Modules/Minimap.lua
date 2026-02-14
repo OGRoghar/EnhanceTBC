@@ -1,4 +1,4 @@
--- Modules/Minimap.lua
+-- Modules/Minimap.lua (CLEAN SLATE v2 - proxy flyout, stable)
 local ADDON_NAME, ETBC = ...
 
 ETBC.Modules = ETBC.Modules or {}
@@ -22,12 +22,20 @@ end
 
 local function SafeCall(fn, ...)
   if type(fn) ~= "function" then return end
-  local ok, err = pcall(fn, ...)
-  return ok, err
+  pcall(fn, ...)
+end
+
+local function ParseCSVSet(s)
+  local out = {}
+  s = tostring(s or "")
+  for token in s:gmatch("[^,%s]+") do
+    out[token] = true
+  end
+  return out
 end
 
 -- ------------------------------------------------------------
--- DB (matches Settings/Settings_Minimap.lua)
+-- DB
 -- ------------------------------------------------------------
 local function GetDB()
   if not ETBC or not ETBC.db or not ETBC.db.profile then return nil end
@@ -39,448 +47,716 @@ local function GetDB()
   if db.squareSize == nil then db.squareSize = 140 end
   if db.mapScale == nil then db.mapScale = 1.0 end
 
-  if db.hideDayNight == nil then db.hideDayNight = true end
-
   db.border = db.border or {}
   if db.border.enabled == nil then db.border.enabled = true end
   if db.border.size == nil then db.border.size = 2 end
   if db.border.alpha == nil then db.border.alpha = 0.90 end
-  if db.border.r == nil then db.border.r = 0.15 end
-  if db.border.g == nil then db.border.g = 0.15 end
-  if db.border.b == nil then db.border.b = 0.15 end
+  if db.border.r == nil then db.border.r = 0.18 end
+  if db.border.g == nil then db.border.g = 0.20 end
+  if db.border.b == nil then db.border.b = 0.18 end
 
-  db.background = db.background or {}
-  if db.background.enabled == nil then db.background.enabled = false end
-  if db.background.alpha == nil then db.background.alpha = 0 end
-  if db.background.r == nil then db.background.r = 0 end
-  if db.background.g == nil then db.background.g = 0 end
-  if db.background.b == nil then db.background.b = 0 end
+  db.zoneText = db.zoneText or {}
+  if db.zoneText.enabled == nil then db.zoneText.enabled = true end
+  if db.zoneText.fontSize == nil then db.zoneText.fontSize = 12 end
 
-  db.collector = db.collector or {}
-  local c = db.collector
-  if c.enabled == nil then c.enabled = true end
-  if c.flyoutMode == nil then c.flyoutMode = "CLICK" end
-  if c.startOpen == nil then c.startOpen = false end
-  if c.locked == nil then c.locked = true end
-  if c.iconSize == nil then c.iconSize = 28 end
-  if c.columns == nil then c.columns = 6 end
-  if c.spacing == nil then c.spacing = 4 end
-  if c.padding == nil then c.padding = 6 end
-  if c.scale == nil then c.scale = 1.0 end
-  if c.bgAlpha == nil then c.bgAlpha = 0.35 end
-  if c.borderAlpha == nil then c.borderAlpha = 0.85 end
-  if c.includeLibDBIcon == nil then c.includeLibDBIcon = true end
-  if c.includeExtra == nil then c.includeExtra = "" end
-  if c.exclude == nil then c.exclude = "" end
+  db.clock = db.clock or {}
+  if db.clock.enabled == nil then db.clock.enabled = true end
+  if db.clock.fontSize == nil then db.clock.fontSize = 12 end
 
-  c.pos = c.pos or {}
-  if c.pos.point == nil then c.pos.point = "TOPRIGHT" end
-  if c.pos.relPoint == nil then c.pos.relPoint = "TOPLEFT" end
-  if c.pos.x == nil then c.pos.x = 8 end
-  if c.pos.y == nil then c.pos.y = 0 end
+  db.blizzButtons = db.blizzButtons or {}
+  if db.blizzButtons.enabled == nil then db.blizzButtons.enabled = true end
+  if db.blizzButtons.size == nil then db.blizzButtons.size = 32 end
 
-  c.toggle = c.toggle or {}
-  if c.toggle.point == nil then c.toggle.point = "TOPRIGHT" end
-  if c.toggle.relPoint == nil then c.toggle.relPoint = "BOTTOMRIGHT" end
-  if c.toggle.x == nil then c.toggle.x = 2 end
-  if c.toggle.y == nil then c.toggle.y = -2 end
+  db.flyout = db.flyout or {}
+  local f = db.flyout
+  if f.enabled == nil then f.enabled = true end
+  if f.locked == nil then f.locked = true end
+  if f.startOpen == nil then f.startOpen = false end
+  if f.iconSize == nil then f.iconSize = 28 end
+  if f.columns == nil then f.columns = 6 end
+  if f.spacing == nil then f.spacing = 4 end
+  if f.padding == nil then f.padding = 6 end
+  if f.scale == nil then f.scale = 1.0 end
+  if f.bgAlpha == nil then f.bgAlpha = 0.70 end
+  if f.borderAlpha == nil then f.borderAlpha = 0.90 end
+  if f.exclude == nil then f.exclude = "" end -- comma-separated LibDBIcon object keys (preferred)
+
+  f.pos = f.pos or {}
+  if f.pos.point == nil then f.pos.point = "TOPRIGHT" end
+  if f.pos.relPoint == nil then f.pos.relPoint = "BOTTOMRIGHT" end
+  if f.pos.x == nil then f.pos.x = 0 end
+  if f.pos.y == nil then f.pos.y = -8 end
+
+  f.toggle = f.toggle or {}
+  if f.toggle.point == nil then f.toggle.point = "RIGHT" end
+  if f.toggle.relPoint == nil then f.toggle.relPoint = "RIGHT" end
+  if f.toggle.x == nil then f.toggle.x = 10 end
+  if f.toggle.y == nil then f.toggle.y = 0 end
 
   return db
 end
 
 -- ------------------------------------------------------------
--- original minimap size for restore
+-- Kill old flyout frames from previous iterations (so no “2 toggles”)
 -- ------------------------------------------------------------
-local orig = { stored=false, w=nil, h=nil }
-local function StoreOriginalSize()
-  if orig.stored or not mm or not mm.GetSize then return end
+local function KillOld()
+  if not EnumerateFrames then return end
+  local keep = {
+    ["EnhanceTBC_MM2_Fly_Toggle"] = true,
+    ["EnhanceTBC_MM2_Fly_Frame"] = true,
+    ["EnhanceTBC_MM2_Fly_Content"] = true,
+    ["EnhanceTBC_MM2_Fly_Drag"] = true,
+  }
+
+  local f = EnumerateFrames()
+  while f do
+    local n = f.GetName and f:GetName()
+    if n and n:find("EnhanceTBC") and (n:find("Flyout") or n:find("MM_Fly") or n:find("MM2_Fly")) then
+      if not keep[n] then
+        if f.Hide then f:Hide() end
+        if f.EnableMouse then f:EnableMouse(false) end
+        if f.SetScript then
+          f:SetScript("OnClick", nil)
+          f:SetScript("OnShow", nil)
+          f:SetScript("OnEnter", nil)
+          f:SetScript("OnLeave", nil)
+          f:SetScript("OnMouseDown", nil)
+          f:SetScript("OnMouseUp", nil)
+          f:SetScript("OnDragStart", nil)
+          f:SetScript("OnDragStop", nil)
+        end
+      end
+    end
+    f = EnumerateFrames(f)
+  end
+end
+
+-- ------------------------------------------------------------
+-- Store original minimap size
+-- ------------------------------------------------------------
+local orig = { stored=false, w=nil, h=nil, scale=nil }
+local function StoreOriginal()
+  if orig.stored or not mm then return end
   orig.w, orig.h = mm:GetSize()
+  orig.scale = mm:GetScale()
   orig.stored = true
 end
 
-local function ApplySizeAndScale(db)
-  if not mm then return end
-  StoreOriginalSize()
+-- ------------------------------------------------------------
+-- Border (border only, no dark fill)
+-- ------------------------------------------------------------
+local border
+local function EnsureBorder()
+  if border or not mm then return end
+  border = CreateFrame("Frame", "EnhanceTBC_MM2_Border", mm, "BackdropTemplate")
+  border:SetAllPoints(mm)
+  border:SetFrameStrata(mm:GetFrameStrata())
+  border:SetFrameLevel(mm:GetFrameLevel() + 50)
+  border:EnableMouse(false)
+end
 
-  mm:SetScale(clamp(db.mapScale, 0.70, 1.50))
+local function ApplyBorder(db)
+  EnsureBorder()
+  if not border then return end
 
-  if db.shape == "SQUARE" then
-    local size = clamp(db.squareSize, 110, 220)
-    mm:SetSize(size, size)
-  else
-    if orig.stored and orig.w and orig.h then
-      mm:SetSize(orig.w, orig.h)
-    end
+  if not db.border or db.border.enabled == false then
+    border:Hide()
+    return
   end
-end
 
--- ------------------------------------------------------------
--- Deco border (no forced dark background)
--- ------------------------------------------------------------
-local deco
-local function EnsureDeco()
-  if deco or not mm then return end
-  deco = CreateFrame("Frame", "EnhanceTBC_MinimapDeco", mm, "BackdropTemplate")
-  deco:SetAllPoints(mm)
-  deco:SetFrameStrata(mm:GetFrameStrata())
-  deco:SetFrameLevel(mm:GetFrameLevel() + 50)
-end
-
-local function ApplyDeco(db)
-  EnsureDeco()
-  if not deco then return end
-
-  local b = db.border or {}
-  local bg = db.background or {}
-
-  local edge = clamp(b.size, 1, 8)
-  deco:SetBackdrop({
-    bgFile = WHITE,
+  local edge = clamp(db.border.size or 2, 1, 8)
+  border:SetBackdrop({
+    bgFile = nil,
     edgeFile = WHITE,
     tile = false,
     edgeSize = edge,
-    insets = { left=1,right=1,top=1,bottom=1 },
+    insets = { left=0, right=0, top=0, bottom=0 },
   })
-
-  if bg.enabled and (bg.alpha or 0) > 0 then
-    deco:SetBackdropColor(bg.r or 0, bg.g or 0, bg.b or 0, clamp(bg.alpha, 0, 1))
-  else
-    deco:SetBackdropColor(0,0,0,0)
-  end
-
-  if b.enabled then
-    deco:SetBackdropBorderColor(b.r or 0.15, b.g or 0.15, b.b or 0.15, clamp(b.alpha, 0, 1))
-    deco:Show()
-  else
-    deco:SetBackdropBorderColor(0,0,0,0)
-    if bg.enabled and (bg.alpha or 0) > 0 then deco:Show() else deco:Hide() end
-  end
+  border:SetBackdropBorderColor(
+    db.border.r or 0.18,
+    db.border.g or 0.20,
+    db.border.b or 0.18,
+    clamp(db.border.alpha or 0.90, 0, 1)
+  )
+  border:Show()
 end
 
 -- ------------------------------------------------------------
--- Square artifacts (hide only top border junk)
+-- Shape + scale
 -- ------------------------------------------------------------
-local function HardHide(obj)
-  if not obj then return end
-  if obj.Hide then obj:Hide() end
-  if obj.SetShown then obj:SetShown(false) end
-  if obj.SetAlpha then obj:SetAlpha(0) end
+local function ApplyShapeScale(db)
+  if not mm then return end
+  StoreOriginal()
+
+  mm:SetScale(clamp(db.mapScale or 1.0, 0.70, 1.50))
+
+  if db.shape == "SQUARE" then
+    local s = clamp(db.squareSize or 140, 110, 220)
+    mm:SetSize(s, s)
+    mm:SetMaskTexture(MASK_SQUARE)
+  else
+    if orig.w and orig.h then mm:SetSize(orig.w, orig.h) end
+    mm:SetMaskTexture(MASK_CIRCLE)
+  end
+
+  -- Hide default ring art in square mode
+  local square = (db.shape == "SQUARE")
+  local ring = {
+    _G.MinimapBorder,
+    _G.MinimapBorderTop,
+    _G.MinimapCompassTexture,
+    _G.MinimapNorthTag,
+    _G.MinimapBackdrop,
+    _G.MinimapBackdropTexture,
+  }
+  for i=1,#ring do
+    local f = ring[i]
+    if f and f.SetShown then f:SetShown(not square) end
+  end
+
+  -- Always hide day/night icon
+  local moon = _G.GameTimeFrame
+  if moon and moon.SetShown then moon:SetShown(false) end
 end
 
-local function KeepHiddenInSquare(obj)
-  if not obj or not obj.HookScript then return end
-  obj:HookScript("OnShow", function(self)
-    local db = GetDB()
-    if db and db.enabled and db.shape == "SQUARE" then
-      HardHide(self)
+-- ------------------------------------------------------------
+-- Zoom: hide buttons, mousewheel zoom, and keep them hidden
+-- ------------------------------------------------------------
+local function ForceHideZoom(btn)
+  if not btn then return end
+  btn:Hide()
+  if btn.SetAlpha then btn:SetAlpha(0) end
+  if btn.EnableMouse then btn:EnableMouse(false) end
+  if not btn._etbcHideHooked and btn.HookScript then
+    btn._etbcHideHooked = true
+    btn:HookScript("OnShow", function(self) self:Hide() end)
+  end
+end
+
+local function ApplyZoomBehavior()
+  local zi = _G.MinimapZoomIn
+  local zo = _G.MinimapZoomOut
+  ForceHideZoom(zi)
+  ForceHideZoom(zo)
+
+  if not mm or mm._etbcWheelZoom then return end
+  mm._etbcWheelZoom = true
+
+  mm:EnableMouseWheel(true)
+  mm:SetScript("OnMouseWheel", function(_, delta)
+    if delta > 0 then
+      if _G.Minimap_ZoomIn then _G.Minimap_ZoomIn() return end
+      if zi and zi.Click then zi:Click() return end
+    else
+      if _G.Minimap_ZoomOut then _G.Minimap_ZoomOut() return end
+      if zo and zo.Click then zo:Click() return end
     end
   end)
 end
 
-local visualsHooked = false
-local function HookVisualsOnce()
-  if visualsHooked then return end
-  visualsHooked = true
-
-  KeepHiddenInSquare(_G.MinimapBorder)
-  KeepHiddenInSquare(_G.MinimapBorderTop)
-  KeepHiddenInSquare(mmCluster and mmCluster.BorderTop)
-  KeepHiddenInSquare(mmCluster and mmCluster.Border)
-  KeepHiddenInSquare(_G.MinimapClusterBorderTop)
-  KeepHiddenInSquare(_G.MinimapClusterBorder)
-
-  if mmCluster and mmCluster.NineSlice then
-    KeepHiddenInSquare(mmCluster.NineSlice.TopEdge)
-    KeepHiddenInSquare(mmCluster.NineSlice.TopLeftCorner)
-    KeepHiddenInSquare(mmCluster.NineSlice.TopRightCorner)
-  end
-end
-
-local function ApplyShape(db)
-  if not mm or not mm.SetMaskTexture then return end
-  HookVisualsOnce()
-
-  local square = (db.shape == "SQUARE")
-  mm:SetMaskTexture(square and MASK_SQUARE or MASK_CIRCLE)
-
-  if square then
-    HardHide(_G.MinimapBorder)
-    HardHide(_G.MinimapBorderTop)
-    HardHide(mmCluster and mmCluster.BorderTop)
-    HardHide(mmCluster and mmCluster.Border)
-    HardHide(_G.MinimapClusterBorderTop)
-    HardHide(_G.MinimapClusterBorder)
-  end
-
-  if db.hideDayNight then
-    HardHide(_G.GameTimeFrame)
-  end
-end
-
 -- ------------------------------------------------------------
--- Zone text + Clock
---  - Zone scales with minimap
---  - Clock scales with minimap and sits bottom-center
---  - Both raised above border frame level
+-- Zone + Clock
 -- ------------------------------------------------------------
-local function ApplyZoneAndClock()
-  if not mm then return end
-
+local function ApplyZone(db)
   local zbtn = _G.MinimapZoneTextButton
   local ztxt = _G.MinimapZoneText
-  local clock = _G.TimeManagerClockButton
+  if not zbtn or not ztxt or not mm then return end
 
-  if zbtn then
-    zbtn:SetParent(mm)
-    if zbtn.SetFrameStrata then zbtn:SetFrameStrata(mm:GetFrameStrata()) end
-    if zbtn.SetFrameLevel then zbtn:SetFrameLevel(mm:GetFrameLevel() + 90) end
-
-    zbtn:ClearAllPoints()
-    zbtn:SetPoint("BOTTOM", mm, "TOP", 0, 6)
-
-    if zbtn.Show then zbtn:Show() end
-    if zbtn.SetAlpha then zbtn:SetAlpha(1) end
-  end
-
-  if ztxt then
-    ztxt:ClearAllPoints()
-    ztxt:SetPoint("CENTER", zbtn or mm, "CENTER", 0, 0)
-    ztxt:SetJustifyH("CENTER")
-  end
-
-  if clock then
-    clock:SetParent(mm)
-    if clock.SetFrameStrata then clock:SetFrameStrata(mm:GetFrameStrata()) end
-    if clock.SetFrameLevel then clock:SetFrameLevel(mm:GetFrameLevel() + 95) end
-
-    clock:ClearAllPoints()
-    -- ✅ bottom center as requested
-    clock:SetPoint("BOTTOM", mm, "BOTTOM", 0, 8)
-
-    if clock.Show then clock:Show() end
-    if clock.SetAlpha then clock:SetAlpha(1) end
-  end
-end
-
--- ------------------------------------------------------------
--- Blizzard icons: detach from minimap scale AND HARD normalize size
--- ------------------------------------------------------------
-local function GetEffectiveScale(f)
-  if not f then return 1 end
-  if f.GetEffectiveScale then
-    local ok, v = pcall(f.GetEffectiveScale, f)
-    if ok and type(v) == "number" and v > 0 then return v end
-  end
-  if f.GetScale then
-    local ok, v = pcall(f.GetScale, f)
-    if ok and type(v) == "number" and v > 0 then return v end
-  end
-  return 1
-end
-
-local function DetachNoScale(f)
-  if not f or not f.SetParent then return end
-  f:SetParent(UIParent)
-
-  if f.SetIgnoreParentScale then
-    f:SetIgnoreParentScale(true)
-    if f.SetScale then f:SetScale(1) end
+  if db.zoneText and db.zoneText.enabled == false then
+    zbtn:Hide()
     return
   end
 
-  local parentScale = GetEffectiveScale(mm)
-  if parentScale <= 0 then parentScale = 1 end
-  if f.SetScale then
-    f:SetScale(1 / parentScale)
+  zbtn:SetParent(mm)
+  zbtn:ClearAllPoints()
+  zbtn:SetPoint("TOP", mm, "TOP", 0, -2)
+  zbtn:SetFrameLevel(mm:GetFrameLevel() + 80)
+  zbtn:Show()
+
+  if ztxt.SetFont then
+    local font, _, flags = ztxt:GetFont()
+    ztxt:SetFont(font, clamp(db.zoneText.fontSize or 12, 8, 20), flags)
   end
 end
 
-local function ForceRegionToSize(r, size)
-  if not r then return end
-  if r.SetScale then r:SetScale(1) end
+local function ApplyClock(db)
+  local btn = _G.TimeManagerClockButton
+  local ticker = _G.TimeManagerClockTicker
+  if not btn or not mm then return end
 
-  local ot = r.GetObjectType and r:GetObjectType()
-  if ot == "Texture" then
-    if r.SetTexCoord then
-      -- crop so circles/rings don't blow out of bounds
-      pcall(r.SetTexCoord, r, 0.08, 0.92, 0.08, 0.92)
-    end
-    if r.ClearAllPoints then r:ClearAllPoints() end
-    if r.SetAllPoints then r:SetAllPoints() end
-    if r.SetSize then r:SetSize(size, size) end
-  elseif ot == "FontString" then
-    -- leave fonts alone (clock text etc.)
+  if db.clock and db.clock.enabled == false then
+    btn:Hide()
+    return
+  end
+
+  btn:SetParent(mm)
+  btn:ClearAllPoints()
+  btn:SetPoint("BOTTOM", mm, "BOTTOM", 0, -2) -- on border edge
+  btn:SetFrameLevel(mm:GetFrameLevel() + 95)
+  btn:Show()
+
+  if ticker and ticker.SetFont then
+    local font, _, flags = ticker:GetFont()
+    ticker:SetFont(font, clamp(db.clock.fontSize or 12, 8, 20), flags)
   end
 end
 
-local function NormalizeAnyFrame(f, size)
-  if not f then return end
-  size = clamp(size or 32, 18, 42)
+-- ------------------------------------------------------------
+-- Blizzard buttons rail (never scaled with minimap)
+-- ------------------------------------------------------------
+local rail
+local stored = {}
 
-  if f.SetScale then f:SetScale(1) end
-  if f.SetSize then f:SetSize(size, size) end
+local function EnsureRail()
+  if rail or not mm then return end
+  rail = CreateFrame("Frame", "EnhanceTBC_MM2_Rail", UIParent)
+  rail:SetSize(1,1)
+  rail:SetPoint("CENTER", mm, "CENTER", 0, 0)
+  rail:SetFrameStrata("HIGH")
+  rail:SetFrameLevel((mm:GetFrameLevel() or 10) + 2000)
+  rail:EnableMouse(false)
+  if rail.SetIgnoreParentScale then rail:SetIgnoreParentScale(true) end
+  rail:SetScale(1)
+end
 
-  -- Force all regions (textures) to fill this frame
-  if f.GetRegions then
-    local regions = { f:GetRegions() }
-    for i = 1, #regions do
-      ForceRegionToSize(regions[i], size)
-    end
+local function CapturePoints(frame)
+  if not frame or not frame.GetNumPoints then return nil end
+  local t = {}
+  for i=1, frame:GetNumPoints() do
+    local p, rel, rp, x, y = frame:GetPoint(i)
+    t[i] = { p, rel, rp, x, y }
   end
+  return t
+end
 
-  -- Force common button textures too
-  local nt = f.GetNormalTexture and f:GetNormalTexture()
-  local pt = f.GetPushedTexture and f:GetPushedTexture()
-  local ht = f.GetHighlightTexture and f:GetHighlightTexture()
-  ForceRegionToSize(nt, size)
-  ForceRegionToSize(pt, size)
-  ForceRegionToSize(ht, size)
+local function RestorePoints(frame, t)
+  if not frame or not t then return end
+  frame:ClearAllPoints()
+  for i=1, #t do
+    local p, rel, rp, x, y = unpack(t[i])
+    if p then frame:SetPoint(p, rel, rp, x, y) end
+  end
+end
 
-  -- Normalize children (many Blizzard widgets hide a button inside a frame)
-  if f.GetChildren then
-    local kids = { f:GetChildren() }
-    for i = 1, #kids do
+local function StoreFrame(f)
+  if not f or stored[f] then return end
+  local w,h = f:GetSize()
+  stored[f] = {
+    parent=f:GetParent(),
+    points=CapturePoints(f),
+    strata=f:GetFrameStrata(),
+    level=f:GetFrameLevel(),
+    scale=f:GetScale(),
+    w=w, h=h,
+  }
+end
+
+local function RestoreFrame(f)
+  local s = f and stored[f]
+  if not f or not s then return end
+  if s.parent and f:GetParent() ~= s.parent then f:SetParent(s.parent) end
+  if f.SetScale and s.scale then f:SetScale(s.scale) end
+  if f.SetFrameStrata and s.strata then f:SetFrameStrata(s.strata) end
+  if f.SetFrameLevel and s.level then f:SetFrameLevel(s.level) end
+  if f.SetSize and s.w and s.h and s.w>0 and s.h>0 then f:SetSize(s.w, s.h) end
+  RestorePoints(f, s.points)
+  stored[f]=nil
+end
+
+-- Tracking differs across builds: prefer actual button if it exists.
+local function FindTracking()
+  if _G.MiniMapTrackingButton then return _G.MiniMapTrackingButton end
+  if _G.MinimapTrackingButton then return _G.MinimapTrackingButton end
+  if _G.MiniMapTracking and _G.MiniMapTracking.Button then return _G.MiniMapTracking.Button end
+
+  local holder = _G.MiniMapTracking or _G.MinimapTrackingFrame or _G.MinimapTracking
+  if holder and holder.GetChildren then
+    local kids = { holder:GetChildren() }
+    for i=1,#kids do
       local c = kids[i]
-      if c and c.GetObjectType and (c:GetObjectType() == "Button" or c:GetObjectType() == "Frame") then
-        if c.SetScale then c:SetScale(1) end
-        if c.SetSize then c:SetSize(size, size) end
-
-        local cnt = c.GetNormalTexture and c:GetNormalTexture()
-        local cpt = c.GetPushedTexture and c:GetPushedTexture()
-        local cht = c.GetHighlightTexture and c:GetHighlightTexture()
-        ForceRegionToSize(cnt, size)
-        ForceRegionToSize(cpt, size)
-        ForceRegionToSize(cht, size)
-
-        if c.GetRegions then
-          local r2 = { c:GetRegions() }
-          for j = 1, #r2 do
-            ForceRegionToSize(r2[j], size)
-          end
-        end
+      if c and c.IsObjectType and c:IsObjectType("Button") then
+        return c
       end
     end
   end
+
+  return _G.MiniMapTracking or _G.MinimapTrackingButton or _G.MinimapTracking
 end
 
-local function AnchorNoScale(f, point, rel, relPoint, x, y, size)
-  if not f then return end
-  DetachNoScale(f)
-  NormalizeAnyFrame(f, size)
-  if f.ClearAllPoints then f:ClearAllPoints() end
-  if f.SetPoint then f:SetPoint(point, rel, relPoint, x, y) end
-  if f.SetFrameStrata then f:SetFrameStrata("HIGH") end
-  if f.SetFrameLevel and mm and mm.GetFrameLevel then f:SetFrameLevel(mm:GetFrameLevel() + 120) end
-end
-
-local function ResolveTracking()
-  return _G.MiniMapTrackingFrame or _G.MiniMapTracking
-end
-
-local function ResolveTrackingButton()
-  return _G.MiniMapTrackingButton
-end
-
-local function ResolveMail()
+local function FindMail()
   return _G.MiniMapMailFrame or _G.MinimapMailFrame
 end
 
-local function ResolveMailIcon()
-  return _G.MiniMapMailIcon
+local function FindLFG()
+  return _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame or _G.MiniMapLFG
 end
 
-local function ResolveLFG()
-  return _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MinimapLFGFrame
-end
+local function FitIconTexture(btn)
+  if not btn then return end
 
-local function ApplyButtonLayout()
-  if not mm then return end
-  local iconSize = 32
+  -- Common names
+  local icon =
+    _G.MiniMapTrackingIcon
+    or (btn.icon)
+    or (btn.Icon)
+    or (btn.GetName and _G[(btn:GetName() or "") .. "Icon"])
+    or (btn.GetName and _G[(btn:GetName() or "") .. "Texture"])
 
-  local zoomIn = _G.MinimapZoomIn
-  local zoomOut = _G.MinimapZoomOut
-
-  local trackingFrame = ResolveTracking()
-  local trackingBtn = ResolveTrackingButton()
-
-  local mailFrame = ResolveMail()
-  local mailIcon = ResolveMailIcon()
-
-  local lfg = ResolveLFG()
-
-  -- LFG bottom-left corner
-  if lfg then AnchorNoScale(lfg, "BOTTOMLEFT", mm, "BOTTOMLEFT", -10, -10, iconSize) end
-
-  -- Zoom on left edge centered
-  if zoomIn then AnchorNoScale(zoomIn, "LEFT", mm, "LEFT", -18, 8, iconSize) end
-  if zoomOut then AnchorNoScale(zoomOut, "LEFT", mm, "LEFT", -18, -8, iconSize) end
-
-  -- Mail top edge centered
-  if mailFrame then
-    AnchorNoScale(mailFrame, "TOP", mm, "TOP", 0, 10, iconSize)
-    if mailIcon then
-      -- mail icon is a child texture/frame in some builds; force it too
-      NormalizeAnyFrame(mailIcon, iconSize)
+  -- Last resort: first texture region
+  if not icon and btn.GetRegions then
+    local regs = { btn:GetRegions() }
+    for i=1,#regs do
+      local r = regs[i]
+      if r and r.GetObjectType and r:GetObjectType() == "Texture" then
+        icon = r
+        break
+      end
     end
   end
 
-  -- Tracking top-right edge
-  if trackingFrame then
-    AnchorNoScale(trackingFrame, "TOPRIGHT", mm, "TOPRIGHT", 10, 10, iconSize)
+  if not icon or not icon.SetTexCoord then return end
+  icon:ClearAllPoints()
+  icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 4, -4)
+  icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -4, 4)
+  icon:SetTexCoord(0.08,0.92,0.08,0.92)
+end
+
+local function AnchorBlizz(btn, point, relPoint, x, y, size)
+  if not btn or not mm or not rail then return end
+  StoreFrame(btn)
+
+  btn:SetParent(rail)
+  if btn.SetIgnoreParentScale then btn:SetIgnoreParentScale(true) end
+  btn:SetScale(1)
+  btn:SetFrameStrata("HIGH")
+  btn:SetFrameLevel(rail:GetFrameLevel()+5)
+  btn:ClearAllPoints()
+  btn:SetPoint(point, mm, relPoint, x, y)
+  btn:SetSize(size, size)
+  if btn.EnableMouse then btn:EnableMouse(true) end
+  if btn.Show then btn:Show() end
+
+  FitIconTexture(btn)
+end
+
+local function ApplyBlizzButtons(db)
+  EnsureRail()
+  if not rail then return end
+
+  local enabled = db.blizzButtons and db.blizzButtons.enabled
+  local size = clamp((db.blizzButtons and db.blizzButtons.size) or 32, 20, 42)
+
+  local tracking = FindTracking()
+  local mail = FindMail()
+  local lfg = FindLFG()
+
+  if not enabled then
+    RestoreFrame(tracking)
+    RestoreFrame(mail)
+    RestoreFrame(lfg)
+    return
   end
-  if trackingBtn then
-    -- Some clients draw the actual button separately; hard force it too
-    AnchorNoScale(trackingBtn, "TOPRIGHT", mm, "TOPRIGHT", 10, 10, iconSize)
-  end
+
+  -- Tracking: top right edge
+  AnchorBlizz(tracking, "TOPRIGHT", "TOPRIGHT", 6, -2, size)
+  -- Mail: top center edge
+  AnchorBlizz(mail, "TOP", "TOP", 0, 6, size)
+  -- LFG: bottom left edge
+  AnchorBlizz(lfg, "BOTTOMLEFT", "BOTTOMLEFT", -2, -2, size)
 end
 
 -- ------------------------------------------------------------
--- Flyout (kept as-is; we’ll tackle Questie capture next after sizing is fixed)
+-- Flyout (PROXY buttons; do NOT move LibDBIcon buttons)
 -- ------------------------------------------------------------
-local fly = { box=nil, toggle=nil, open=false }
+local fly = {
+  toggle=nil, frame=nil, content=nil, drag=nil,
+  open=false,
+  proxies={},     -- key -> proxyButton
+  orderKeys={},   -- stable order
+}
 
-local function EnsureFlyoutStub()
-  if fly.toggle or not mm then return end
-  fly.toggle = CreateFrame("Button", "EnhanceTBC_MinimapFlyoutToggle", UIParent)
+local function EnsureFlyoutFrames()
+  if fly.frame then return end
+  KillOld()
+
+  fly.toggle = CreateFrame("Button", "EnhanceTBC_MM2_Fly_Toggle", UIParent, "BackdropTemplate")
   fly.toggle:SetSize(18,18)
   fly.toggle:SetFrameStrata("HIGH")
-  fly.toggle:SetFrameLevel((mmCluster and mmCluster:GetFrameLevel() or mm:GetFrameLevel()) + 300)
-  DetachNoScale(fly.toggle)
-
-  local tbg = fly.toggle:CreateTexture(nil, "BACKGROUND")
-  tbg:SetTexture(WHITE)
-  tbg:SetAllPoints()
-  tbg:SetVertexColor(0,0,0,0.35)
+  fly.toggle:SetFrameLevel((mm:GetFrameLevel() or 10) + 2500)
+  if fly.toggle.SetIgnoreParentScale then fly.toggle:SetIgnoreParentScale(true) end
+  fly.toggle:SetScale(1)
+  fly.toggle:SetBackdrop({ bgFile=WHITE, edgeFile=WHITE, edgeSize=1 })
+  fly.toggle:SetBackdropColor(0,0,0,0.35)
+  fly.toggle:SetBackdropBorderColor(0.18,0.20,0.18,0.70)
 
   local fs = fly.toggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   fs:SetPoint("CENTER")
   fs:SetText("≡")
-  fs:SetTextColor(0.9,0.9,0.9,1)
+  fs:SetTextColor(0.85,0.90,0.85,1)
 
-  fly.box = CreateFrame("Frame", "EnhanceTBC_MinimapFlyoutBox", UIParent, "BackdropTemplate")
-  fly.box:SetFrameStrata("HIGH")
-  fly.box:SetFrameLevel(fly.toggle:GetFrameLevel() + 10)
-  fly.box:SetSize(180, 60)
-  fly.box:Hide()
-  fly.box:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, tile=false, edgeSize=2, insets={left=1,right=1,top=1,bottom=1} })
-  fly.box:SetBackdropColor(0,0,0,0.35)
-  fly.box:SetBackdropBorderColor(0.15,0.15,0.15,0.85)
+  fly.frame = CreateFrame("Frame", "EnhanceTBC_MM2_Fly_Frame", UIParent, "BackdropTemplate")
+  fly.frame:SetFrameStrata("DIALOG")
+  fly.frame:SetFrameLevel((mm:GetFrameLevel() or 10) + 2600)
+  fly.frame:SetClampedToScreen(true)
+  fly.frame:EnableMouse(true)
+  fly.frame:SetMovable(true)
+
+  fly.frame:SetBackdrop({
+    bgFile=WHITE,
+    edgeFile=WHITE,
+    edgeSize=2,
+    insets={ left=1, right=1, top=1, bottom=1 },
+  })
+
+  fly.content = CreateFrame("Frame", "EnhanceTBC_MM2_Fly_Content", fly.frame)
+  fly.content:SetAllPoints(fly.frame)
+  fly.content:EnableMouse(false)
+  fly.content:SetFrameLevel(fly.frame:GetFrameLevel() + 5)
+
+  fly.drag = CreateFrame("Frame", "EnhanceTBC_MM2_Fly_Drag", fly.frame)
+  fly.drag:SetPoint("TOPLEFT", fly.frame, "TOPLEFT", 0, 0)
+  fly.drag:SetPoint("TOPRIGHT", fly.frame, "TOPRIGHT", 0, 0)
+  fly.drag:SetHeight(14)
+  fly.drag:SetFrameLevel(fly.frame:GetFrameLevel() + 20)
+  fly.drag:EnableMouse(true)
+  fly.drag:RegisterForDrag("LeftButton")
+
+  fly.frame:Hide()
 
   fly.toggle:SetScript("OnClick", function()
-    fly.open = not fly.open
-    if fly.open then fly.box:Show() else fly.box:Hide() end
+    if fly.frame:IsShown() then
+      fly.frame:Hide()
+      fly.open = false
+    else
+      fly.frame:Show()
+      fly.open = true
+      mod:RefreshFlyout()
+    end
+  end)
+
+  fly.drag:SetScript("OnDragStart", function()
+    local db = GetDB()
+    if db and db.flyout and db.flyout.locked == false then
+      fly.frame:StartMoving()
+    end
+  end)
+  fly.drag:SetScript("OnDragStop", function()
+    fly.frame:StopMovingOrSizing()
+    local db = GetDB()
+    if not db or not db.flyout or not db.flyout.pos then return end
+    local p, _, rp, x, y = fly.frame:GetPoint(1)
+    if p then
+      db.flyout.pos.point = p
+      db.flyout.pos.relPoint = rp
+      db.flyout.pos.x = x
+      db.flyout.pos.y = y
+    end
   end)
 end
 
-local function ApplyFlyoutToggleAnchor()
-  local db = GetDB()
-  if not db or not db.collector or not fly.toggle then return end
-  local c = db.collector
+local function ApplyFlyoutAnchors(db)
+  if not fly.toggle or not fly.frame then return end
+  local t = db.flyout.toggle or {}
   fly.toggle:ClearAllPoints()
-  fly.toggle:SetPoint(c.toggle.point, mm, c.toggle.relPoint, c.toggle.x, c.toggle.y)
+  fly.toggle:SetPoint(t.point or "RIGHT", mm, t.relPoint or "RIGHT", t.x or 10, t.y or 0)
 
-  fly.box:ClearAllPoints()
-  fly.box:SetPoint(c.pos.point, mm, c.pos.relPoint, c.pos.x, c.pos.y)
+  local p = db.flyout.pos or {}
+  fly.frame:ClearAllPoints()
+  fly.frame:SetPoint(p.point or "TOPRIGHT", mm, p.relPoint or "BOTTOMRIGHT", p.x or 0, p.y or -8)
+end
+
+local function GetLDBObjects(db)
+  local exclude = ParseCSVSet(db.flyout and db.flyout.exclude)
+  local out = {}
+
+  local LDBI = LibStub and LibStub("LibDBIcon-1.0", true)
+  if not (LDBI and type(LDBI.objects) == "table") then
+    return out
+  end
+
+  for key, obj in pairs(LDBI.objects) do
+    if not exclude[key] then
+      local btn = obj and obj.button
+      -- some buttons are anonymous (name=nil) and that’s OK
+      if btn and btn.IsObjectType and btn:IsObjectType("Button") then
+        table.insert(out, { key=key, obj=obj, btn=btn })
+      end
+    end
+  end
+
+  table.sort(out, function(a,b) return tostring(a.key) < tostring(b.key) end)
+  return out
+end
+
+local function PullIconTextureFrom(btn)
+  if not btn then return nil, nil end
+
+  -- Try common icon fields / regions
+  local icon = btn.icon or btn.Icon
+
+  if not icon and btn.GetRegions then
+    local regs = { btn:GetRegions() }
+    for i=1,#regs do
+      local r = regs[i]
+      if r and r.GetObjectType and r:GetObjectType() == "Texture" then
+        icon = r
+        break
+      end
+    end
+  end
+
+  if not icon or not icon.GetTexture then return nil, nil end
+  local tex = icon:GetTexture()
+  local a,b,c,d = icon:GetTexCoord()
+  return tex, { a,b,c,d }
+end
+
+local function EnsureProxy(key)
+  if fly.proxies[key] then return fly.proxies[key] end
+  local b = CreateFrame("Button", nil, fly.content, "BackdropTemplate")
+  b:SetBackdrop({ bgFile=WHITE, edgeFile=WHITE, edgeSize=1 })
+  b:SetBackdropColor(0,0,0,0)
+  b:SetBackdropBorderColor(0,0,0,0)
+
+  local tex = b:CreateTexture(nil, "ARTWORK")
+  tex:SetPoint("TOPLEFT", b, "TOPLEFT", 4, -4)
+  tex:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -4, 4)
+  tex:SetTexCoord(0.08,0.92,0.08,0.92)
+  b._icon = tex
+
+  b:EnableMouse(true)
+  b:RegisterForClicks("AnyUp")
+
+  fly.proxies[key] = b
+  return b
+end
+
+local function LayoutFlyout(db, keys)
+  local fdb = db.flyout
+  local iconSize = clamp(fdb.iconSize or 28, 16, 44)
+  local colsMax  = clamp(fdb.columns or 6, 1, 12)
+  local spacing  = clamp(fdb.spacing or 4, 0, 14)
+  local padding  = clamp(fdb.padding or 6, 0, 20)
+  local scale    = clamp(fdb.scale or 1.0, 0.7, 1.5)
+
+  fly.frame:SetScale(scale)
+  fly.frame:SetBackdropColor(0.02,0.03,0.02, clamp(fdb.bgAlpha or 0.70, 0, 1))
+  fly.frame:SetBackdropBorderColor(0.18,0.20,0.18, clamp(fdb.borderAlpha or 0.90, 0, 1))
+
+  local total = #keys
+  if total == 0 then
+    fly.frame:SetSize(padding*2 + iconSize, padding*2 + iconSize)
+    return
+  end
+
+  local cols = math.min(colsMax, total)
+  local rows = math.ceil(total / cols)
+
+  fly.frame:SetSize(
+    padding*2 + cols*iconSize + (cols-1)*spacing,
+    padding*2 + rows*iconSize + (rows-1)*spacing
+  )
+
+  for i=1,total do
+    local key = keys[i]
+    local proxy = fly.proxies[key]
+    if proxy then
+      local r = math.floor((i-1)/cols)
+      local c = (i-1)%cols
+
+      proxy:ClearAllPoints()
+      proxy:SetPoint("TOPLEFT", fly.content, "TOPLEFT",
+        padding + c*(iconSize+spacing),
+        -(padding + r*(iconSize+spacing))
+      )
+      proxy:SetSize(iconSize, iconSize)
+      proxy:SetFrameLevel(fly.content:GetFrameLevel() + 10)
+      if proxy.SetIgnoreParentScale then proxy:SetIgnoreParentScale(true) end
+      proxy:SetScale(1)
+      proxy:Show()
+    end
+  end
+end
+
+function mod:RefreshFlyout()
+  local db = GetDB()
+  if not db or not mm then return end
+
+  EnsureFlyoutFrames()
+  if not fly.frame then return end
+
+  if not (db.enabled and db.flyout and db.flyout.enabled) then
+    fly.open = false
+    fly.frame:Hide()
+    fly.toggle:Hide()
+    return
+  end
+
+  fly.toggle:Show()
+  ApplyFlyoutAnchors(db)
+
+  local list = GetLDBObjects(db)
+
+  -- Build proxies list / order
+  wipe(fly.orderKeys)
+  for i=1,#list do
+    local key = list[i].key
+    local obj = list[i].obj
+    local btn = list[i].btn
+
+    local proxy = EnsureProxy(key)
+    table.insert(fly.orderKeys, key)
+
+    -- Mirror icon texture from real button
+    local tex, tc = PullIconTextureFrom(btn)
+    if proxy._icon and tex then
+      proxy._icon:SetTexture(tex)
+      if tc then proxy._icon:SetTexCoord(tc[1],tc[2],tc[3],tc[4]) end
+    end
+
+    -- Click proxy -> click real button
+    proxy:SetScript("OnClick", function()
+      if btn and btn.Click then
+        btn:Click()
+      elseif obj and obj.OnClick then
+        pcall(obj.OnClick, obj)
+      end
+    end)
+  end
+
+  -- Hide unused proxies (if excludes changed)
+  for key, proxy in pairs(fly.proxies) do
+    local keep = false
+    for i=1,#fly.orderKeys do
+      if fly.orderKeys[i] == key then keep = true break end
+    end
+    if not keep then proxy:Hide() end
+  end
+
+  LayoutFlyout(db, fly.orderKeys)
+end
+
+local function ApplyFlyout(db)
+  EnsureFlyoutFrames()
+  if not fly.frame then return end
+
+  if not (db.enabled and db.flyout and db.flyout.enabled) then
+    fly.open = false
+    fly.frame:Hide()
+    fly.toggle:Hide()
+    return
+  end
+
+  fly.toggle:Show()
+  ApplyFlyoutAnchors(db)
+
+  if db.flyout.startOpen then
+    fly.open = true
+    fly.frame:Show()
+  end
+
+  mod:RefreshFlyout()
+  if not fly.open then fly.frame:Hide() end
 end
 
 -- ------------------------------------------------------------
@@ -490,54 +766,62 @@ function mod:Apply()
   local db = GetDB()
   if not db or not mm then return end
 
-  if not db.enabled then
-    if mm.SetMaskTexture then mm:SetMaskTexture(MASK_CIRCLE) end
-    if deco then deco:Hide() end
-    if fly.box then fly.box:Hide() end
+  KillOld()
+
+  if db.enabled == false then
+    if orig.stored then
+      if orig.w and orig.h then mm:SetSize(orig.w, orig.h) end
+      if orig.scale then mm:SetScale(orig.scale) end
+    end
+    mm:SetMaskTexture(MASK_CIRCLE)
+    if border then border:Hide() end
+
+    RestoreFrame(FindTracking())
+    RestoreFrame(FindMail())
+    RestoreFrame(FindLFG())
+
+    if fly.frame then fly.frame:Hide() end
     if fly.toggle then fly.toggle:Hide() end
+    fly.open = false
     return
   end
 
-  ApplySizeAndScale(db)
-  ApplyShape(db)
-  ApplyDeco(db)
-
-  -- Zone + clock (clock bottom center)
-  ApplyZoneAndClock()
-
-  -- Blizzard buttons (should now be 32px, not huge)
-  ApplyButtonLayout()
-
-  -- Flyout stub (we’ll re-enable full capture next)
-  if db.collector and db.collector.enabled then
-    EnsureFlyoutStub()
-    fly.toggle:Show()
-    ApplyFlyoutToggleAnchor()
-  else
-    if fly.box then fly.box:Hide() end
-    if fly.toggle then fly.toggle:Hide() end
-  end
+  ApplyShapeScale(db)
+  ApplyBorder(db)
+  ApplyZoomBehavior()
+  ApplyZone(db)
+  ApplyClock(db)
+  ApplyBlizzButtons(db)
+  ApplyFlyout(db)
 end
 
 -- ------------------------------------------------------------
--- ApplyBus registration
--- ------------------------------------------------------------
-local function ApplyFromBus()
-  SafeCall(mod.Apply, mod)
-end
-
-if ETBC.ApplyBus and ETBC.ApplyBus.Register then
-  ETBC.ApplyBus:Register("minimap", ApplyFromBus)
-  ETBC.ApplyBus:Register("general", ApplyFromBus)
-end
-
--- ------------------------------------------------------------
--- Events
+-- Events + ApplyBus
 -- ------------------------------------------------------------
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-ev:SetScript("OnEvent", function()
+ev:RegisterEvent("ADDON_LOADED")
+ev:SetScript("OnEvent", function(_, event)
   if not ETBC or not ETBC.db then return end
-  SafeCall(mod.Apply, mod)
+
+  if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
+    SafeCall(StoreOriginal)
+    SafeCall(mod.Apply, mod)
+    return
+  end
+
+  if event == "ADDON_LOADED" then
+    C_Timer.After(0.30, function()
+      local db = GetDB()
+      if db and db.enabled and db.flyout and db.flyout.enabled then
+        SafeCall(mod.RefreshFlyout, mod)
+      end
+    end)
+  end
 end)
+
+if ETBC.ApplyBus and ETBC.ApplyBus.Register then
+  ETBC.ApplyBus:Register("minimap", function() SafeCall(mod.Apply, mod) end)
+  ETBC.ApplyBus:Register("general", function() SafeCall(mod.Apply, mod) end)
+end
