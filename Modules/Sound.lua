@@ -53,6 +53,12 @@ local function Clamp01(v)
   return v
 end
 
+local function IsPlayerInCombat()
+  if InCombatLockdown and InCombatLockdown() then return true end
+  if UnitAffectingCombat then return UnitAffectingCombat("player") and true or false end
+  return false
+end
+
 local function SetCVarSafe(name, value)
   if type(name) ~= "string" then return end
   if value == nil then return end
@@ -162,6 +168,12 @@ local function Apply()
   if enabled then
     OnLogin(db)
 
+    inCombat = IsPlayerInCombat()
+    if inCombat and db.autoMuteInCombat then
+      SnapshotForCombat(db)
+      ApplyCombatMute(db)
+    end
+
     driver:RegisterEvent("PLAYER_LOGIN")
     driver:RegisterEvent("PLAYER_REGEN_DISABLED")
     driver:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -178,6 +190,10 @@ local function Apply()
 
     driver:Show()
   else
+    if inCombat then
+      RestoreAfterCombat(db)
+    end
+    inCombat = false
     driver:Hide()
   end
 end

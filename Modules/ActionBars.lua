@@ -13,7 +13,29 @@ local hooked = false
 
 local function GetDB()
   ETBC.db.profile.actionbars = ETBC.db.profile.actionbars or {}
-  return ETBC.db.profile.actionbars
+  local db = ETBC.db.profile.actionbars
+
+  if db.enabled == nil then db.enabled = true end
+  if db.buttonSize == nil then db.buttonSize = 36 end
+  if db.buttonSpacing == nil then db.buttonSpacing = 4 end
+
+  if db.hideMacroText == nil then db.hideMacroText = false end
+  if db.hideHotkeys == nil then db.hideHotkeys = false end
+  if db.hotkeyFont == nil then db.hotkeyFont = "Friz Quadrata TT" end
+  if db.hotkeyFontSize == nil then db.hotkeyFontSize = 11 end
+  if db.hotkeyOutline == nil then db.hotkeyOutline = "OUTLINE" end
+  if db.hotkeyShadow == nil then db.hotkeyShadow = true end
+
+  if db.fadeOOC == nil then db.fadeOOC = false end
+  if db.oocAlpha == nil then db.oocAlpha = 0.45 end
+  if db.combatAlpha == nil then db.combatAlpha = 1.0 end
+
+  if db.mainBar == nil then db.mainBar = true end
+  if db.multiBars == nil then db.multiBars = true end
+  if db.petBar == nil then db.petBar = true end
+  if db.stanceBar == nil then db.stanceBar = true end
+
+  return db
 end
 
 local function EnsureDriver()

@@ -15,9 +15,6 @@ local function GetDB()
 end
 
 local function Apply()
-  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
-  if not generalEnabled then return end
-
   local db = GetDB()
   if not db then return end
 
