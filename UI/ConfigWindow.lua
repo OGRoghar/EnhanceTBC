@@ -568,6 +568,7 @@ local function GetDefaultModuleKey(groups, preferred)
   return groups[1].key
 end
 
+
 local function NewDebounceTimer(delay, fn)
   local timer = { _cancelled = false }
 
@@ -601,6 +602,7 @@ local function NewDebounceTimer(delay, fn)
   return timer
 end
 
+=======
 local function BuildWindow()
   if state.win then return end
   local db = GetUIDB()
@@ -700,6 +702,8 @@ local function BuildWindow()
   local function QueueRefresh()
     if state.searchTimer then return end
     state.searchTimer = NewDebounceTimer(0.12, function()
+=======
+    state.searchTimer = C_Timer.NewTimer(0.12, function()
       state.searchTimer = nil
       if not state.win or not state.search then return end
       local q = tostring(search:GetText() or "")
