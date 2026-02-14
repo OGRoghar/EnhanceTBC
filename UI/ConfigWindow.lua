@@ -457,7 +457,7 @@ local function ApplyWindowStyle(win)
 
   -- Create a styled inner frame area (so the UI doesn’t look like default AceGUI)
   if not win.frame._etbcInner then
-    local inner = CreateFrame("Frame", nil, win.frame, "BackdropTemplate")
+    local inner = CreateFrame("Frame", nil, win.frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
     inner:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 10, -32)
     inner:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -10, 10)
     SetBackdrop(inner, THEME.panel, THEME.border, 1)

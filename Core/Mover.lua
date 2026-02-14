@@ -194,7 +194,7 @@ local function CreateHandle(key, entry)
   local frame = entry.frame
   if not frame then return end
 
-  local h = CreateFrame("Frame", "EnhanceTBC_MoverHandle_" .. key, UIParent, "BackdropTemplate")
+  local h = CreateFrame("Frame", "EnhanceTBC_MoverHandle_" .. key, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   h:SetFrameStrata("DIALOG")
   h:SetClampedToScreen(true)
   h:EnableMouse(true)
