@@ -289,6 +289,7 @@ end
 -- --------------------
 
 local function ApplyCopyTheme(frame)
+  if not frame or not frame.SetBackdrop then return end
   frame:SetBackdrop({
     bgFile = "Interface/Tooltips/UI-Tooltip-Background",
     edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -472,14 +473,16 @@ local function EnsureCopyButton()
   copyButton:SetFrameStrata("HIGH")
   copyButton:EnableMouse(true)
 
-  copyButton:SetBackdrop({
-    bgFile = "Interface/Buttons/WHITE8x8",
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    tile = true, tileSize = 8, edgeSize = 10,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 }
-  })
-  copyButton:SetBackdropColor(0.03, 0.06, 0.03, 0.90)
-  copyButton:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.95)
+  if copyButton.SetBackdrop then
+    copyButton:SetBackdrop({
+      bgFile = "Interface/Buttons/WHITE8x8",
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      tile = true, tileSize = 8, edgeSize = 10,
+      insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    copyButton:SetBackdropColor(0.03, 0.06, 0.03, 0.90)
+    copyButton:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.95)
+  end
 
   local icon = copyButton:CreateTexture(nil, "ARTWORK")
   icon:SetAllPoints()

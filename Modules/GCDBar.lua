@@ -84,6 +84,19 @@ local function GetTexturePath(textureKey)
   return "Interface\\TargetingFrame\\UI-StatusBar"
 end
 
+local function SetShownCompat(frame, shown)
+  if not frame then return end
+  if frame.SetShown then
+    frame:SetShown(shown and true or false)
+    return
+  end
+  if shown then
+    if frame.Show then frame:Show() end
+  else
+    if frame.Hide then frame:Hide() end
+  end
+end
+
 local function GetClassColor()
   local _, class = UnitClass("player")
   if class and CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class] then
@@ -192,7 +205,7 @@ local function UpdateLayout(db)
   bar:SetReverseFill(db.reverseFill and true or false)
 
   if db.spark then spark:Show() else spark:Hide() end
-  if barFrame._hint then barFrame._hint:SetShown(not db.locked) end
+  if barFrame._hint then SetShownCompat(barFrame._hint, not db.locked) end
 
   local r, g, b = 0.20, 1.00, 0.20
   if db.colorMode == "CLASS" then

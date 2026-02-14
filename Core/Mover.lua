@@ -283,6 +283,7 @@ local function CreateHandle(key, entry)
 
     -- Save snapped position based on current point relative to UIParent
     local db = GetDB()
+    if not frame.GetPoint then return end
     local point, rel, relPoint, x, y = frame:GetPoint(1)
     if not point then return end
 
