@@ -13,6 +13,7 @@ local lastWhisperSoundAt = 0
 local copyFrame, copyBox, copyScroll
 local copyButton
 local copyDrop, copyFollowToggle
+local addMessageHooksInstalled = false
 
 -- Per-frame rolling history
 local historyByFrameId = {} -- [id] = { lines = {}, max = number }
@@ -126,6 +127,25 @@ local function Push(frameId, line, max)
   end
 end
 
+local function InstallAddMessageHooks()
+  if addMessageHooksInstalled then return end
+  addMessageHooksInstalled = true
+
+  local n = NUM_CHAT_WINDOWS or 10
+  for i = 1, n do
+    local cf = _G["ChatFrame" .. i]
+    if cf and cf.AddMessage then
+      hooksecurefunc(cf, "AddMessage", function(self, text)
+        local db = GetDB()
+        if not (ETBC.db.profile.general.enabled and db.enabled) then return end
+
+        local maxKeep = math.max(2000, tonumber(db.copyLines) or 200)
+        Push(i, StripCodes(text), maxKeep)
+      end)
+    end
+  end
+end
+
 local function FindFrameIdForFilterSelf(self)
   -- In many builds, filter "self" is ChatFrameX (or its underlying frame)
   if type(self) ~= "table" then return 1 end
@@ -215,16 +235,6 @@ end
 -- IMPORTANT: Correct signature is (self, event, msg, author, ...)
 local function Filter(self, event, msg, author, ...)
   local db = GetDB()
-
-  if ETBC.db.profile.general.enabled and db.enabled then
-    local frameId = FindFrameIdForFilterSelf(self)
-    local maxKeep = math.max(2000, tonumber(db.copyLines) or 200)
-
-    local prefix = EventPrefix(event)
-    local a = (type(author) == "string" and author ~= "" and author) or "?"
-    local plain = prefix .. a .. ": " .. StripCodes(EscapePercents(msg))
-    Push(frameId, plain, maxKeep)
-  end
 
   if not (ETBC.db.profile.general.enabled and db.enabled) then
     return false, msg, author, ...
@@ -563,6 +573,7 @@ local function Apply()
 
   if enabled then
     RegisterFilters()
+    InstallAddMessageHooks()
     HookURLClick()
     RegisterCommands()
 
