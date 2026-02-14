@@ -85,7 +85,6 @@ end
 
 local function BuildQueue(db)
   local q = {}
-
   local num = GetInboxNumItems() or 0
   -- IMPORTANT: work from high index -> low index to avoid shifting issues
   for i = num, 1, -1 do
