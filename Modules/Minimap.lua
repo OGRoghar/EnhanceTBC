@@ -147,10 +147,10 @@ local function GetDB()
   if f.pos.x == nil then f.pos.x = 0 end
   if f.pos.y == nil then f.pos.y = -8 end
 
-  if f.toggle.point == nil then f.toggle.point = "RIGHT" end
-  if f.toggle.relPoint == nil then f.toggle.relPoint = "RIGHT" end
-  if f.toggle.x == nil then f.toggle.x = 10 end
-  if f.toggle.y == nil then f.toggle.y = 0 end
+  if f.toggle.point == nil then f.toggle.point = "BOTTOM" end
+  if f.toggle.relPoint == nil then f.toggle.relPoint = "BOTTOM" end
+  if f.toggle.x == nil then f.toggle.x = 0 end
+  if f.toggle.y == nil then f.toggle.y = -14 end
 
   -- keep collector in sync for legacy readers
   c.enabled, c.locked, c.startOpen = f.enabled, f.locked, f.startOpen
@@ -279,6 +279,12 @@ local function ApplyDefaultArt(db)
 
   local moon = _G.GameTimeFrame
   if moon and moon.SetShown then moon:SetShown(false) end
+
+  local clusterTop = (_G.MinimapCluster and _G.MinimapCluster.BorderTop) or _G.MinimapClusterBorderTop
+  if clusterTop and clusterTop.SetShown then clusterTop:SetShown(false) end
+
+  local toggleBtn = _G.MiniMapToggleButton
+  if toggleBtn and toggleBtn.SetShown then toggleBtn:SetShown(false) end
 end
 
 -- ------------------------------------------------------------
@@ -504,7 +510,19 @@ local function AnchorBlizz(btn, point, relPoint, x, y, size)
   NormalizeButtonHitRect(btn)
   if btn == FindTracking() then
     local ticon = _G.MiniMapTrackingButtonIcon or _G.MiniMapTrackingIcon or _G.MinimapTrackingIcon
+    local tbg = _G.MiniMapTrackingBackground or _G.MinimapTrackingBackground
     local tborder = _G.MiniMapTrackingButtonBorder or _G.MinimapTrackingButtonBorder
+
+    if tbg then
+      if tbg.SetParent then tbg:SetParent(btn) end
+      if tbg.ClearAllPoints then
+        tbg:ClearAllPoints()
+        tbg:SetAllPoints(btn)
+      end
+      if tbg.SetDrawLayer then tbg:SetDrawLayer("BACKGROUND", 0) end
+      if tbg.SetAlpha then tbg:SetAlpha(1) end
+      if tbg.Show then tbg:Show() end
+    end
 
     if ticon then
       if ticon.SetParent then ticon:SetParent(btn) end
@@ -529,6 +547,7 @@ local function AnchorBlizz(btn, point, relPoint, x, y, size)
         tborder:SetAllPoints(btn)
       end
       if tborder.SetDrawLayer then tborder:SetDrawLayer("OVERLAY", 2) end
+      if tborder.SetAlpha then tborder:SetAlpha(1) end
       if tborder.Show then tborder:Show() end
     end
   end

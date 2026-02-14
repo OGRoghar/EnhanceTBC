@@ -87,10 +87,10 @@ local function EnsureDB()
   if db.flyout.pos.y == nil then db.flyout.pos.y = -8 end
 
   db.flyout.toggle = db.flyout.toggle or {}
-  if db.flyout.toggle.point == nil then db.flyout.toggle.point = "RIGHT" end
-  if db.flyout.toggle.relPoint == nil then db.flyout.toggle.relPoint = "RIGHT" end
-  if db.flyout.toggle.x == nil then db.flyout.toggle.x = 10 end
-  if db.flyout.toggle.y == nil then db.flyout.toggle.y = 0 end
+  if db.flyout.toggle.point == nil then db.flyout.toggle.point = "BOTTOM" end
+  if db.flyout.toggle.relPoint == nil then db.flyout.toggle.relPoint = "BOTTOM" end
+  if db.flyout.toggle.x == nil then db.flyout.toggle.x = 0 end
+  if db.flyout.toggle.y == nil then db.flyout.toggle.y = -14 end
 
   return db
 end
@@ -291,7 +291,7 @@ ETBC.SettingsRegistry:RegisterGroup("minimap", {
         disabled=function() return not (db.enabled and db.flyout.enabled) end,
         func=function()
           db.flyout.pos.point, db.flyout.pos.relPoint, db.flyout.pos.x, db.flyout.pos.y = "TOPRIGHT", "BOTTOMRIGHT", 0, -8
-          db.flyout.toggle.point, db.flyout.toggle.relPoint, db.flyout.toggle.x, db.flyout.toggle.y = "RIGHT", "RIGHT", 10, 0
+          db.flyout.toggle.point, db.flyout.toggle.relPoint, db.flyout.toggle.x, db.flyout.toggle.y = "BOTTOM", "BOTTOM", 0, -14
           Notify()
         end,
       },
