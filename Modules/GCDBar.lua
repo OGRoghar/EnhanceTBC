@@ -116,7 +116,7 @@ end
 local function EnsureFrame()
   if barFrame then return end
 
-  barFrame = CreateFrame("Frame", "EnhanceTBC_GCDBarFrame", UIParent, "BackdropTemplate")
+  barFrame = CreateFrame("Frame", "EnhanceTBC_GCDBarFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   barFrame:SetFrameStrata("MEDIUM")
   barFrame:SetClampedToScreen(true)
 

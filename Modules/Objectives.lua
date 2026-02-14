@@ -36,7 +36,7 @@ end
 
 local function SetBackdrop(frame, bgA, borderA)
   if not frame or frame._etbcBG then return end
-  frame._etbcBG = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+  frame._etbcBG = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
   frame._etbcBG:SetPoint("TOPLEFT", frame, "TOPLEFT", -6, 6)
   frame._etbcBG:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 6, -6)
 
