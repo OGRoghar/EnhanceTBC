@@ -5,12 +5,12 @@
 -- and provides helpers modules can call.
 -- =========================================================
 
-local NS = _G.EnhanceTBC
-local E = NS and NS.E
-if not E then return end
+local ADDON_NAME, ETBC = ...
 
-E.Theme = E.Theme or {}
-local T = E.Theme
+if not ETBC then return end
+
+ETBC.Theme = ETBC.Theme or {}
+local T = ETBC.Theme
 
 local LibStub = LibStub
 local LSM = LibStub("LibSharedMedia-3.0", true)
@@ -18,9 +18,9 @@ local LSM = LibStub("LibSharedMedia-3.0", true)
 -- Defaults are created in EnhanceTBC.lua (recommended),
 -- but we also harden here so options don't error.
 local function EnsureThemeDB()
-    if not E.db or not E.db.profile then return nil end
-    E.db.profile.theme = E.db.profile.theme or {}
-    local db = E.db.profile.theme
+    if not ETBC.db or not ETBC.db.profile then return nil end
+    ETBC.db.profile.theme = ETBC.db.profile.theme or {}
+    local db = ETBC.db.profile.theme
 
     if db.font == nil then db.font = "Friz Quadrata TT" end
     if db.fontSize == nil then db.fontSize = 12 end

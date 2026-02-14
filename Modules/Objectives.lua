@@ -21,9 +21,11 @@ local function EnsureDriver()
   driver = CreateFrame("Frame", "EnhanceTBC_ObjectivesDriver", UIParent)
 end
 
-local function IsInInstance()
-  if not IsInInstance then return false end
-  local _, itype = IsInInstance()
+local function IsInDungeonOrRaid()
+  local fn = _G.IsInInstance
+  if type(fn) ~= "function" then return false end
+  local inInstance, itype = fn()
+  if not inInstance then return false end
   return itype == "party" or itype == "raid"
 end
 
@@ -36,22 +38,26 @@ end
 
 local function SetBackdrop(frame, bgA, borderA)
   if not frame or frame._etbcBG then return end
-  frame._etbcBG = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+  frame._etbcBG = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
   frame._etbcBG:SetPoint("TOPLEFT", frame, "TOPLEFT", -6, 6)
   frame._etbcBG:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 6, -6)
 
-  frame._etbcBG:SetBackdrop({
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    tile = false,
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-  })
+  if frame._etbcBG.SetBackdrop then
+    frame._etbcBG:SetBackdrop({
+      bgFile = "Interface\\Buttons\\WHITE8x8",
+      edgeFile = "Interface\\Buttons\\WHITE8x8",
+      tile = false,
+      edgeSize = 1,
+      insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
 
-  frame._etbcBG:SetBackdropColor(0, 0, 0, bgA or 0.35)
-  frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, borderA or 0.95)
+    frame._etbcBG:SetBackdropColor(0, 0, 0, bgA or 0.35)
+    frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, borderA or 0.95)
+  end
+
   frame._etbcBG:Show()
 end
+
 
 local function UpdateBackdrop(frame)
   local db = GetDB()
@@ -59,8 +65,12 @@ local function UpdateBackdrop(frame)
 
   if db.background then
     SetBackdrop(frame, db.bgAlpha or 0.35, db.borderAlpha or 0.95)
-    frame._etbcBG:SetBackdropColor(0, 0, 0, db.bgAlpha or 0.35)
-    frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, db.borderAlpha or 0.95)
+    if frame._etbcBG.SetBackdropColor then
+      frame._etbcBG:SetBackdropColor(0, 0, 0, db.bgAlpha or 0.35)
+    end
+    if frame._etbcBG.SetBackdropBorderColor then
+      frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, db.borderAlpha or 0.95)
+    end
     frame._etbcBG:Show()
   else
     if frame._etbcBG then frame._etbcBG:Hide() end
@@ -69,12 +79,23 @@ end
 
 local function ScaleFonts_WatchFrame(scale)
   if not _G.WatchFrameLines then return end
+  scale = tonumber(scale) or 1.0
+
   for i = 1, #_G.WatchFrameLines do
     local fs = _G.WatchFrameLines[i]
     if fs and fs.GetFont and fs.SetFont then
       local font, size, flags = fs:GetFont()
       if font and size then
-        fs:SetFont(font, size * scale, flags)
+        fs._etbcBaseFont = fs._etbcBaseFont or font
+        fs._etbcBaseFontFlags = fs._etbcBaseFontFlags or flags
+        if not fs._etbcBaseFontSize then
+          fs._etbcBaseFontSize = size
+        end
+
+        local baseSize = tonumber(fs._etbcBaseFontSize) or size
+        local targetSize = baseSize * scale
+        if targetSize < 1 then targetSize = 1 end
+        fs:SetFont(fs._etbcBaseFont, targetSize, fs._etbcBaseFontFlags)
       end
     end
   end
@@ -146,10 +167,8 @@ local function ApplyCombatVisibility(frame)
   local inCombat = (InCombatLockdown and InCombatLockdown()) or (UnitAffectingCombat and UnitAffectingCombat("player"))
 
   if not inCombat then
-    if frame:IsShown() then
-      if frame:GetAlpha() ~= 1 then StartFade(frame, 1) end
-      frame:Show()
-    end
+    if frame:GetAlpha() ~= 1 then StartFade(frame, 1) end
+    frame:Show()
     return
   end
 
@@ -170,7 +189,7 @@ end
 local function AutoCollapseCompleted()
   local db = GetDB()
   if not db.enabled or not db.autoCollapseCompleted then return end
-  if db.onlyCollapseInDungeons and not IsInInstance() then return end
+  if db.onlyCollapseInDungeons and not IsInDungeonOrRaid() then return end
 
   if type(_G.WatchFrame_Collapse) == "function" and _G.WatchFrame then
     -- Collapse module is per quest in later clients; TBC is simpler.
@@ -232,6 +251,7 @@ local function Apply()
   if not (generalEnabled and db.enabled) then
     -- Soft reset
     frame:SetAlpha(1)
+    frame:Show()
     StopFade(frame)
     if frame._etbcBG then frame._etbcBG:Hide() end
     return
