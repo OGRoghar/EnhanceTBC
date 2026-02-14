@@ -1,10 +1,4 @@
 -- UI/ConfigWindow.lua
--- EnhanceTBC - Custom config window (Tree left, options right)
--- FIXES:
---  1) TreeGroup returns a PATH (cat\001module). We parse last token correctly.
---  2) Layout uses real Fill containers so right panel scrolls properly.
---  3) Renders nested groups (args) recursively.
---  4) Safe close lifecycle (no double release).
 
 local ADDON_NAME, ETBC = ...
 
@@ -700,6 +694,7 @@ local function BuildWindow()
   local function QueueRefresh()
     if state.searchTimer then return end
     state.searchTimer = NewDebounceTimer(0.12, function()
+    state.searchTimer = C_Timer.NewTimer(0.12, function()
       state.searchTimer = nil
       if not state.win or not state.search then return end
       local q = tostring(search:GetText() or "")
