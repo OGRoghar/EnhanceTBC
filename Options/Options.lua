@@ -4,10 +4,10 @@
 local ADDON_NAME, ETBC = ...
 
 local function SafeCall(fn)
-  if type(fn) ~= "function" then return nil end
+  if type(fn) ~= "function" then return false, nil, "not a function" end
   local ok, v = pcall(fn)
-  if ok then return v end
-  return nil
+  if ok then return true, v, nil end
+  return false, nil, tostring(v)
 end
 
 function ETBC:BuildOptions()
@@ -51,43 +51,54 @@ function ETBC:BuildOptions()
   local groups = SR:GetGroups()
   if type(groups) ~= "table" then return opts end
 
+  local seen = {}
   for _, g in ipairs(groups) do
     if type(g) == "table" and g.key and g.name and g.options then
       local key = tostring(g.key)
       local name = tostring(g.name)
 
-      opts.args.modules.args[key] = {
-        type = "group",
-        name = name,
-        order = tonumber(g.order) or 1000,
-        args = {},
-      }
-
-      -- Support two patterns:
-      --  A) g.options() returns a full AceConfig group (type/name/args)
-      --  B) g.options() returns just args-table
-      local built = SafeCall(g.options)
-      if type(built) == "table" then
-        if built.type == "group" and type(built.args) == "table" then
-          -- use returned group (but keep our ordering/name if missing)
-          opts.args.modules.args[key] = built
-          opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
-          opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
-        elseif type(built.args) == "table" and built.type then
-          -- group-like
-          opts.args.modules.args[key] = built
-          opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
-          opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
-        else
-          -- assume "args table"
-          opts.args.modules.args[key].args = built
-        end
+      if seen[key] then
+        -- SettingsRegistry should keep keys unique, but if duplicate registrations
+        -- happen we skip extra entries to keep options deterministic.
       else
-        opts.args.modules.args[key].args._err = {
-          type = "description",
-          name = "Failed to build options for this module.",
-          order = 1,
+        seen[key] = true
+
+        opts.args.modules.args[key] = {
+          type = "group",
+          name = name,
+          order = tonumber(g.order) or 1000,
+          args = {},
         }
+
+        -- Support two patterns:
+        --  A) g.options() returns a full AceConfig group (type/name/args)
+        --  B) g.options() returns just args-table
+        local ok, built, err = SafeCall(g.options)
+        if ok and type(built) == "table" then
+          if built.type == "group" and type(built.args) == "table" then
+            -- use returned group (but keep our ordering/name if missing)
+            opts.args.modules.args[key] = built
+            opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
+            opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
+          elseif type(built.args) == "table" and built.type then
+            -- group-like (non-standard type) - normalize to valid group
+            opts.args.modules.args[key] = built
+            opts.args.modules.args[key].type = "group"
+            opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
+            opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
+            opts.args.modules.args[key].args = opts.args.modules.args[key].args or {}
+          else
+            -- assume "args table"
+            opts.args.modules.args[key].args = built
+          end
+        else
+          opts.args.modules.args[key].args._err = {
+            type = "description",
+            name = "Failed to build options for this module."
+              .. (err and ("\nReason: " .. err) or ""),
+            order = 1,
+          }
+        end
       end
     end
   end
