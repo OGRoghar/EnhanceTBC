@@ -13,7 +13,29 @@ local hooked = false
 
 local function GetDB()
   ETBC.db.profile.objectives = ETBC.db.profile.objectives or {}
-  return ETBC.db.profile.objectives
+  local db = ETBC.db.profile.objectives
+
+  if db.enabled == nil then db.enabled = true end
+
+  if db.hideInCombat == nil then db.hideInCombat = false end
+  if db.fadeInCombat == nil then db.fadeInCombat = true end
+  if db.combatAlpha == nil then db.combatAlpha = 0.20 end
+  if db.fadeTime == nil then db.fadeTime = 0.12 end
+
+  if db.width == nil then db.width = 300 end
+  if db.clampToScreen == nil then db.clampToScreen = true end
+
+  if db.background == nil then db.background = true end
+  if db.bgAlpha == nil then db.bgAlpha = 0.35 end
+  if db.borderAlpha == nil then db.borderAlpha = 0.95 end
+  if db.scale == nil then db.scale = 1.00 end
+
+  if db.fontScale == nil then db.fontScale = 1.00 end
+
+  if db.autoCollapseCompleted == nil then db.autoCollapseCompleted = true end
+  if db.onlyCollapseInDungeons == nil then db.onlyCollapseInDungeons = false end
+
+  return db
 end
 
 local function EnsureDriver()

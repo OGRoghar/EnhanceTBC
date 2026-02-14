@@ -16,7 +16,44 @@ local hooked = false
 
 local function GetDB()
   ETBC.db.profile.cooldowns = ETBC.db.profile.cooldowns or {}
-  return ETBC.db.profile.cooldowns
+  local db = ETBC.db.profile.cooldowns
+
+  if db.enabled == nil then db.enabled = true end
+
+  if db.actionButtons == nil then db.actionButtons = true end
+  if db.buffsDebuffs == nil then db.buffsDebuffs = true end
+  if db.otherCooldownFrames == nil then db.otherCooldownFrames = true end
+
+  if db.minDuration == nil then db.minDuration = 2.5 end
+  if db.maxDuration == nil then db.maxDuration = 3600 end
+  if db.hideWhenGCD == nil then db.hideWhenGCD = true end
+  if db.hideWhenNoDuration == nil then db.hideWhenNoDuration = true end
+  if db.hideWhenPaused == nil then db.hideWhenPaused = true end
+  if db.showSwipe == nil then db.showSwipe = true end
+
+  if db.mmssThreshold == nil then db.mmssThreshold = 60 end
+  if db.showTenths == nil then db.showTenths = true end
+  if db.tenthsThreshold == nil then db.tenthsThreshold = 3.0 end
+  if db.roundUp == nil then db.roundUp = true end
+
+  if db.font == nil then db.font = "Friz Quadrata TT" end
+  if db.size == nil then db.size = 16 end
+  if db.outline == nil then db.outline = "OUTLINE" end
+  if db.shadow == nil then db.shadow = true end
+  if db.scaleByIcon == nil then db.scaleByIcon = true end
+  if db.minScale == nil then db.minScale = 0.70 end
+  if db.maxScale == nil then db.maxScale = 1.10 end
+
+  if db.colorNormal == nil then db.colorNormal = { 0.90, 0.95, 0.90 } end
+  if db.colorSoon == nil then db.colorSoon = { 1.00, 0.85, 0.25 } end
+  if db.colorNow == nil then db.colorNow = { 1.00, 0.35, 0.35 } end
+  if db.soonThreshold == nil then db.soonThreshold = 5.0 end
+  if db.nowThreshold == nil then db.nowThreshold = 2.0 end
+
+  if db.updateInterval == nil then db.updateInterval = 0.08 end
+  if db.maxTracked == nil then db.maxTracked = 400 end
+
+  return db
 end
 
 local function LSM_Fetch(kind, key, fallback)
