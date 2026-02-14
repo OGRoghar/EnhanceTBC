@@ -440,6 +440,7 @@ local state = {
   tree = nil,
   rightScroll = nil,
   search = nil,
+  searchTimer = nil,
   closing = false,
 }
 
@@ -535,8 +536,12 @@ function ConfigWindow:Close()
 
   SaveWindow()
 
+  if state.searchTimer and state.searchTimer.Cancel then
+    state.searchTimer:Cancel()
+  end
+
   local w = state.win
-  state.win, state.groups, state.tree, state.rightScroll, state.search = nil, nil, nil, nil, nil
+  state.win, state.groups, state.tree, state.rightScroll, state.search, state.searchTimer = nil, nil, nil, nil, nil, nil
 
   if w and w.Release then
     w:Release()
@@ -555,6 +560,14 @@ local function ExtractLastToken(path)
   return last
 end
 
+local function GetDefaultModuleKey(groups, preferred)
+  if type(groups) ~= "table" or #groups == 0 then return nil end
+  if preferred and FindGroup(groups, preferred) then
+    return preferred
+  end
+  return groups[1].key
+end
+
 local function BuildWindow()
   if state.win then return end
   local db = GetUIDB()
@@ -562,6 +575,8 @@ local function BuildWindow()
 
   local groups = GatherGroups()
   state.groups = groups
+
+  local defaultModule = GetDefaultModuleKey(groups, db.lastModule)
 
   local win = AceGUI:Create("Frame")
   win:SetTitle("EnhanceTBC")
@@ -649,23 +664,30 @@ local function BuildWindow()
   end)
 
   -- Search refresh (throttle)
-  local timer
   local function QueueRefresh()
-    if timer then return end
-    timer = C_Timer.NewTimer(0.12, function()
-      timer = nil
+    if state.searchTimer then return end
+    state.searchTimer = C_Timer.NewTimer(0.12, function()
+      state.searchTimer = nil
+      if not state.win or not state.search then return end
       local q = tostring(search:GetText() or "")
       db.search = q
-      ShowModule(db.lastModule or "auras")
+      local target = GetDefaultModuleKey(groups, db.lastModule)
+      if target then
+        ShowModule(target)
+      end
     end)
   end
 
   search:SetCallback("OnTextChanged", function() QueueRefresh() end)
 
   -- Default selection
-  local last = db.lastModule or "auras"
-  tree:SelectByValue(last)          -- Select by LEAF value; TreeGroup will resolve it under its parent.
-  ShowModule(last)
+  if defaultModule then
+    tree:SelectByValue(defaultModule)          -- Select by LEAF value; TreeGroup will resolve it under its parent.
+    ShowModule(defaultModule)
+  else
+    right:ReleaseChildren()
+    AddDesc(right, "No settings groups are registered yet.", GameFontHighlight)
+  end
 
   win.frame:HookScript("OnMouseUp", function() SaveWindow() end)
 end
