@@ -694,7 +694,6 @@ local function BuildWindow()
   local function QueueRefresh()
     if state.searchTimer then return end
     state.searchTimer = NewDebounceTimer(0.12, function()
-    state.searchTimer = C_Timer.NewTimer(0.12, function()
       state.searchTimer = nil
       if not state.win or not state.search then return end
       local q = tostring(search:GetText() or "")
@@ -721,7 +720,16 @@ local function BuildWindow()
 end
 
 function ConfigWindow:Open()
+  if state.win and state.win.frame then
+    state.win.frame:Show()
+    return
+  end
+
   BuildWindow()
+
+  if state.win and state.win.frame then
+    state.win.frame:Show()
+  end
 end
 
 function ConfigWindow:Toggle()

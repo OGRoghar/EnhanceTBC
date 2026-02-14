@@ -277,8 +277,6 @@ local function ApplyBinding(key, b)
   else
     -- If protected in combat, do nothing; avoid taint.
     -- Keep lastShown unchanged so we retry after combat/events.
-  else
-    -- If protected in combat, do nothing; avoid taint
   end
 
   if b.onChange then
