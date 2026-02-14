@@ -1,6 +1,39 @@
 -- Settings/Settings_Tooltip.lua
 local ADDON_NAME, ETBC = ...
 
+local function GetDB()
+  ETBC.db.profile.tooltip = ETBC.db.profile.tooltip or {}
+  local db = ETBC.db.profile.tooltip
+
+  if db.enabled == nil then db.enabled = true end
+  if db.classColorNames == nil then db.classColorNames = true end
+  if db.showGuild == nil then db.showGuild = true end
+  if db.showTarget == nil then db.showTarget = true end
+  if db.showItemId == nil then db.showItemId = true end
+  if db.showSpellId == nil then db.showSpellId = true end
+  if db.showItemLevel == nil then db.showItemLevel = true end
+  if db.showVendorPrice == nil then db.showVendorPrice = true end
+  if db.showStatSummary == nil then db.showStatSummary = true end
+  if db.statSummaryMax == nil then db.statSummaryMax = 6 end
+  if db.anchorMode == nil then db.anchorMode = "DEFAULT" end
+  if db.offsetX == nil then db.offsetX = 16 end
+  if db.offsetY == nil then db.offsetY = -16 end
+  if db.scale == nil then db.scale = 1.0 end
+
+  db.skin = db.skin or {}
+  if db.skin.enabled == nil then db.skin.enabled = true end
+  db.skin.bg = db.skin.bg or { r = 0.03, g = 0.06, b = 0.03, a = 0.92 }
+  db.skin.grad = db.skin.grad or { r = 0.10, g = 0.35, b = 0.10, a = 0.22 }
+  db.skin.border = db.skin.border or { r = 0.20, g = 1.00, b = 0.20, a = 0.95 }
+
+  db.healthBar = db.healthBar or {}
+  if db.healthBar.enabled == nil then db.healthBar.enabled = true end
+  if db.healthBar.classColor == nil then db.healthBar.classColor = true end
+  db.healthBar.color = db.healthBar.color or { r = 0.2, g = 1.0, b = 0.2, a = 1.0 }
+
+  return db
+end
+
 local function AnchorValues()
   return {
     DEFAULT = "Default",
@@ -18,7 +51,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
   name = "Tooltip",
   order = 3,
   options = function()
-    local db = ETBC.db.profile.tooltip
+    local db = GetDB()
 
     return {
       enabled = {
