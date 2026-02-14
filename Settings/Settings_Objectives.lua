@@ -148,6 +148,16 @@ ETBC.SettingsRegistry:RegisterGroup("objectives", {
         set = function(_, v) db.bgAlpha = v; ETBC.ApplyBus:Notify("objectives") end,
       },
 
+      borderAlpha = {
+        type = "range",
+        name = "Border alpha",
+        order = 33,
+        min = 0.00, max = 1.00, step = 0.01,
+        disabled = function() return not (db.enabled and db.background) end,
+        get = function() return db.borderAlpha end,
+        set = function(_, v) db.borderAlpha = v; ETBC.ApplyBus:Notify("objectives") end,
+      },
+
       behaviorHeader = { type = "header", name = "Behavior", order = 40 },
 
       autoCollapseCompleted = {

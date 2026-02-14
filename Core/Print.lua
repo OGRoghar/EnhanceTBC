@@ -4,6 +4,8 @@ local ADDON_NAME, ETBC = ...
 function ETBC:Print(msg)
   if DEFAULT_CHAT_FRAME then
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99EnhanceTBC|r: " .. tostring(msg))
+  else
+    print("EnhanceTBC: " .. tostring(msg))
   end
 end
 

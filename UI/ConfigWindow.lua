@@ -440,6 +440,7 @@ local state = {
   tree = nil,
   rightScroll = nil,
   search = nil,
+  searchTimer = nil,
   closing = false,
 }
 
@@ -457,7 +458,7 @@ local function ApplyWindowStyle(win)
 
   -- Create a styled inner frame area (so the UI doesn’t look like default AceGUI)
   if not win.frame._etbcInner then
-    local inner = CreateFrame("Frame", nil, win.frame, "BackdropTemplate")
+    local inner = CreateFrame("Frame", nil, win.frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
     inner:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 10, -32)
     inner:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -10, 10)
     SetBackdrop(inner, THEME.panel, THEME.border, 1)
@@ -535,8 +536,12 @@ function ConfigWindow:Close()
 
   SaveWindow()
 
+  if state.searchTimer and state.searchTimer.Cancel then
+    state.searchTimer:Cancel()
+  end
+
   local w = state.win
-  state.win, state.groups, state.tree, state.rightScroll, state.search = nil, nil, nil, nil, nil
+  state.win, state.groups, state.tree, state.rightScroll, state.search, state.searchTimer = nil, nil, nil, nil, nil, nil
 
   if w and w.Release then
     w:Release()
@@ -555,6 +560,47 @@ local function ExtractLastToken(path)
   return last
 end
 
+local function GetDefaultModuleKey(groups, preferred)
+  if type(groups) ~= "table" or #groups == 0 then return nil end
+  if preferred and FindGroup(groups, preferred) then
+    return preferred
+  end
+  return groups[1].key
+end
+
+local function NewDebounceTimer(delay, fn)
+  local timer = { _cancelled = false }
+
+  if C_Timer and C_Timer.NewTimer then
+    local handle = C_Timer.NewTimer(delay, function()
+      if timer._cancelled then return end
+      fn()
+    end)
+    function timer:Cancel()
+      self._cancelled = true
+      if handle and handle.Cancel then handle:Cancel() end
+    end
+    return timer
+  end
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(delay, function()
+      if timer._cancelled then return end
+      fn()
+    end)
+    function timer:Cancel()
+      self._cancelled = true
+    end
+    return timer
+  end
+
+  fn()
+  function timer:Cancel()
+    self._cancelled = true
+  end
+  return timer
+end
+
 local function BuildWindow()
   if state.win then return end
   local db = GetUIDB()
@@ -562,6 +608,8 @@ local function BuildWindow()
 
   local groups = GatherGroups()
   state.groups = groups
+
+  local defaultModule = GetDefaultModuleKey(groups, db.lastModule)
 
   local win = AceGUI:Create("Frame")
   win:SetTitle("EnhanceTBC")
@@ -649,29 +697,45 @@ local function BuildWindow()
   end)
 
   -- Search refresh (throttle)
-  local timer
   local function QueueRefresh()
-    if timer then return end
-    timer = C_Timer.NewTimer(0.12, function()
-      timer = nil
+    if state.searchTimer then return end
+    state.searchTimer = NewDebounceTimer(0.12, function()
+      state.searchTimer = nil
+      if not state.win or not state.search then return end
       local q = tostring(search:GetText() or "")
       db.search = q
-      ShowModule(db.lastModule or "auras")
+      local target = GetDefaultModuleKey(groups, db.lastModule)
+      if target then
+        ShowModule(target)
+      end
     end)
   end
 
   search:SetCallback("OnTextChanged", function() QueueRefresh() end)
 
   -- Default selection
-  local last = db.lastModule or "auras"
-  tree:SelectByValue(last)          -- Select by LEAF value; TreeGroup will resolve it under its parent.
-  ShowModule(last)
+  if defaultModule then
+    tree:SelectByValue(defaultModule)          -- Select by LEAF value; TreeGroup will resolve it under its parent.
+    ShowModule(defaultModule)
+  else
+    right:ReleaseChildren()
+    AddDesc(right, "No settings groups are registered yet.", GameFontHighlight)
+  end
 
   win.frame:HookScript("OnMouseUp", function() SaveWindow() end)
 end
 
 function ConfigWindow:Open()
+  if state.win and state.win.frame then
+    state.win.frame:Show()
+    return
+  end
+
   BuildWindow()
+
+  if state.win and state.win.frame then
+    state.win.frame:Show()
+  end
 end
 
 function ConfigWindow:Toggle()

@@ -166,14 +166,20 @@ local function IsProbablyGCD(duration)
   return duration and duration > 0 and duration <= 1.7
 end
 
+local function SetSwipe(cooldown, show)
+  if not cooldown or not cooldown.SetDrawSwipe then return end
+  pcall(cooldown.SetDrawSwipe, cooldown, show and true or false)
+end
+
 local function Track(cooldown, start, duration, enable, modRate)
   local db = GetDB()
 
   if not ShouldHandleCooldown(cooldown) then
-    -- If we were tracking, clean up
+    -- If we were tracking, clean up and restore Blizzard swipe state.
     if tracked[cooldown] then
       local st = tracked[cooldown]
       if st and st.fs then st.fs:Hide() end
+      SetSwipe(cooldown, true)
       tracked[cooldown] = nil
     end
     return
@@ -195,12 +201,8 @@ local function Track(cooldown, start, duration, enable, modRate)
   st.lastText = nil
   st.lastColorKey = nil
 
-  -- Hide if we shouldn't show swipe
-  if cooldown.SetDrawSwipe and (db.showSwipe == false) then
-    pcall(cooldown.SetDrawSwipe, cooldown, false)
-  elseif cooldown.SetDrawSwipe then
-    pcall(cooldown.SetDrawSwipe, cooldown, true)
-  end
+  -- Hide/show swipe overlay based on setting
+  SetSwipe(cooldown, db.showSwipe ~= false)
 end
 
 local function RebuildOrdered()
@@ -215,9 +217,11 @@ local function RebuildOrdered()
       else
         -- over cap: stop tracking extras
         st.fs:Hide()
+        SetSwipe(cd, true)
         tracked[cd] = nil
       end
     else
+      SetSwipe(cd, true)
       tracked[cd] = nil
     end
   end
@@ -350,6 +354,7 @@ end
 local function ClearAllText()
   for cd, st in pairs(tracked) do
     if st and st.fs then st.fs:Hide() end
+    SetSwipe(cd, true)
     tracked[cd] = nil
   end
   wipe(ordered)

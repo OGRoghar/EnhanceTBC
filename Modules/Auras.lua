@@ -69,6 +69,19 @@ local function Snap(n, grid)
   return math.ceil((n / grid) - 0.5) * grid
 end
 
+local function SetShownCompat(frame, shown)
+  if not frame then return end
+  if frame.SetShown then
+    frame:SetShown(shown and true or false)
+    return
+  end
+  if shown then
+    if frame.Show then frame:Show() end
+  else
+    if frame.Hide then frame:Hide() end
+  end
+end
+
 local function EnsureFrames()
   EnsureDriver()
 
@@ -99,14 +112,16 @@ local function EnsureFrames()
     f:SetMovable(true)
     f:RegisterForDrag("LeftButton")
 
-    f:SetBackdrop({
-      bgFile = "Interface/Buttons/WHITE8x8",
-      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-      edgeSize = 14,
-      insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    f:SetBackdropColor(0.03, 0.08, 0.03, 0.55)
-    f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
+    if f.SetBackdrop then
+      f:SetBackdrop({
+        bgFile = "Interface/Buttons/WHITE8x8",
+        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+        edgeSize = 14,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+      })
+      f:SetBackdropColor(0.03, 0.08, 0.03, 0.55)
+      f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
+    end
 
     f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.text:SetPoint("CENTER", f, "CENTER", 0, 0)
@@ -117,11 +132,14 @@ local function EnsureFrames()
     f.hint:SetText("Drag to move")
 
     f:SetScript("OnDragStart", function(self)
+      if not self.StartMoving then return end
       self:StartMoving()
     end)
 
     f:SetScript("OnDragStop", function(self)
-      self:StopMovingOrSizing()
+      if self.StopMovingOrSizing then
+        self:StopMovingOrSizing()
+      end
 
       local db = ETBC.db.profile.auras
       local grid = GetGridSize()
@@ -136,12 +154,12 @@ local function EnsureFrames()
 
       -- Save into the correct anchorDB (set by f.anchorDB)
       local a = self.anchorDB
-      if a then
-        a.point = point or a.point
-        a.relPoint = relPoint or a.relPoint
-        a.x = x
-        a.y = y
-      end
+      if not a then return end
+
+      a.point = point or a.point
+      a.relPoint = relPoint or a.relPoint
+      a.x = x
+      a.y = y
 
       -- Re-anchor the handle to the snapped position
       self:ClearAllPoints()
@@ -200,10 +218,12 @@ local function AcquireIcon()
   icon.border:ClearAllPoints()
   icon.border:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
   icon.border:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
-  icon.border:SetBackdrop({
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    edgeSize = 14,
-  })
+  if icon.border.SetBackdrop then
+    icon.border:SetBackdrop({
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      edgeSize = 14,
+    })
+  end
 
   icon:SetScript("OnEnter", function(self)
     local db = ETBC.db.profile.auras
@@ -306,7 +326,9 @@ local function ApplyVisuals(icon, common, layout, data)
       br, bg, bb, ba = dc.r, dc.g, dc.b, (dc.a or 1)
     end
 
-    icon.border:SetBackdropBorderColor(br, bg, bb, ba)
+    if icon.border.SetBackdropBorderColor then
+      icon.border:SetBackdropBorderColor(br, bg, bb, ba)
+    end
   else
     icon.border:Hide()
   end
@@ -485,8 +507,8 @@ local function UpdateMoveHandles(db)
   debuffHandle:ClearAllPoints()
   debuffHandle:SetPoint(db.debuffs.anchor.point, UIParent, db.debuffs.anchor.relPoint, db.debuffs.anchor.x, db.debuffs.anchor.y)
 
-  buffHandle:SetShown(db.buffs.enabled)
-  debuffHandle:SetShown(db.debuffs.enabled)
+  SetShownCompat(buffHandle, db.buffs.enabled)
+  SetShownCompat(debuffHandle, db.debuffs.enabled)
 end
 
 local function Apply()
@@ -518,8 +540,8 @@ local function Apply()
   debuffContainer:ClearAllPoints()
   debuffContainer:SetPoint("TOPLEFT", debuffAnchor, "TOPLEFT", 0, 0)
 
-  buffContainer:SetShown(db.buffs.enabled)
-  debuffContainer:SetShown(db.debuffs.enabled)
+  SetShownCompat(buffContainer, db.buffs.enabled)
+  SetShownCompat(debuffContainer, db.debuffs.enabled)
 
   UpdateMoveHandles(db)
 

@@ -1,9 +1,11 @@
 -- UI/Theme.lua
 local ADDON_NAME, ETBC = ...
 
+if not ETBC then return end
+
 ETBC.Theme = ETBC.Theme or {}
 
-ETBC.Theme.Palettes = {
+local DEFAULT_PALETTES = {
   WarcraftGreen = {
     bg = {0.05, 0.07, 0.05, 0.95},
     panel = {0.10, 0.13, 0.10, 0.92},
@@ -21,6 +23,13 @@ ETBC.Theme.Palettes = {
     accent2 = {0.35, 0.75, 0.35, 1.00},
   },
 }
+
+ETBC.Theme.Palettes = ETBC.Theme.Palettes or {}
+for name, pal in pairs(DEFAULT_PALETTES) do
+  if not ETBC.Theme.Palettes[name] then
+    ETBC.Theme.Palettes[name] = pal
+  end
+end
 
 function ETBC.Theme:Get()
   local p = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.ui
