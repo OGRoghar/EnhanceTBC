@@ -287,14 +287,12 @@ end
 function V:Bind(key, frame, ruleProviderFn, onChangeFn)
   if not key or key == "" then return end
   if not frame then return end
-
   bindings[key] = {
     frame = frame,
     ruleProvider = ruleProviderFn,
     onChange = onChangeFn,
     lastShown = nil,
   }
-
   -- apply immediately
   ApplyBinding(key, bindings[key])
 end
