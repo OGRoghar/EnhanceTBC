@@ -222,6 +222,9 @@ ETBC.defaults = {
     -- VISIBILITY (NEW MAX)
     visibility = {
       enabled = true,
+      throttle = 0.05,
+      presets = {},
+      editor = {},
 
       -- global master conditions (apply to modules that opt into visibility)
       global = {

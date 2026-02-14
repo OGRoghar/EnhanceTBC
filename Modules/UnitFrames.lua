@@ -19,7 +19,33 @@ local orig = {
 
 local function GetDB()
   ETBC.db.profile.unitframes = ETBC.db.profile.unitframes or {}
-  return ETBC.db.profile.unitframes
+  local db = ETBC.db.profile.unitframes
+
+  if db.enabled == nil then db.enabled = true end
+  if db.classColorHealth == nil then db.classColorHealth = true end
+  if db.healthPercentText == nil then db.healthPercentText = true end
+  if db.powerValueText == nil then db.powerValueText = false end
+  if db.hidePortraits == nil then db.hidePortraits = false end
+
+  if db.player == nil then db.player = true end
+  if db.target == nil then db.target = true end
+  if db.focus == nil then db.focus = true end
+  if db.party == nil then db.party = false end
+
+  if db.resize == nil then db.resize = true end
+  if db.scale == nil then db.scale = 1.00 end
+  if db.extraWidth == nil then db.extraWidth = 0 end
+  if db.extraHeight == nil then db.extraHeight = 0 end
+
+  if db.font == nil then db.font = "Friz Quadrata TT" end
+  if db.fontSize == nil then db.fontSize = 11 end
+  if db.outline == nil then db.outline = "OUTLINE" end
+  if db.shadow == nil then db.shadow = true end
+  if db.textColor == nil then db.textColor = { 1, 1, 1 } end
+
+  if db.onlyShowTextWhenNotFull == nil then db.onlyShowTextWhenNotFull = true end
+
+  return db
 end
 
 local function EnsureDriver()
