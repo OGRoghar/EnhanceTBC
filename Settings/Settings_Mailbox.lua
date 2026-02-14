@@ -1,11 +1,36 @@
 -- Settings/Settings_Mailbox.lua
 local ADDON_NAME, ETBC = ...
 
+local function GetDB()
+  ETBC.db.profile.mailbox = ETBC.db.profile.mailbox or {}
+  local db = ETBC.db.profile.mailbox
+
+  if db.enabled == nil then db.enabled = true end
+  if db.bypassWithShift == nil then db.bypassWithShift = true end
+  if db.autoCollect == nil then db.autoCollect = true end
+  if db.collectGold == nil then db.collectGold = true end
+  if db.collectItems == nil then db.collectItems = true end
+  if db.skipCOD == nil then db.skipCOD = true end
+  if db.skipGM == nil then db.skipGM = false end
+  if db.skipAH == nil then db.skipAH = false end
+  if db.onlyOpenWhenEmpty == nil then db.onlyOpenWhenEmpty = true end
+  if db.autoDeleteEmpty == nil then db.autoDeleteEmpty = false end
+  if db.confirmDelete == nil then db.confirmDelete = true end
+  if db.printSummary == nil then db.printSummary = true end
+
+  db.throttle = db.throttle or {}
+  if db.throttle.enabled == nil then db.throttle.enabled = true end
+  if db.throttle.interval == nil then db.throttle.interval = 0.05 end
+  if db.throttle.maxPerTick == nil then db.throttle.maxPerTick = 3 end
+
+  return db
+end
+
 ETBC.SettingsRegistry:RegisterGroup("mailbox", {
   name = "Mailbox",
   order = 70,
   options = function()
-    local db = ETBC.db.profile.mailbox
+    local db = GetDB()
 
     return {
       enabled = {

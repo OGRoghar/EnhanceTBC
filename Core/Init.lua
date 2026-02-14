@@ -4,6 +4,8 @@
 
 local ADDON_NAME, ETBC = ...
 
+ETBC = ETBC or {}
+
 -- Make the private addon namespace globally reachable for legacy code and /run debugging.
 -- We set both names for compatibility with older modules.
 _G.EnhanceTBC = ETBC

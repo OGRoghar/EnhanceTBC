@@ -28,11 +28,43 @@ local function ToIDList(t)
   return table.concat(out, ", ")
 end
 
+local function GetDB()
+  ETBC.db.profile.vendor = ETBC.db.profile.vendor or {}
+  local db = ETBC.db.profile.vendor
+
+  if db.enabled == nil then db.enabled = true end
+  if db.bypassWithShift == nil then db.bypassWithShift = true end
+  if db.autoRepair == nil then db.autoRepair = true end
+  if db.useGuildRepair == nil then db.useGuildRepair = true end
+  if db.repairThreshold == nil then db.repairThreshold = 0 end
+  if db.autoSellJunk == nil then db.autoSellJunk = true end
+  if db.maxQualityToSell == nil then db.maxQualityToSell = 0 end
+  if db.confirmHighValue == nil then db.confirmHighValue = true end
+  if db.confirmMinValue == nil then db.confirmMinValue = 200000 end
+  if db.skipLocked == nil then db.skipLocked = true end
+  if db.printSummary == nil then db.printSummary = true end
+
+  db.throttle = db.throttle or {}
+  if db.throttle.enabled == nil then db.throttle.enabled = true end
+  if db.throttle.interval == nil then db.throttle.interval = 0.03 end
+  if db.throttle.maxPerTick == nil then db.throttle.maxPerTick = 6 end
+
+  db.whitelist = db.whitelist or {}
+  if db.whitelist.enabled == nil then db.whitelist.enabled = false end
+  db.whitelist.items = db.whitelist.items or {}
+
+  db.blacklist = db.blacklist or {}
+  if db.blacklist.enabled == nil then db.blacklist.enabled = true end
+  db.blacklist.items = db.blacklist.items or {}
+
+  return db
+end
+
 ETBC.SettingsRegistry:RegisterGroup("vendor", {
   name = "Vendor",
   order = 60,
   options = function()
-    local db = ETBC.db.profile.vendor
+    local db = GetDB()
 
     return {
       enabled = {

@@ -16,7 +16,10 @@ mod._hooked = false
 -- ---------------------------------------------------------
 local function GetDB()
   if not ETBC.db or not ETBC.db.profile then return nil end
-  return ETBC.db.profile.tooltip
+  ETBC.db.profile.tooltip = ETBC.db.profile.tooltip or {}
+  local db = ETBC.db.profile.tooltip
+  if db.enabled == nil then db.enabled = true end
+  return db
 end
 
 local function SafeSetBackdrop(frame, bg, edge, edgeSize, insets)
