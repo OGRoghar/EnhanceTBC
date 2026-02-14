@@ -568,6 +568,41 @@ local function GetDefaultModuleKey(groups, preferred)
   return groups[1].key
 end
 
+
+local function NewDebounceTimer(delay, fn)
+  local timer = { _cancelled = false }
+
+  if C_Timer and C_Timer.NewTimer then
+    local handle = C_Timer.NewTimer(delay, function()
+      if timer._cancelled then return end
+      fn()
+    end)
+    function timer:Cancel()
+      self._cancelled = true
+      if handle and handle.Cancel then handle:Cancel() end
+    end
+    return timer
+  end
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(delay, function()
+      if timer._cancelled then return end
+      fn()
+    end)
+    function timer:Cancel()
+      self._cancelled = true
+    end
+    return timer
+  end
+
+  fn()
+  function timer:Cancel()
+    self._cancelled = true
+  end
+  return timer
+end
+
+=======
 local function BuildWindow()
   if state.win then return end
   local db = GetUIDB()
@@ -666,6 +701,8 @@ local function BuildWindow()
   -- Search refresh (throttle)
   local function QueueRefresh()
     if state.searchTimer then return end
+    state.searchTimer = NewDebounceTimer(0.12, function()
+=======
     state.searchTimer = C_Timer.NewTimer(0.12, function()
       state.searchTimer = nil
       if not state.win or not state.search then return end

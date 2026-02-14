@@ -144,11 +144,14 @@ local function EnsureFrame()
   barFrame:SetScript("OnDragStart", function(self)
     local db = GetDB()
     if db.locked then return end
+    if not self.StartMoving then return end
     self:StartMoving()
   end)
 
   barFrame:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
+    if self.StopMovingOrSizing then
+      self:StopMovingOrSizing()
+    end
     local db = GetDB()
     local point, _, relPoint, x, y = self:GetPoint(1)
     db.anchor.point = point or "CENTER"

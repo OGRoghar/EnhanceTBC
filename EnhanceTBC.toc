@@ -86,9 +86,11 @@ Settings\Settings_GCDBar.lua
 Settings\Settings_Auras.lua
 Settings\Settings_CombatText.lua
 Settings\Settings_ActionTracker.lua
+Settings\Settings_Cooldowns.lua
 Settings\Settings_Mover.lua
 Settings\Settings_Vendor.lua
 Settings\Settings_Mailbox.lua
+Settings\Settings_Objectives.lua
 Settings\Settings_Visibility.lua
 
 # ==========================================================
@@ -111,6 +113,8 @@ Modules\Mouse.lua
 Modules\Sound.lua
 Modules\Tooltip.lua
 Modules\Vendor.lua
+Modules\Cooldowns.lua
+Modules\Objectives.lua
 
 # Visibility (ONLY include files that truly exist and work)
 Visibility\Visibility_Helper.lua

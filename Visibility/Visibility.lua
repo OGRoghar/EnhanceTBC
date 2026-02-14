@@ -50,6 +50,11 @@ local function PlayerInCombat()
   return false
 end
 
+local function IsBlockedByCombatProtection(frame)
+  if not frame then return false end
+  return frame.IsProtected and frame:IsProtected() and PlayerInCombat() or false
+end
+
 local function InGroupAny()
   if IsInGroup then
     return IsInGroup() and true or false
@@ -226,13 +231,29 @@ function V:Evaluate(ruleOrPresetKey)
 end
 
 local function CanSafelyShowHide(frame)
-  if not frame or not frame.IsProtected or not frame.SetShown then
+  if not frame then
     return false
   end
-  if frame:IsProtected() and PlayerInCombat() then
+  if not frame.SetShown and (not frame.Show or not frame.Hide) then
+    return false
+  end
+  if IsBlockedByCombatProtection(frame) then
     return false
   end
   return true
+end
+
+local function SetShownCompat(frame, shouldShow)
+  if not frame then return end
+  if frame.SetShown then
+    frame:SetShown(shouldShow)
+    return
+  end
+  if shouldShow then
+    if frame.Show then frame:Show() end
+  else
+    if frame.Hide then frame:Hide() end
+  end
 end
 
 local function ApplyBinding(key, b)
@@ -251,12 +272,10 @@ local function ApplyBinding(key, b)
   b.lastShown = shouldShow
 
   local frame = b.frame
-  if frame and frame.SetShown then
-    if CanSafelyShowHide(frame) then
-      frame:SetShown(shouldShow)
-    else
-      -- If protected in combat, do nothing; avoid taint
-    end
+  if CanSafelyShowHide(frame) then
+    SetShownCompat(frame, shouldShow)
+  else
+    -- If protected in combat, do nothing; avoid taint
   end
 
   if b.onChange then
@@ -347,13 +366,33 @@ local function Apply()
     V:ForceUpdate()
   else
     -- disabled: show everything we control (don’t hide anything)
+    local needsDeferredShow = false
     for _, b in pairs(bindings) do
       b.lastShown = nil
-      if b.frame and b.frame.SetShown and CanSafelyShowHide(b.frame) then
-        b.frame:SetShown(true)
+      if CanSafelyShowHide(b.frame) then
+        SetShownCompat(b.frame, true)
+      elseif IsBlockedByCombatProtection(b.frame) then
+        needsDeferredShow = true
       end
     end
-    driver:Hide()
+
+    if needsDeferredShow then
+      driver:RegisterEvent("PLAYER_REGEN_ENABLED")
+      driver:SetScript("OnEvent", function()
+        for _, b in pairs(bindings) do
+          b.lastShown = nil
+          if CanSafelyShowHide(b.frame) then
+            SetShownCompat(b.frame, true)
+          end
+        end
+        driver:UnregisterAllEvents()
+        driver:SetScript("OnEvent", nil)
+        driver:Hide()
+      end)
+      driver:Show()
+    else
+      driver:Hide()
+    end
   end
 end
 

@@ -148,11 +148,14 @@ local function EnsureHandle(key)
   f.hint:SetText("Left-drag • Right reset")
 
   f:SetScript("OnDragStart", function(self)
+    if not self.StartMoving then return end
     self:StartMoving()
   end)
 
   f:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
+    if self.StopMovingOrSizing then
+      self:StopMovingOrSizing()
+    end
     if not self._entry then return end
 
     local point, _, relPoint, x, y = self:GetPoint(1)
