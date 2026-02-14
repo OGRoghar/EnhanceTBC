@@ -277,6 +277,8 @@ local function ApplyBinding(key, b)
   else
     -- If protected in combat, do nothing; avoid taint.
     -- Keep lastShown unchanged so we retry after combat/events.
+  else
+    -- If protected in combat, do nothing; avoid taint
   end
 
   if b.onChange then
@@ -287,14 +289,12 @@ end
 function V:Bind(key, frame, ruleProviderFn, onChangeFn)
   if not key or key == "" then return end
   if not frame then return end
-
   bindings[key] = {
     frame = frame,
     ruleProvider = ruleProviderFn,
     onChange = onChangeFn,
     lastShown = nil,
   }
-
   -- apply immediately
   ApplyBinding(key, bindings[key])
 end
