@@ -14,6 +14,7 @@ local ICON_PATH = "Interface\\AddOns\\EnhanceTBC\\Media\\Images\\minimap.tga"
 
 -- Crop coords for circular minimap mask (reduces "tiny icon" look)
 local ICON_COORDS = { 0.08, 0.92, 0.08, 0.92 }
+local unpackFn = _G.unpack or table.unpack
 
 local dataObject
 
@@ -79,7 +80,9 @@ function ETBC:InitMinimapIcon()
 
     local btn = LDBIcon:GetMinimapButton("EnhanceTBC")
     if btn and btn.icon and btn.icon.SetTexCoord then
-      btn.icon:SetTexCoord(unpack(ICON_COORDS))
+      if unpackFn then
+        btn.icon:SetTexCoord(unpackFn(ICON_COORDS))
+      end
     end
 
     self._minimapRegistered = true

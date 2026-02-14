@@ -108,13 +108,20 @@ local function BuildGuides(db)
 end
 
 local function FlashHandleBorder(f)
-  if not f then return end
+  if not f or not f.SetBackdropBorderColor then return end
   f:SetBackdropBorderColor(1.0, 0.9, 0.2, 1.0)
-  C_Timer.After(0.12, function()
+
+  local function restore()
     if f and f.SetBackdropBorderColor then
       f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
     end
-  end)
+  end
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0.12, restore)
+  else
+    restore()
+  end
 end
 
 local function EnsureHandle(key)
@@ -130,14 +137,16 @@ local function EnsureHandle(key)
   f:RegisterForDrag("LeftButton")
   f:RegisterForClicks("AnyUp")
 
-  f:SetBackdrop({
-    bgFile = "Interface/Buttons/WHITE8x8",
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    edgeSize = 14,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 },
-  })
-  f:SetBackdropColor(0.03, 0.08, 0.03, 0.55)
-  f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
+  if f.SetBackdrop then
+    f:SetBackdrop({
+      bgFile = "Interface/Buttons/WHITE8x8",
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      edgeSize = 14,
+      insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    f:SetBackdropColor(0.03, 0.08, 0.03, 0.55)
+    f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
+  end
 
   f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   f.label:SetPoint("CENTER", f, "CENTER", 0, 0)
@@ -148,17 +157,24 @@ local function EnsureHandle(key)
   f.hint:SetText("Left-drag • Right reset")
 
   f:SetScript("OnDragStart", function(self)
+    if not self.StartMoving then return end
     self:StartMoving()
   end)
 
   f:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
+    if self.StopMovingOrSizing then
+      self:StopMovingOrSizing()
+    end
     if not self._entry then return end
+    if not self.GetPoint then return end
 
     local point, _, relPoint, x, y = self:GetPoint(1)
+    if not point then return end
     x, y = x or 0, y or 0
 
-    M:ApplyAnchorFromHandle(self._entry, point, relPoint, x, y)
+    if M.ApplyAnchorFromHandle then
+      M:ApplyAnchorFromHandle(self._entry, point, relPoint, x, y)
+    end
 
     local a = self._entry.getAnchorDB and self._entry.getAnchorDB()
     if a then
@@ -193,7 +209,9 @@ local function EnsureHandle(key)
 end
 
 local function RefreshHandles(db)
-  M:AutoRegisterKnown()
+  if M.AutoRegisterKnown then
+    M:AutoRegisterKnown()
+  end
 
   for _, f in pairs(handles) do
     f:Hide()
@@ -201,7 +219,8 @@ local function RefreshHandles(db)
 
   local scale = db.handleScale or 1.0
 
-  for key, entry in pairs(M:GetRegistered()) do
+  local registered = M.GetRegistered and M:GetRegistered() or {}
+  for key, entry in pairs(registered) do
     local frame = entry.getFrame and entry.getFrame()
     local a = entry.getAnchorDB and entry.getAnchorDB()
 
