@@ -85,7 +85,6 @@ end
 
 local function BuildQueue(db)
   local q = {}
-
   local num = GetInboxNumItems() or 0
   -- IMPORTANT: work from high index -> low index to avoid shifting issues
   for i = num, 1, -1 do
@@ -219,7 +218,6 @@ end
 local function StartTicker(interval, fn)
   interval = tonumber(interval) or 0.05
   if interval < 0.01 then interval = 0.01 end
-
   if C_Timer and C_Timer.NewTicker then
     ticker = C_Timer.NewTicker(interval, fn)
     return
