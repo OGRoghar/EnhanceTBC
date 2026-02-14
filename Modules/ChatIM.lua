@@ -279,6 +279,7 @@ end
 -- --------------------
 
 local function ApplyCopyTheme(frame)
+  if not frame or not frame.SetBackdrop then return end
   frame:SetBackdrop({
     bgFile = "Interface/Tooltips/UI-Tooltip-Background",
     edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -333,15 +334,15 @@ end
 local function EnsureCopyUI()
   if copyFrame then return end
 
-  copyFrame = CreateFrame("Frame", "EnhanceTBC_ChatCopyFrame", UIParent, "BackdropTemplate")
+  copyFrame = CreateFrame("Frame", "EnhanceTBC_ChatCopyFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   copyFrame:SetSize(780, 470)
   copyFrame:SetPoint("CENTER")
   copyFrame:SetFrameStrata("DIALOG")
   copyFrame:SetMovable(true)
   copyFrame:EnableMouse(true)
   copyFrame:RegisterForDrag("LeftButton")
-  copyFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-  copyFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+  copyFrame:SetScript("OnDragStart", function(self) if not self.StartMoving then return end self:StartMoving() end)
+  copyFrame:SetScript("OnDragStop", function(self) if self.StopMovingOrSizing then self:StopMovingOrSizing() end end)
   copyFrame:Hide()
   ApplyCopyTheme(copyFrame)
 
@@ -457,19 +458,21 @@ end
 local function EnsureCopyButton()
   if copyButton then return end
 
-  copyButton = CreateFrame("Button", "EnhanceTBC_ChatCopyButton", UIParent, "BackdropTemplate")
+  copyButton = CreateFrame("Button", "EnhanceTBC_ChatCopyButton", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   copyButton:SetSize(18, 18)
   copyButton:SetFrameStrata("HIGH")
   copyButton:EnableMouse(true)
 
-  copyButton:SetBackdrop({
-    bgFile = "Interface/Buttons/WHITE8x8",
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    tile = true, tileSize = 8, edgeSize = 10,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 }
-  })
-  copyButton:SetBackdropColor(0.03, 0.06, 0.03, 0.90)
-  copyButton:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.95)
+  if copyButton.SetBackdrop then
+    copyButton:SetBackdrop({
+      bgFile = "Interface/Buttons/WHITE8x8",
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      tile = true, tileSize = 8, edgeSize = 10,
+      insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    copyButton:SetBackdropColor(0.03, 0.06, 0.03, 0.90)
+    copyButton:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.95)
+  end
 
   local icon = copyButton:CreateTexture(nil, "ARTWORK")
   icon:SetAllPoints()

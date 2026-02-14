@@ -78,10 +78,12 @@ local function AcquireIcon()
   icon.border:ClearAllPoints()
   icon.border:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
   icon.border:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
-  icon.border:SetBackdrop({
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    edgeSize = 14,
-  })
+  if icon.border.SetBackdrop then
+    icon.border:SetBackdrop({
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      edgeSize = 14,
+    })
+  end
 
   icon.nameText = icon:CreateFontString(nil, "OVERLAY")
   icon.nameText:SetPoint("TOP", icon, "BOTTOM", 0, -2)
@@ -149,7 +151,9 @@ local function ApplyVisuals(icon, db, entry)
   if db.border.enabled then
     icon.border:Show()
     local c = db.border.color
-    icon.border:SetBackdropBorderColor(c.r, c.g, c.b, (c.a or 1))
+    if icon.border.SetBackdropBorderColor then
+      icon.border:SetBackdropBorderColor(c.r, c.g, c.b, (c.a or 1))
+    end
   else
     icon.border:Hide()
   end
