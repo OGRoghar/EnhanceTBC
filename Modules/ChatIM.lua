@@ -333,15 +333,15 @@ end
 local function EnsureCopyUI()
   if copyFrame then return end
 
-  copyFrame = CreateFrame("Frame", "EnhanceTBC_ChatCopyFrame", UIParent, "BackdropTemplate")
+  copyFrame = CreateFrame("Frame", "EnhanceTBC_ChatCopyFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   copyFrame:SetSize(780, 470)
   copyFrame:SetPoint("CENTER")
   copyFrame:SetFrameStrata("DIALOG")
   copyFrame:SetMovable(true)
   copyFrame:EnableMouse(true)
   copyFrame:RegisterForDrag("LeftButton")
-  copyFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-  copyFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+  copyFrame:SetScript("OnDragStart", function(self) if not self.StartMoving then return end self:StartMoving() end)
+  copyFrame:SetScript("OnDragStop", function(self) if self.StopMovingOrSizing then self:StopMovingOrSizing() end end)
   copyFrame:Hide()
   ApplyCopyTheme(copyFrame)
 
@@ -457,7 +457,7 @@ end
 local function EnsureCopyButton()
   if copyButton then return end
 
-  copyButton = CreateFrame("Button", "EnhanceTBC_ChatCopyButton", UIParent, "BackdropTemplate")
+  copyButton = CreateFrame("Button", "EnhanceTBC_ChatCopyButton", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   copyButton:SetSize(18, 18)
   copyButton:SetFrameStrata("HIGH")
   copyButton:EnableMouse(true)
