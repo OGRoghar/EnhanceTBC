@@ -274,6 +274,16 @@ local function LooksLikeMinimapButton(child, db)
   if n:find("MinimapZoneText") or n:find("MinimapNorthTag") or n:find("MinimapPOI") then
     return false
   end
+  if n ~= "" and (n:find("Questie") or n:find("QuestPOI") or n:find("Objective")) then
+    return false
+  end
+
+  if t == "Frame" and n ~= "" then
+    local isAddonButton = n:find("LibDBIcon") or n:find("MinimapButton") or n:find("MiniMapButton")
+    if not isAddonButton then
+      return false
+    end
+  end
   if n == "QueueStatusMinimapButton" and not db.includeQueue then return false end
   if (n:find("MiniMapTracking") or n == "MiniMapTrackingButton") and not db.includeTracking then return false end
   if n == "GameTimeFrame" and not db.includeCalendar then return false end
