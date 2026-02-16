@@ -99,6 +99,7 @@ Settings\Settings_Mover.lua
 Settings\Settings_Vendor.lua
 Settings\Settings_Mailbox.lua
 Settings\Settings_Objectives.lua
+Settings\Settings_AutoGossip.lua
 Settings\Settings_Visibility.lua
 Settings\Settings_CVars.lua
 
@@ -124,6 +125,7 @@ Modules\Tooltip.lua
 Modules\Vendor.lua
 Modules\Cooldowns.lua
 Modules\Objectives.lua
+Modules\AutoGossip.lua
 Modules\CVars.lua
 
 # Visibility (ONLY include files that truly exist and work)

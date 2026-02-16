@@ -40,7 +40,8 @@ end
 -- Slash
 -- ---------------------------------------------------------
 function ETBC:SlashCommand(input)
-  input = (input or ""):lower()
+  local rawInput = input or ""
+  input = rawInput:lower()
 
   if input == "" or input == "config" or input == "options" then
     self:OpenConfig()
@@ -66,7 +67,26 @@ function ETBC:SlashCommand(input)
     return
   end
 
-  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap")
+  if input == "listgossip" or input == "gossiplist" then
+    if ETBC.Modules and ETBC.Modules.AutoGossip and ETBC.Modules.AutoGossip.ListPatterns then
+      ETBC.Modules.AutoGossip:ListPatterns()
+    else
+      self:Print("AutoGossip module not loaded.")
+    end
+    return
+  end
+
+  if input:match("^addgossip%s+(.+)") or input:match("^gossipadd%s+(.+)") then
+    local pattern = rawInput:match("^[Aa][Dd][Dd][Gg][Oo][Ss][Ss][Ii][Pp]%s+(.+)") or rawInput:match("^[Gg][Oo][Ss][Ss][Ii][Pp][Aa][Dd][Dd]%s+(.+)")
+    if ETBC.Modules and ETBC.Modules.AutoGossip and ETBC.Modules.AutoGossip.AddPattern then
+      ETBC.Modules.AutoGossip:AddPattern(pattern)
+    else
+      self:Print("AutoGossip module not loaded.")
+    end
+    return
+  end
+
+  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap, /etbc listgossip (list auto-gossip), /etbc addgossip <pattern> (add auto-gossip)")
 end
 
 -- ---------------------------------------------------------
