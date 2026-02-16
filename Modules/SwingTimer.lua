@@ -591,6 +591,7 @@ local function Apply()
     driver._accum = 0
     driver:SetScript("OnUpdate", function(self, elapsed)
       self._accum = (self._accum or 0) + elapsed
+      -- Throttle visual updates to ~50Hz (0.02 seconds per update)
       if self._accum >= 0.02 then
         self._accum = 0
         UpdateVisual(GetDB())
