@@ -72,11 +72,10 @@ UI\Theme.lua
 # ==========================================================
 Settings\Settings_General.lua
 Settings\Settings_UI.lua
-Settings\Settings_Minimap.lua
+Settings\Settings_MinimapPlus.lua
 Settings\Settings_Castbar.lua
 Settings\Settings_UnitFrames.lua
 Settings\Settings_ActionBars.lua
-
 Settings\Settings_Mouse.lua
 Settings\Settings_Tooltip.lua
 Settings\Settings_Sound.lua
@@ -92,6 +91,7 @@ Settings\Settings_Vendor.lua
 Settings\Settings_Mailbox.lua
 Settings\Settings_Objectives.lua
 Settings\Settings_Visibility.lua
+Settings\Settings_CVars.lua
 
 # ==========================================================
 # Modules
@@ -100,8 +100,7 @@ Modules\UI.lua
 Modules\Castbar.lua
 Modules\UnitFrames.lua
 Modules\ActionBars.lua
-Modules\Minimap.lua
-
+Modules\MinimapPlus.lua
 Modules\Auras.lua
 Modules\ActionTracker.lua
 Modules\CombatText.lua
@@ -115,6 +114,7 @@ Modules\Tooltip.lua
 Modules\Vendor.lua
 Modules\Cooldowns.lua
 Modules\Objectives.lua
+Modules\CVars.lua
 
 # Visibility (ONLY include files that truly exist and work)
 Visibility\Visibility_Helper.lua
