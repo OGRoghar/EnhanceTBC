@@ -14,6 +14,9 @@ ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.MinimapPlus = mod
 
+-- Constants
+local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
+
 local driver
 local sink
 local dropdown
@@ -547,7 +550,7 @@ local function SetSquareMinimap(db)
     local scale = target / base
 
     -- Square mask + scale the minimap itself (more reliable than SetSize under cluster)
-    Minimap:SetMaskTexture("Interface\\ChatFrame\\ChatFrameBackground")
+    Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
     if Minimap.SetScale then
       Minimap:SetScale(scale)
     end
@@ -555,7 +558,7 @@ local function SetSquareMinimap(db)
     -- Force-set the mask again after a brief delay to counter cluster resets
     C_Timer.After(0.05, function()
       if Minimap and db.squareMinimap then
-        Minimap:SetMaskTexture("Interface\ChatFrame\ChatFrameBackground")
+        Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
         if Minimap.SetScale then
           Minimap:SetScale(scale)
         end
@@ -984,11 +987,14 @@ function mod:Apply()
       if now - lastSquareCheck > 2.0 then
         lastSquareCheck = now
         -- Check if mask has been reset (round mask)
-        local currentMask = Minimap:GetMaskTexture and Minimap:GetMaskTexture() or ""
-        if currentMask ~= "Interface\\ChatFrame\\ChatFrameBackground" then
-          -- Mask was reset, reapply
-          Minimap:SetMaskTexture("Interface\\ChatFrame\\ChatFrameBackground")
-          HideSquareClusterArt(true)
+        -- Safe check: only compare if GetMaskTexture exists and returns a value
+        if Minimap.GetMaskTexture then
+          local currentMask = Minimap:GetMaskTexture()
+          if currentMask and currentMask ~= SQUARE_MASK_TEXTURE then
+            -- Mask was reset, reapply
+            Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
+            HideSquareClusterArt(true)
+          end
         end
       end
     end

@@ -14,7 +14,7 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
       
       liveUpdateInfo = {
         type = "description",
-        name = "|cff00ff00✓ Live Updates:|r Most settings apply immediately without requiring /reload.\n|cffffaa00Note:|r Some CVars and certain UI changes may require a reload to take full effect.",
+        name = "|cff00ff00✓ Live Updates:|r Most settings apply immediately without requiring a /reload.\n|cffffaa00Note:|r Some CVars and certain UI changes may require a reload to take full effect.",
         order = 0.5,
         width = "full",
       },
