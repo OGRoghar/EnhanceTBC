@@ -181,7 +181,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         min = -60, max = 180, step = 1,
         disabled = function() return true end,
         get = function() return db.extraWidth end,
-        set = function(_, v) db.extraWidth = v; ETBC.ApplyBus:Notify("unitframes") end,
+        set = function(_, v) end, -- No-op: setting is disabled
       },
 
       extraHeight = {
@@ -192,7 +192,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         min = -20, max = 60, step = 1,
         disabled = function() return true end,
         get = function() return db.extraHeight end,
-        set = function(_, v) db.extraHeight = v; ETBC.ApplyBus:Notify("unitframes") end,
+        set = function(_, v) end, -- No-op: setting is disabled
       },
 
       textHeader = { type = "header", name = "Text Style", order = 40 },

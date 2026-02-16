@@ -119,7 +119,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         min = 120, max = 520, step = 1,
         disabled = function() return true end,
         get = function() return db.width end,
-        set = function(_, v) db.width = v; ETBC.ApplyBus:Notify("castbar") end,
+        set = function(_, v) end, -- No-op: setting is disabled
       },
 
       height = {
@@ -130,7 +130,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         min = 10, max = 40, step = 1,
         disabled = function() return true end,
         get = function() return db.height end,
-        set = function(_, v) db.height = v; ETBC.ApplyBus:Notify("castbar") end,
+        set = function(_, v) end, -- No-op: setting is disabled
       },
 
       scale = {
