@@ -456,7 +456,7 @@ local function DecorateWoWFriend(button)
   if not C_FriendList or not C_FriendList.GetFriendInfoByIndex then return end
 
   local id = button.id
-  if not id then
+  if not id or type(id) ~= "number" then
     nameFont:SetText("")
     if infoFont then infoFont:SetText("") end
     SetFactionIcon(button, nil)
@@ -549,7 +549,7 @@ local function DecorateBNetFriend(button)
   if not nameFont then return end
 
   local id = button.id
-  if not id then
+  if not id or type(id) ~= "number" then
     nameFont:SetText("")
     if infoFont then infoFont:SetText("") end
     SetFactionIcon(button, nil)
