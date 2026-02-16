@@ -115,7 +115,7 @@ You have: 47 (Bags: 32, Bank: 15)
 **Impact:** ⭐⭐⭐⭐ High
 
 **Examples:**
-- "SHIFT-MOUSEBUTTONN3" → "SM3"
+- "SHIFT-MOUSEBUTTON3" → "SM3"
 - "CTRL-1" → "C1"
 - "ALT-F" → "AF"
 
