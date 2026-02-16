@@ -1,10 +1,13 @@
-{"recommendations": [
-    "sumneko.lua",
-    "thefoxlar.luapad",
-    "trixnz.vscode-lua",
-    "Gabriel3991.lua-debug",
-    "thekurtext.LuaDoc",
-    "rebornix.lua",""automattic-lua",
-    "mfussenegger.nexus",
-    "emilmiroglu.luapad"
-]}
+{
+    "recommendations": [
+        "sumneko.lua",
+        "thefoxlar.luapad",
+        "trixnz.vscode-lua",
+        "Gabriel3991.lua-debug",
+        "thekurtext.LuaDoc",
+        "rebornix.lua",
+        "automattic.lua",
+        "mfussenegger.nexus",
+        "emilmiroglu.luapad"
+    ]
+}
