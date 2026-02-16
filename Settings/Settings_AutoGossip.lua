@@ -1,6 +1,8 @@
 -- Settings/Settings_AutoGossip.lua
 local ADDON_NAME, ETBC = ...
 
+local tempText = ""
+
 local function GetDB()
   ETBC.db.profile.autoGossip = ETBC.db.profile.autoGossip or {}
   local db = ETBC.db.profile.autoGossip
@@ -17,8 +19,6 @@ local function Apply()
     ETBC.ApplyBus:Notify("autogossip")
   end
 end
-
-local tempText = ""
 
 ETBC.SettingsRegistry:RegisterGroup("autoGossip", {
   name = "Auto-Gossip",
@@ -40,11 +40,18 @@ ETBC.SettingsRegistry:RegisterGroup("autoGossip", {
         end,
       },
       
+      bypassInfo = {
+        type = "description",
+        name = "|cffffaa00Hold Shift|r while talking to an NPC to temporarily bypass auto-selection.",
+        order = 2,
+        width = "full",
+      },
+      
       delay = {
         type = "range",
         name = "Selection Delay",
         desc = "Delay (in seconds) before auto-selecting a gossip option.",
-        order = 2,
+        order = 3,
         min = 0,
         max = 2,
         step = 0.1,
@@ -124,55 +131,27 @@ ETBC.SettingsRegistry:RegisterGroup("autoGossip", {
         name = "Current Auto-Select Patterns",
         order = 20,
         inline = true,
-        args = {},
+        args = {
+          list = {
+            type = "description",
+            name = function()
+              local db = GetDB()
+              if #db.options == 0 then
+                return "|cffaaaaaa(No patterns added yet)\n\nUse /etbc lag to list patterns\nUse /etbc aag <text> to add patterns|r"
+              else
+                local text = "Current patterns:\n"
+                for i, pattern in ipairs(db.options) do
+                  text = text .. "|cff00ff00" .. i .. ". " .. pattern .. "|r\n"
+                end
+                text = text .. "\n|cffffaa00Use /etbc lag to list in chat|r"
+                return text
+              end
+            end,
+            order = 1,
+          },
+        },
       },
     }
   end,
-  
-  -- Dynamic options generation for the list
-  postProcess = function(options)
-    local db = GetDB()
-    
-    -- Clear previous entries
-    options.currentOptions.args = {}
-    
-    if #db.options == 0 then
-      options.currentOptions.args.empty = {
-        type = "description",
-        name = "|cffaaaaaa(No patterns added yet)|r",
-        order = 1,
-      }
-    else
-      for i, pattern in ipairs(db.options) do
-        options.currentOptions.args["option" .. i] = {
-          type = "group",
-          name = "",
-          order = i,
-          inline = true,
-          args = {
-            text = {
-              type = "description",
-              name = "|cff00ff00" .. pattern .. "|r",
-              order = 1,
-              width = "double",
-            },
-            remove = {
-              type = "execute",
-              name = "Remove",
-              order = 2,
-              func = function()
-                table.remove(db.options, i)
-                Apply()
-                if ETBC.Print then
-                  ETBC:Print("Removed auto-gossip pattern: " .. pattern)
-                end
-              end,
-            },
-          },
-        }
-      end
-    end
-    
-    return options
-  end,
 })
+

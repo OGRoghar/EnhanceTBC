@@ -40,7 +40,8 @@ end
 -- Slash
 -- ---------------------------------------------------------
 function ETBC:SlashCommand(input)
-  input = (input or ""):lower()
+  local rawInput = input or ""
+  input = rawInput:lower()
 
   if input == "" or input == "config" or input == "options" then
     self:OpenConfig()
@@ -76,7 +77,7 @@ function ETBC:SlashCommand(input)
   end
 
   if input:match("^aag%s+(.+)") then
-    local pattern = input:match("^aag%s+(.+)")
+    local pattern = rawInput:match("^[Aa][Aa][Gg]%s+(.+)")
     if ETBC.Modules and ETBC.Modules.AutoGossip and ETBC.Modules.AutoGossip.AddPattern then
       ETBC.Modules.AutoGossip:AddPattern(pattern)
     else
