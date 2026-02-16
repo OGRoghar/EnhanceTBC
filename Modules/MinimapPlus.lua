@@ -16,7 +16,7 @@ ETBC.Modules.MinimapPlus = mod
 
 -- Constants
 local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
-local ROUND_MASK_TEXTURE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local ROUND_MASK_TEXTURE = "Textures\\MinimapMask"  -- WoW TBC default minimap mask
 local MAX_ZOOM_LEVEL = 5  -- WoW's maximum minimap zoom level
 local SIZE_CHECK_TOLERANCE = 1  -- Pixel tolerance for size drift detection
 
@@ -484,6 +484,15 @@ local function HideSquareClusterArt(hide)
         _G.MinimapNorthTag.hideHookRegistered = true
       end
     end
+  else
+    -- Restore the default border when square mode is disabled
+    if _G.MinimapBorder then
+      if _G.MinimapBorder.SetShown then
+        _G.MinimapBorder:SetShown(true)
+      elseif _G.MinimapBorder.Show then
+        _G.MinimapBorder:Show()
+      end
+    end
   end
 
   -- Some builds have a cluster background texture/frame
@@ -531,7 +540,7 @@ local function HideSquareClusterArt(hide)
   end
 end
 
-local function PlaceZoneTextAboveSquare(scale)
+local function PlaceZoneTextAboveSquare()
   -- Position zone text for square minimap
   -- Based on Leatrix Plus implementation
   local z = _G.MinimapZoneTextButton or _G.MinimapZoneText
@@ -578,26 +587,25 @@ local function PositionSquareBlizzardButtons()
     trackingButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -20, -40)
   end
   
-  -- LFG/Queue/Battlefield button - position below mail button
-  local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
-  if queueButton then
-    queueButton:SetScale(0.75)
-    queueButton:ClearAllPoints()
-    -- Position relative to mail button if it exists
-    local mailButton = _G.MiniMapMailFrame
-    if mailButton then
-      queueButton:SetPoint("TOP", mailButton, "BOTTOM", 0, 0)
-    else
-      queueButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
-    end
-  end
-  
-  -- Mail button - top left, below tracking
+  -- Mail button - top left, below tracking (position this first before queue button)
   local mailButton = _G.MiniMapMailFrame
   if mailButton then
     mailButton:SetScale(0.75)
     mailButton:ClearAllPoints()
     mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
+  end
+  
+  -- LFG/Queue/Battlefield button - position below mail button
+  local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
+  if queueButton then
+    queueButton:SetScale(0.75)
+    queueButton:ClearAllPoints()
+    -- Position relative to mail button if it exists (now properly positioned above)
+    if mailButton then
+      queueButton:SetPoint("TOP", mailButton, "BOTTOM", 0, 0)
+    else
+      queueButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
+    end
   end
   
   -- Instance difficulty - top left corner (like Leatrix Plus)
@@ -658,7 +666,7 @@ local function SetSquareMinimap(db)
   if db.squareMinimap then
     -- Use SetSize approach from Leatrix Plus instead of SetScale
     local size = db.squareSize or 140
-    if size < 100 then size = 100 end
+    if size < 140 then size = 140 end
     if size > 560 then size = 560 end
 
     -- Set square mask texture (Leatrix Plus approach)
@@ -686,7 +694,7 @@ local function SetSquareMinimap(db)
     HideSquareClusterArt(true)
 
     -- Position zone text for square minimap
-    PlaceZoneTextAboveSquare(1)
+    PlaceZoneTextAboveSquare()
     
     -- Position Blizzard minimap buttons for square layout
     PositionSquareBlizzardButtons()
