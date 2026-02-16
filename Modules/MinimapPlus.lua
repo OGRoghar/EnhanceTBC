@@ -470,6 +470,17 @@ local function HideSquareClusterArt(hide)
   -- Hide the cluster art/widgets but DO NOT hide Minimap itself.
   -- Based on Leatrix Plus implementation
 
+  local function SuppressInSquare(frame)
+    if not frame or frame._etbcSquareHideHook then return end
+    frame._etbcSquareHideHook = true
+    hooksecurefunc(frame, "Show", function()
+      local db = GetDB()
+      if db and db.squareMinimap then
+        frame:Hide()
+      end
+    end)
+  end
+
   if hide then
     -- Hide the default border (Leatrix Plus approach)
     if _G.MinimapBorder then
@@ -515,6 +526,10 @@ local function HideSquareClusterArt(hide)
       f:SetShown(not hide)
     elseif f and f.Show and f.Hide then
       if hide then f:Hide() else f:Show() end
+    end
+
+    if hide then
+      SuppressInSquare(f)
     end
   end
   

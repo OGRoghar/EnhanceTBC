@@ -85,6 +85,15 @@ function ETBC:InitMinimapIcon()
         btn.icon:SetTexCoord(unpackFn(ICON_COORDS))
       end
     end
+    if btn and btn.icon then
+      if btn.icon.ClearAllPoints and btn.icon.SetPoint then
+        btn.icon:ClearAllPoints()
+        btn.icon:SetPoint("CENTER", btn, "CENTER", 0, 0)
+      end
+      if btn.icon.SetSize then
+        btn.icon:SetSize(18, 18)
+      end
+    end
   end
 
   if db.hide then
