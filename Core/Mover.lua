@@ -499,7 +499,7 @@ end
 
 function M:SetMoveMode(enabled)
   local db = GetDB()
-  db.moveMode = enabled and true or false
+  db.moveMode = not not enabled
   ETBC.ApplyBus:Notify("mover")
 end
 
@@ -526,7 +526,7 @@ function M:Reset(key)
 
   -- Exit early if key is nil or empty - resetting without a key is not supported
   if not key or key == "" then
-    if ETBC.Debug then
+    if ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.debug then
       ETBC:Debug("Mover:Reset called with nil or empty key - operation skipped")
     end
     return
