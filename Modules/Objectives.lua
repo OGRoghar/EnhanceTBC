@@ -79,15 +79,15 @@ local function SetBackdrop(frame, bgA, borderA)
   end
   
   -- Update colors (allow re-application even if backdrop exists)
-  if frame._etbcBG and frame._etbcBG.SetBackdropColor then
-    frame._etbcBG:SetBackdropColor(0, 0, 0, bgA or 0.35)
-  end
-  if frame._etbcBG and frame._etbcBG.SetBackdropBorderColor then
-    frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, borderA or 0.95)
-  end
-  
-  if frame._etbcBG then
-    frame._etbcBG:Show()
+  local bg = frame._etbcBG
+  if bg then
+    if bg.SetBackdropColor then
+      bg:SetBackdropColor(0, 0, 0, bgA or 0.35)
+    end
+    if bg.SetBackdropBorderColor then
+      bg:SetBackdropBorderColor(0.12, 0.20, 0.12, borderA or 0.95)
+    end
+    bg:Show()
   end
 end
 

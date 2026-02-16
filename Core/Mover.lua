@@ -508,7 +508,7 @@ function M:GetGridSize()
 end
 
 function M:SetupChatCommands()
-  -- Already defined in EnsureSlash() at line 628
+  -- Ensures slash commands are registered for mover functionality
   EnsureSlash()
 end
 
@@ -523,12 +523,12 @@ function M:Reset(key)
     return
   end
 
-  -- Exit early if key is nil or empty
+  -- Exit early if key is nil or empty - resetting without a key is not supported
   if not key or key == "" then
     return
   end
 
-  -- Reset specific key by removing saved data and re-applying default
+  -- Reset specific key by removing saved data (if exists) and re-applying default
   db.frames[key] = nil
   ApplyPointToFrame(key)
   UpdateAllHandles()
