@@ -546,6 +546,36 @@ local function PlaceZoneTextAboveSquare(scale)
   end
 end
 
+local function ForceButtonChildrenToCenter(button)
+  -- Fix TBC button issue where parent frame and child textures have different positions
+  if not button then return end
+  
+  -- Get all child regions (textures, font strings, etc.)
+  local regions = { button:GetRegions() }
+  for _, region in ipairs(regions) do
+    if region and region.ClearAllPoints and region.SetAllPoints then
+      region:ClearAllPoints()
+      region:SetAllPoints(button)
+    elseif region and region.ClearAllPoints and region.SetPoint then
+      region:ClearAllPoints()
+      region:SetPoint("CENTER", button, "CENTER", 0, 0)
+    end
+  end
+  
+  -- Also handle any child frames
+  local children = { button:GetChildren() }
+  for _, child in ipairs(children) do
+    if child and child.ClearAllPoints then
+      child:ClearAllPoints()
+      if child.SetAllPoints then
+        child:SetAllPoints(button)
+      else
+        child:SetPoint("CENTER", button, "CENTER", 0, 0)
+      end
+    end
+  end
+end
+
 local function PositionSquareBlizzardButtons()
   -- Position Blizzard minimap buttons for square minimap layout
   -- These buttons normally position themselves radially (for round map)
@@ -563,6 +593,8 @@ local function PositionSquareBlizzardButtons()
     -- Ensure it's shown
     if lfg.Show then lfg:Show() end
     if lfg.SetAlpha then lfg:SetAlpha(1) end
+    -- Force child textures/icons to center in the button
+    ForceButtonChildrenToCenter(lfg)
   end
   
   -- Tracking button - top right corner
@@ -574,6 +606,22 @@ local function PositionSquareBlizzardButtons()
     -- Ensure it's shown
     if tracking.Show then tracking:Show() end
     if tracking.SetAlpha then tracking:SetAlpha(1) end
+    -- Force child textures/icons to center in the button
+    ForceButtonChildrenToCenter(tracking)
+    
+    -- Fix the icon specifically if it exists
+    if _G.MiniMapTrackingIcon then
+      _G.MiniMapTrackingIcon:ClearAllPoints()
+      _G.MiniMapTrackingIcon:SetAllPoints(tracking)
+    end
+    if _G.MiniMapTrackingIconOverlay then
+      _G.MiniMapTrackingIconOverlay:ClearAllPoints()
+      _G.MiniMapTrackingIconOverlay:SetAllPoints(tracking)
+    end
+    if _G.MiniMapTrackingBackground then
+      _G.MiniMapTrackingBackground:ClearAllPoints()
+      _G.MiniMapTrackingBackground:SetAllPoints(tracking)
+    end
   end
   
   -- Mail - left edge, centered vertically
@@ -650,6 +698,7 @@ local function SetSquareMinimap(db)
         if Minimap.SetScale then
           Minimap:SetScale(scale)
         end
+        PositionSquareBlizzardButtons()
       end
     end)
 
@@ -659,8 +708,14 @@ local function SetSquareMinimap(db)
     -- Put zone name above square map and scale it
     PlaceZoneTextAboveSquare(scale)
     
-    -- Position Blizzard minimap buttons for square layout
+    -- Position Blizzard minimap buttons for square layout (immediately)
     PositionSquareBlizzardButtons()
+    
+    -- Aggressively reposition buttons since Blizzard code keeps moving them
+    C_Timer.After(0.1, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
+    C_Timer.After(0.3, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
+    C_Timer.After(0.5, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
+    C_Timer.After(1.0, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
     
     -- Enable mouse wheel zoom
     EnableMinimapMouseZoom()
