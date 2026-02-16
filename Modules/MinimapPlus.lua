@@ -473,6 +473,8 @@ local function HideSquareClusterArt(hide)
     _G.MinimapZoomIn,
     _G.MinimapZoomOut,
     _G.MiniMapWorldMapButton,
+    _G.GameTimeFrame,
+    _G.TimeManagerClockButton,
     _G.MinimapCluster and _G.MinimapCluster.BorderTop,
     _G.MinimapCluster and _G.MinimapCluster.Tracking,
   }

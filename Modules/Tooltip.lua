@@ -65,23 +65,24 @@ local function ApplyStyleToTooltip(tip)
 
   -- Avoid styling some internal frames if needed
   local name = tip:GetName()
-  if name and name:find("ShoppingTooltip", 1, true) and not db.styleCompareTooltips then
+  if name and name:find("ShoppingTooltip", 1, true) then
+    -- Skip shopping tooltips for now
     return
   end
 
-  -- Backdrop
-  if db.styleBackdrop then
-    SafeSetBackdrop(tip, "Interface\\Buttons\\WHITE8x8", "Interface\\Buttons\\WHITE8x8", db.borderSize or 1)
-    local bg = db.backdropColor or { r = 0.05, g = 0.07, b = 0.05, a = 0.95 }
-    local br = db.borderColor or { r = 0.12, g = 0.20, b = 0.12, a = 0.95 }
+  -- Backdrop (using db.skin.enabled and db.skin.bg/border)
+  if db.skin and db.skin.enabled then
+    SafeSetBackdrop(tip, "Interface\\Buttons\\WHITE8x8", "Interface\\Buttons\\WHITE8x8", 1)
+    local bg = db.skin.bg or { r = 0.03, g = 0.06, b = 0.03, a = 0.92 }
+    local br = db.skin.border or { r = 0.20, g = 1.00, b = 0.20, a = 0.95 }
     SetBackdropColor(tip, bg.r or 0, bg.g or 0, bg.b or 0, bg.a or 1)
     SetBackdropBorderColor(tip, br.r or 1, br.g or 1, br.b or 1, br.a or 1)
   end
 
-  -- Accent line (solid, safe)
-  if db.accentLine then
+  -- Accent line (solid, safe) - using db.skin.grad for the color
+  if db.skin and db.skin.enabled and db.skin.grad then
     local line = EnsureAccentLine(tip)
-    local ac = db.accentColor or { r = 0.20, g = 1.00, b = 0.20, a = 0.65 }
+    local ac = db.skin.grad or { r = 0.10, g = 0.35, b = 0.10, a = 0.22 }
     line:SetVertexColor(ac.r or 1, ac.g or 1, ac.b or 1, ac.a or 1)
     line:Show()
   else

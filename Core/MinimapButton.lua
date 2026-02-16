@@ -43,10 +43,11 @@ local function EnsureDataObject()
           ETBC:SlashCommand("")
         end
       elseif button == "RightButton" then
-        if ETBC.db and ETBC.db.profile and ETBC.db.profile.general then
-          ETBC.db.profile.general.enabled = not ETBC.db.profile.general.enabled
+        -- Toggle minimap button sink instead of disabling the entire addon
+        if ETBC.db and ETBC.db.profile and ETBC.db.profile.minimapPlus then
+          ETBC.db.profile.minimapPlus.sinkEnabled = not ETBC.db.profile.minimapPlus.sinkEnabled
           if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
-            ETBC.ApplyBus:Notify("general")
+            ETBC.ApplyBus:Notify("minimapplus")
           end
         end
       end
@@ -58,12 +59,12 @@ local function EnsureDataObject()
       tooltip:AddLine("|cff33ff99EnhanceTBC|r")
       tooltip:AddLine(" ")
       tooltip:AddLine("|cffffffffLeft Click:|r Open Config")
-      tooltip:AddLine("|cffffffffRight Click:|r Toggle Addon")
+      tooltip:AddLine("|cffffffffRight Click:|r Toggle Button Sink")
       tooltip:AddLine(" ")
 
-      if ETBC.db and ETBC.db.profile and ETBC.db.profile.general then
-        local state = ETBC.db.profile.general.enabled and "|cff00ff00Enabled|r" or "|cffff0000Disabled|r"
-        tooltip:AddLine("Status: " .. state)
+      if ETBC.db and ETBC.db.profile and ETBC.db.profile.minimapPlus then
+        local state = ETBC.db.profile.minimapPlus.sinkEnabled and "|cff00ff00Visible|r" or "|cffff0000Hidden|r"
+        tooltip:AddLine("Button Sink: " .. state)
       end
     end,
   })
