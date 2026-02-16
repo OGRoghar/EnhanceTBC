@@ -78,7 +78,8 @@ local function InboxInfo(i)
   -- Classic/TBC: GetInboxHeaderInfo(index)
   local _, _, sender, subject, money, codAmount, _, itemCount, _, _, _, _, isGM = GetInboxHeaderInfo(i)
   if not sender then
-    -- Invalid mail entry, return safe defaults
+    -- Invalid mail entry (can happen with mail API), return safe defaults
+    -- Caller should check for nil sender to skip invalid entries
     return nil, nil, 0, 0, 0, false
   end
   money = tonumber(money) or 0
@@ -93,7 +94,7 @@ local function BuildQueue(db)
   -- IMPORTANT: work from high index -> low index to avoid shifting issues
   for i = num, 1, -1 do
     local sender, _, money, cod, itemCount, isGM = InboxInfo(i)
-    -- Skip invalid mail entries (where sender is nil)
+    -- Defensive: Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
     if sender and CanTouchMail(db, sender, isGM, cod) then
       local hasMoney = money > 0
       local hasItems = itemCount > 0
