@@ -596,7 +596,7 @@ local function ApplyWindowStyle(win)
   if win.content then
     win.content:ClearAllPoints()
     win.content:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 12, -100)
-    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 32)  -- Reduced from 48 to 32 for more vertical space
+    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 12)  -- Much closer to bottom for maximum space
   end
 
   -- Styled inner background aligned with content
@@ -616,6 +616,13 @@ local function ApplyWindowStyle(win)
     topLine:SetVertexColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.55)
 
     win.frame._etbcInner = inner
+  end
+
+  -- Update inner frame positions on resize
+  if win.frame._etbcInner then
+    win.frame._etbcInner:ClearAllPoints()
+    win.frame._etbcInner:SetPoint("TOPLEFT", win.content, "TOPLEFT", -6, 6)
+    win.frame._etbcInner:SetPoint("BOTTOMRIGHT", win.content, "BOTTOMRIGHT", 6, -6)
   end
 end
 
@@ -764,6 +771,17 @@ local function BuildWindow()
     ConfigWindow:Close()
   end)
 
+  -- Handle window resize dynamically
+  win.frame:HookScript("OnSizeChanged", function()
+    if state.tree and state.tree.content then
+      state.tree.content:DoLayout()
+    end
+    if state.rightScroll and state.rightScroll.content then
+      state.rightScroll.content:DoLayout()
+    end
+    ApplyWindowStyle(win)
+  end)
+
   state.win = win
 
   -- Root: Fill -> vertical group inside
@@ -800,6 +818,16 @@ local function BuildWindow()
   root:AddChild(tree)
   state.tree = tree
 
+  -- Ensure tree frame extends properly
+  if tree.treeframe then
+    tree.treeframe:SetAllPoints(tree.treeframe:GetParent())
+  end
+  if tree.content then
+    tree.content:ClearAllPoints()
+    tree.content:SetPoint("TOPLEFT", tree.border, "TOPLEFT", 0, 0)
+    tree.content:SetPoint("BOTTOMRIGHT", tree.border, "BOTTOMRIGHT", 0, 0)
+  end
+
   -- Add subtle vertical divider on right edge of tree
   if tree.treeframe and not tree.treeframe._etbcDivider then
     local divider = tree.treeframe:CreateTexture(nil, "BORDER")
@@ -818,6 +846,16 @@ local function BuildWindow()
   right:SetFullHeight(true)
   tree:AddChild(right)
   state.rightScroll = right
+
+  -- Ensure scroll frame fills the content area properly
+  if right.scrollframe then
+    right.scrollframe:SetAllPoints(right.content:GetParent())
+  end
+  if right.content then
+    right.content:ClearAllPoints()
+    right.content:SetPoint("TOPLEFT", right.scrollframe, "TOPLEFT", 0, 0)
+    right.content:SetPoint("TOPRIGHT", right.scrollframe, "TOPRIGHT", -20, 0)  -- Account for scrollbar
+  end
 
   RestoreWindow()
 
