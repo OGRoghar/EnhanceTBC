@@ -16,6 +16,7 @@ ETBC.Modules.MinimapPlus = mod
 
 -- Constants
 local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
+local ROUND_MASK_TEXTURE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 local driver
 local sink
@@ -474,11 +475,11 @@ local function HideSquareClusterArt(hide)
     if _G.MinimapNorthTag then
       _G.MinimapNorthTag:Hide()
       -- Hook to prevent it from showing again
-      if not _G.MinimapNorthTag.etbcHideHooked then
+      if not _G.MinimapNorthTag.hideHookRegistered then
         hooksecurefunc(_G.MinimapNorthTag, "Show", function()
           _G.MinimapNorthTag:Hide()
         end)
-        _G.MinimapNorthTag.etbcHideHooked = true
+        _G.MinimapNorthTag.hideHookRegistered = true
       end
     end
   end
@@ -705,7 +706,7 @@ local function SetSquareMinimap(db)
       Minimap:SetMaskTexture(squareState.minimapMask)
     else
       -- Use default round mask (Leatrix Plus fallback)
-      Minimap:SetMaskTexture([[Interface\CharacterFrame\TempPortraitAlphaMask]])
+      Minimap:SetMaskTexture(ROUND_MASK_TEXTURE)
     end
 
     -- Restore original size
@@ -1173,7 +1174,7 @@ function mod:Apply()
         -- Check if size has been reset (Leatrix Plus also monitors size)
         if Minimap.GetWidth and Minimap.SetSize then
           local currentWidth = Minimap:GetWidth()
-          local targetSize = tonumber(db2.squareSize) or 140
+          local targetSize = db2.squareSize or 140
           if currentWidth and math.abs(currentWidth - targetSize) > 1 then
             -- Size was reset, reapply
             Minimap:SetSize(targetSize, targetSize)
