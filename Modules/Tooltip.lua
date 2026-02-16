@@ -12,6 +12,9 @@ mod.key = "tooltip"
 mod._hooked = false
 mod._idHooked = false
 
+-- Default ID color (light green)
+local DEFAULT_ID_COLOR = { r = 0.5, g = 0.9, b = 0.5 }
+
 -- ---------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------
@@ -147,7 +150,8 @@ local function ExtractNPCID(unit)
   local unitType = parts[1]
   local npcID = parts[6]
   
-  if unitType and (unitType == "Creature" or unitType == "Vehicle") and npcID then
+  -- Verify we have enough parts and correct type
+  if #parts >= 6 and unitType and (unitType == "Creature" or unitType == "Vehicle") and npcID then
     return tonumber(npcID)
   end
   
@@ -192,7 +196,7 @@ local function OnTooltipSetItem(tooltip)
   local _, itemLink = tooltip:GetItem()
   local itemID = ExtractItemID(itemLink)
   if itemID then
-    AddIDLine(tooltip, "Item ID: ", itemID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+    AddIDLine(tooltip, "Item ID: ", itemID, db.idColor or DEFAULT_ID_COLOR)
   end
 end
 
@@ -203,7 +207,7 @@ local function OnTooltipSetSpell(tooltip)
   
   local spellID = ExtractSpellID(tooltip)
   if spellID then
-    AddIDLine(tooltip, "Spell ID: ", spellID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+    AddIDLine(tooltip, "Spell ID: ", spellID, db.idColor or DEFAULT_ID_COLOR)
   end
 end
 
@@ -219,7 +223,7 @@ local function OnTooltipSetUnit(tooltip)
   if db.showNpcId then
     local npcID = ExtractNPCID(unit)
     if npcID then
-      AddIDLine(tooltip, "NPC ID: ", npcID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+      AddIDLine(tooltip, "NPC ID: ", npcID, db.idColor or DEFAULT_ID_COLOR)
     end
   end
   
@@ -227,7 +231,7 @@ local function OnTooltipSetUnit(tooltip)
   if db.showQuestId then
     local questID = ExtractQuestID(tooltip)
     if questID then
-      AddIDLine(tooltip, "Quest ID: ", questID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+      AddIDLine(tooltip, "Quest ID: ", questID, db.idColor or DEFAULT_ID_COLOR)
     end
   end
 end

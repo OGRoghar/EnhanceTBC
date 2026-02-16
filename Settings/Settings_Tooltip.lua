@@ -33,8 +33,8 @@ local function GetDB()
   if db.healthBar.classColor == nil then db.healthBar.classColor = true end
   db.healthBar.color = db.healthBar.color or { r = 0.2, g = 1.0, b = 0.2, a = 1.0 }
 
-  -- ID text color
-  db.idColor = db.idColor or { r = 0.5, g = 0.9, b = 0.5, a = 1.0 }
+  -- ID text color (no alpha needed for tooltip text)
+  db.idColor = db.idColor or { r = 0.5, g = 0.9, b = 0.5 }
 
   return db
 end
