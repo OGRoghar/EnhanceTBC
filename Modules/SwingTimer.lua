@@ -570,10 +570,8 @@ local function Apply()
               local mhRemain = mainHandNext - now
               local ohRemain = offHandNext - now
               
-              -- If off-hand is within threshold, it's likely the off-hand
+              -- If off-hand is within threshold and earlier than main-hand, it's likely the off-hand
               if ohRemain <= threshold and ohRemain < mhRemain then
-                isOffHand = true
-              elseif mhRemain > threshold and ohRemain < mhRemain then
                 isOffHand = true
               end
             elseif offHandActive then
