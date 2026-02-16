@@ -18,7 +18,13 @@ local storedZoom -- session-stored original zoom factor (string)
 
 local function GetDB()
   ETBC.db.profile.ui = ETBC.db.profile.ui or {}
-  return ETBC.db.profile.ui
+  local db = ETBC.db.profile.ui
+
+  if db.enabled == nil then db.enabled = true end
+  if db.cameraMaxZoom == nil then db.cameraMaxZoom = true end
+  if db.cameraMaxZoomFactor == nil then db.cameraMaxZoomFactor = 2.6 end
+
+  return db
 end
 
 local function EnsureDriver()
@@ -75,6 +81,7 @@ local function Apply()
     mod:RestoreCameraZoom(true)
     driver:UnregisterAllEvents()
     driver:SetScript("OnEvent", nil)
+    driver:Hide()
     return
   end
 
@@ -97,6 +104,8 @@ local function Apply()
       mod:ApplyCameraZoomOneShot()
     end
   end)
+
+  driver:Show()
 end
 
 ETBC.ApplyBus:Register("ui", Apply)

@@ -7,6 +7,7 @@ ETBC.Modules.Mailbox = mod
 
 local driver
 local ticker
+local tickerOnUpdate
 local queue
 local pendingAuto = false
 local deleteConfirmed = false
@@ -30,9 +31,14 @@ local function EnsureDriver()
 end
 
 local function StopTicker()
-  if ticker then
+  if ticker and ticker.Cancel then
     ticker:Cancel()
-    ticker = nil
+  end
+  ticker = nil
+
+  if tickerOnUpdate and driver then
+    driver:SetScript("OnUpdate", nil)
+    tickerOnUpdate = nil
   end
 end
 
@@ -79,7 +85,6 @@ end
 
 local function BuildQueue(db)
   local q = {}
-
   local num = GetInboxNumItems() or 0
   -- IMPORTANT: work from high index -> low index to avoid shifting issues
   for i = num, 1, -1 do
@@ -210,6 +215,37 @@ local function Step(db)
   end
 end
 
+local function StartTicker(interval, fn)
+  interval = tonumber(interval) or 0.05
+  if interval < 0.01 then interval = 0.01 end
+
+  if C_Timer and C_Timer.NewTicker then
+    ticker = C_Timer.NewTicker(interval, fn)
+    return
+  end
+
+  EnsureDriver()
+  local acc = 0
+  tickerOnUpdate = true
+  driver:SetScript("OnUpdate", function(_, elapsed)
+    if not tickerOnUpdate then return end
+    acc = acc + (elapsed or 0)
+    if acc >= interval then
+      acc = 0
+      fn()
+    end
+  end)
+
+  ticker = {
+    Cancel = function()
+      tickerOnUpdate = nil
+      if driver then
+        driver:SetScript("OnUpdate", nil)
+      end
+    end,
+  }
+end
+
 function mod:RunNow()
   local db = ETBC.db.profile.mailbox
   if not (ETBC.db.profile.general.enabled and db.enabled) then return end
@@ -235,7 +271,7 @@ function mod:RunNow()
   else
     interval = 0.01
   end
-  ticker = C_Timer.NewTicker(interval, function() Step(db) end)
+  StartTicker(interval, function() Step(db) end)
 end
 
 local function StartAutoIfReady()

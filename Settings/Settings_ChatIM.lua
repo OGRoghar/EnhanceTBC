@@ -206,10 +206,30 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
             set = function(_, v) db.copyButtonAlpha = v; ETBC.ApplyBus:Notify("chatim") end,
             disabled = function() return not (db.enabled and db.copyButton) end,
           },
+          copyTarget = {
+            type = "select",
+            name = "Copy Source",
+            order = 5,
+            values = function()
+              local values = { follow = "Follow current tab" }
+              local n = NUM_CHAT_WINDOWS or 10
+              for i = 1, n do
+                local title = GetChatWindowInfo and select(1, GetChatWindowInfo(i))
+                if not title or title == "" then
+                  title = "ChatFrame" .. i
+                end
+                values[tostring(i)] = title
+              end
+              return values
+            end,
+            get = function() return db.copyTarget end,
+            set = function(_, v) db.copyTarget = v; ETBC.ApplyBus:Notify("chatim") end,
+            disabled = function() return not db.enabled end,
+          },
           hint = {
             type = "description",
             name = "Command: |cff33ff99/etbccopy|r",
-            order = 5,
+            order = 6,
           },
         },
       },

@@ -8,6 +8,8 @@ local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 local AceDBOptions = LibStub("AceDBOptions-3.0")
 
 ETBC = AceAddon:NewAddon(ETBC, ADDON_NAME, "AceEvent-3.0", "AceConsole-3.0", "AceHook-3.0", "AceTimer-3.0")
+_G.EnhanceTBC = ETBC
+_G.ETBC = ETBC
 
 -- ---------------------------------------------------------
 -- Config opening (single source of truth)
@@ -75,16 +77,29 @@ function ETBC:OnInitialize()
 
   -- Build the root options AFTER DB exists
   local options = ETBC:BuildOptions()
-  AceConfig:RegisterOptionsTable(ADDON_NAME, options)
+  if type(options) ~= "table" then
+    options = { type = "group", name = "EnhanceTBC", args = {} }
+  end
+  options.args = options.args or {}
 
-  -- Profiles
-  local profiles = AceDBOptions:GetOptionsTable(self.db)
-  options.args.profiles = profiles
-  options.args.profiles.order = 999
-  options.args.profiles.name = "Profiles"
+  -- Profiles (inject before registration so every config surface sees it)
+  if AceDBOptions and AceDBOptions.GetOptionsTable then
+    local profiles = AceDBOptions:GetOptionsTable(self.db)
+    if type(profiles) == "table" then
+      options.args.profiles = profiles
+      options.args.profiles.order = 999
+      options.args.profiles.name = "Profiles"
+    end
+  end
+
+  if AceConfig and AceConfig.RegisterOptionsTable then
+    AceConfig:RegisterOptionsTable(ADDON_NAME, options)
+  end
 
   -- Blizzard Interface Options
-  AceConfigDialog:AddToBlizOptions(ADDON_NAME, "EnhanceTBC")
+  if AceConfigDialog and AceConfigDialog.AddToBlizOptions then
+    AceConfigDialog:AddToBlizOptions(ADDON_NAME, "EnhanceTBC")
+  end
 
   -- Slash commands
   self:RegisterChatCommand("etbc", "SlashCommand")

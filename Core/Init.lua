@@ -4,6 +4,8 @@
 
 local ADDON_NAME, ETBC = ...
 
+ETBC = ETBC or {}
+
 -- Make the private addon namespace globally reachable for legacy code and /run debugging.
 -- We set both names for compatibility with older modules.
 _G.EnhanceTBC = ETBC
@@ -21,3 +23,4 @@ ETBC.media = ETBC.media or {}
 ETBC.media.root = "Interface\\AddOns\\EnhanceTBC\\Media\\"
 ETBC.media.images = ETBC.media.images or (ETBC.media.root .. "Images\\")
 ETBC.media.cursor = ETBC.media.cursor or (ETBC.media.root .. "Cursor\\")
+ETBC.media.spells = ETBC.media.spells or (ETBC.media.root .. "Spells\\")

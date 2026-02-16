@@ -22,6 +22,53 @@ ETBC.defaults = {
         highlightColor = { r = 0.2, g = 1.0, b = 0.2, a = 1.0 },
       },
     },
+	
+	    minimapPlus = {
+      enabled = true,
+
+      sinkEnabled = true,
+      locked = false,
+      scale = 1.0,
+      buttonSize = 28,
+      padding = 6,
+      columns = 6,
+      growDown = true,
+      backdrop = true,
+      autoScan = true,
+      scanInterval = 2.0,
+
+      includeQueue = false,
+      includeTracking = false,
+      includeCalendar = false,
+      includeClock = false,
+      includeMail = false,
+      includeDifficulty = false,
+
+      squareMinimap = false,
+      squareSize = 140,
+      customDifficultyIcon = true,
+
+      hideMinimapToggleButton = true,
+      hideBagsBar = false,
+      hideMicroMenu = false,
+      hideQuickJoinToast = true,
+      hideRaidToolsInParty = true,
+
+      landingButtons = {
+        ExpansionLandingPageMinimapButton = true,
+        GarrisonLandingPageMinimapButton = true,
+        QueueStatusMinimapButton = true,
+      },
+
+      quickEnabled = true,
+      defaultLootMethod = "group",
+      defaultLootThreshold = 2,
+
+      sinkPoint = "TOPRIGHT",
+      sinkRelPoint = "TOPRIGHT",
+      sinkX = -200,
+      sinkY = -120,
+    },
 
     tooltip = {
       enabled = true,
@@ -222,6 +269,9 @@ ETBC.defaults = {
     -- VISIBILITY (NEW MAX)
     visibility = {
       enabled = true,
+      throttle = 0.05,
+      presets = {},
+      editor = {},
 
       -- global master conditions (apply to modules that opt into visibility)
       global = {

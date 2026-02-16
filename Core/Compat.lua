@@ -13,6 +13,8 @@ local C = ETBC.Compat
 -- This shim makes both work.
 -- ---------------------------------------------------------
 do
+  local shimInstalled = false
+
   local function MakeColor(r, g, b)
     if CreateColor then
       return CreateColor(r, g, b)
@@ -22,13 +24,18 @@ do
   end
 
   local function InstallVertexColorShim()
+    if shimInstalled then return end
+    if type(CreateFrame) ~= "function" then return end
+
     local f = CreateFrame("Frame")
     local tex = f:CreateTexture(nil, "ARTWORK")
+    if not tex then return end
 
     -- Detect whether numeric signature works
     local okNumeric = pcall(function() tex:SetVertexColor(1, 1, 1, 1) end)
     if okNumeric then
       -- Nothing to do; classic numeric signature supported.
+      shimInstalled = true
       return
     end
 
@@ -72,6 +79,7 @@ do
     end
 
     idx.__etbcVertexColorShimInstalled = true
+    shimInstalled = true
   end
 
   InstallVertexColorShim()
