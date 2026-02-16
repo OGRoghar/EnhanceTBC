@@ -159,6 +159,29 @@ local function EnsureSink()
     end
   end)
 
+  sink.drag = CreateFrame("Frame", nil, sink, "BackdropTemplate")
+  sink.drag:SetPoint("TOPLEFT", sink, "TOPLEFT", 0, 0)
+  sink.drag:SetPoint("TOPRIGHT", sink, "TOPRIGHT", 0, 0)
+  sink.drag:SetHeight(18)
+  sink.drag:SetFrameLevel(sink:GetFrameLevel() + 10)
+  sink.drag:EnableMouse(true)
+  sink.drag:RegisterForDrag("LeftButton")
+  sink.drag:SetScript("OnDragStart", function(self)
+    local db = GetDB()
+    if db.locked then return end
+    self:GetParent():StartMoving()
+  end)
+  sink.drag:SetScript("OnDragStop", function(self)
+    local parent = self:GetParent()
+    parent:StopMovingOrSizing()
+    SaveFramePointToDB(parent, GetDB())
+  end)
+  sink.drag:SetScript("OnMouseUp", function(self, button)
+    if button == "RightButton" then
+      mod:ShowMenu(self:GetParent())
+    end
+  end)
+
   sink.title = sink:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   sink.title:SetPoint("TOP", sink, "TOP", 0, -4)
   sink.title:SetText("Minimap")
@@ -368,6 +391,13 @@ local function LayoutSink(db)
 
   sink:SetScale(db.scale)
   sink:SetSize(width, height)
+
+  if sink.drag then
+    sink.drag:ClearAllPoints()
+    sink.drag:SetPoint("TOPLEFT", sink, "TOPLEFT", 0, 0)
+    sink.drag:SetPoint("TOPRIGHT", sink, "TOPRIGHT", 0, 0)
+    sink.drag:SetHeight(18)
+  end
 
   sink.title:SetShown(db.backdrop)
   sink.bg:SetShown(db.backdrop)
