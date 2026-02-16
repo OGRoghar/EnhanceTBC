@@ -3,7 +3,7 @@
 -- Features:
 --  - Gather minimap buttons into a movable, lockable button sink
 --  - Quick spec/loot switching (best-effort, version-safe)
---  - Optional square minimap + custom instance difficulty icon
+--  - Optional square minimap + custom instance difficulty icon (forked from Leatrix Plus)
 --  - Right-click menus for Expansion/Garrison landing page buttons (if they exist)
 --  - Hide minimap button, bags bar, micro menu, Quick Join Toast, Raid Tools in party
 --  - Show/hide specific landing page buttons (if they exist)
@@ -16,6 +16,9 @@ ETBC.Modules.MinimapPlus = mod
 
 -- Constants
 local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
+local ROUND_MASK_TEXTURE = "Textures\\MinimapMask"  -- WoW TBC default minimap mask
+local MAX_ZOOM_LEVEL = 5  -- WoW's maximum minimap zoom level
+local SIZE_CHECK_TOLERANCE = 1  -- Pixel tolerance for size drift detection
 
 local driver
 local sink
@@ -462,6 +465,35 @@ end
 
 local function HideSquareClusterArt(hide)
   -- Hide the cluster art/widgets but DO NOT hide Minimap itself.
+  -- Based on Leatrix Plus implementation
+
+  if hide then
+    -- Hide the default border (Leatrix Plus approach)
+    if _G.MinimapBorder then
+      _G.MinimapBorder:Hide()
+    end
+    
+    -- Hide the North tag
+    if _G.MinimapNorthTag then
+      _G.MinimapNorthTag:Hide()
+      -- Hook to prevent it from showing again
+      if not _G.MinimapNorthTag.hideHookRegistered then
+        hooksecurefunc(_G.MinimapNorthTag, "Show", function()
+          _G.MinimapNorthTag:Hide()
+        end)
+        _G.MinimapNorthTag.hideHookRegistered = true
+      end
+    end
+  else
+    -- Restore the default border when square mode is disabled
+    if _G.MinimapBorder then
+      if _G.MinimapBorder.SetShown then
+        _G.MinimapBorder:SetShown(true)
+      elseif _G.MinimapBorder.Show then
+        _G.MinimapBorder:Show()
+      end
+    end
+  end
 
   -- Some builds have a cluster background texture/frame
   if _G.MinimapCluster and _G.MinimapCluster.Background and _G.MinimapCluster.Background.SetShown then
@@ -469,14 +501,12 @@ local function HideSquareClusterArt(hide)
   end
 
   local hideFrames = {
-    _G.MinimapBorder,
     _G.MinimapBorderTop,
     _G.MinimapBackdrop,
     _G.MiniMapWorldMapButton,
     _G.GameTimeFrame, -- Calendar/clock button - hidden completely in square mode
     _G.TimeManagerClockButton, -- Alternative clock frame in some builds
     _G.MinimapCluster and _G.MinimapCluster.BorderTop,
-    -- MinimapCluster.Tracking removed - we reposition it instead of hiding it
   }
 
   for _, f in ipairs(hideFrames) do
@@ -485,12 +515,6 @@ local function HideSquareClusterArt(hide)
     elseif f and f.Show and f.Hide then
       if hide then f:Hide() else f:Show() end
     end
-    -- Also set alpha to 0 when hiding for extra assurance
-    if f and f.SetAlpha and hide then
-      f:SetAlpha(0)
-    elseif f and f.SetAlpha and not hide then
-      f:SetAlpha(1)
-    end
   end
   
   -- Ensure GameTimeFrame is completely hidden in square mode
@@ -498,8 +522,6 @@ local function HideSquareClusterArt(hide)
     if _G.GameTimeFrame then
       if _G.GameTimeFrame.Hide then _G.GameTimeFrame:Hide() end
       if _G.GameTimeFrame.SetAlpha then _G.GameTimeFrame:SetAlpha(0) end
-      if _G.GameTimeFrame.SetParent then _G.GameTimeFrame:SetParent(UIParent) end
-      if _G.GameTimeFrame.ClearAllPoints then _G.GameTimeFrame:ClearAllPoints() end
     end
     if _G.TimeManagerClockButton then
       if _G.TimeManagerClockButton.Hide then _G.TimeManagerClockButton:Hide() end
@@ -515,94 +537,97 @@ local function HideSquareClusterArt(hide)
     elseif dayNight.Show and dayNight.Hide then
       if hide then dayNight:Hide() else dayNight:Show() end
     end
-    if dayNight.SetAlpha and hide then
-      dayNight:SetAlpha(0)
-    elseif dayNight.SetAlpha and not hide then
-      dayNight:SetAlpha(1)
-    end
   end
 end
 
-local function PlaceZoneTextAboveSquare(scale)
+local function PlaceZoneTextAboveSquare()
+  -- Position zone text for square minimap
+  -- Based on Leatrix Plus implementation
   local z = _G.MinimapZoneTextButton or _G.MinimapZoneText
   if not z then return end
 
   SnapshotZoneText()
 
-  -- Parent to Minimap so it “moves/scales with the map”
-  if z:GetParent() ~= Minimap then
-    z:SetParent(Minimap)
+  -- Reparent elements like Leatrix Plus does
+  if _G.MinimapBorderTop then
+    _G.MinimapBorderTop:SetParent(Minimap)
+  end
+  if _G.MinimapZoneTextButton then
+    _G.MinimapZoneTextButton:SetParent(_G.MinimapBackdrop or Minimap)
   end
 
-  z:ClearAllPoints()
-  z:SetPoint("BOTTOM", Minimap, "TOP", 0, 6)
+  -- Hide the border top in square mode
+  if _G.MinimapBorderTop then
+    _G.MinimapBorderTop:Hide()
+  end
 
-  -- Scale zone text with minimap scale (clamped)
-  if z.SetScale then
-    local s = scale or 1
-    if s < 0.75 then s = 0.75 end
-    if s > 1.35 then s = 1.35 end
-    z:SetScale(s)
+  -- Position zone text at the top of the minimap
+  z:ClearAllPoints()
+  z:SetPoint("TOP", Minimap, "TOP", 0, 0)
+  z:SetFrameLevel(100)
+
+  -- Reduce the click area by 30 pixels from left and right side (Leatrix Plus pattern)
+  if z.SetHitRectInsets then
+    z:SetHitRectInsets(30, 30, 0, 0)
   end
 end
 
 local function PositionSquareBlizzardButtons()
   -- Position Blizzard minimap buttons for square minimap layout
-  -- These buttons normally position themselves radially (for round map)
-  -- We need to force them to corner/edge positions for square map
-  -- Based on Leatrix Plus approach
+  -- Based on Leatrix Plus implementation
   
   local mm = Minimap
   if not mm then return end
   
-  -- Tracking button - top right corner (scaled smaller)
-  local tracking = _G.MiniMapTrackingButton
-  if tracking then
-    -- Scale it down to be less obtrusive
-    tracking:SetScale(0.8)
-    tracking:ClearAllPoints()
-    tracking:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -2)
-    if tracking.Show then tracking:Show() end
-    if tracking.SetAlpha then tracking:SetAlpha(1) end
+  -- Tracking button - top left corner (scaled down like Leatrix Plus)
+  local trackingButton = _G.MiniMapTrackingButton or _G.MiniMapTracking
+  if trackingButton then
+    trackingButton:SetScale(0.75)
+    trackingButton:ClearAllPoints()
+    trackingButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -20, -40)
   end
   
-  -- LFG button - bottom left corner
-  -- Try multiple possible frames
-  local lfgFrame = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.LFGMinimapButton
-  if lfgFrame then
-    -- Prevent Blizzard from moving it
-    if lfgFrame.SetMovable then lfgFrame:SetMovable(false) end
-    if lfgFrame.SetUserPlaced then lfgFrame:SetUserPlaced(false) end
-    lfgFrame:ClearAllPoints()
-    lfgFrame:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 5, 5)
-    if lfgFrame.SetParent then lfgFrame:SetParent(mm) end
-    if lfgFrame.Show then lfgFrame:Show() end
-    if lfgFrame.SetAlpha then lfgFrame:SetAlpha(1) end
-    -- Clear any scripts that might reposition it
-    if lfgFrame.SetScript then
-      lfgFrame:SetScript("OnUpdate", nil)
+  -- Mail button - top left, below tracking (position this first before queue button)
+  local mailButton = _G.MiniMapMailFrame
+  if mailButton then
+    mailButton:SetScale(0.75)
+    mailButton:ClearAllPoints()
+    mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
+  end
+  
+  -- LFG/Queue/Battlefield button - position below mail button
+  local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
+  if queueButton then
+    queueButton:SetScale(0.75)
+    queueButton:ClearAllPoints()
+    -- Position relative to mail button if it exists (now properly positioned above)
+    if mailButton then
+      queueButton:SetPoint("TOP", mailButton, "BOTTOM", 0, 0)
+    else
+      queueButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
     end
   end
   
-  -- Mail - left edge, centered vertically
-  local mail = _G.MiniMapMailFrame
-  if mail then
-    mail:ClearAllPoints()
-    mail:SetPoint("LEFT", mm, "LEFT", 2, 0)
-    mail:SetSize(20, 20)  -- Keep consistent size
+  -- Instance difficulty - top left corner (like Leatrix Plus)
+  local difficultyButton = _G.MiniMapInstanceDifficulty
+  if difficultyButton then
+    difficultyButton:SetParent(mm)
+    difficultyButton:ClearAllPoints()
+    difficultyButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -21, 10)
+    difficultyButton:SetScale(0.75)
+    difficultyButton:SetFrameLevel(4)
   end
   
-  -- Zoom in/out - right edge, smaller, centered vertically
+  -- Zoom buttons can be hidden or kept minimal
   local zoomIn = _G.MinimapZoomIn
   local zoomOut = _G.MinimapZoomOut
   if zoomIn and zoomOut then
+    -- Keep them but make them less visible
     zoomIn:ClearAllPoints()
-    zoomIn:SetPoint("RIGHT", mm, "RIGHT", -4, 10)
-    zoomIn:SetSize(18, 18)  -- Smaller
+    zoomIn:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -20)
     
     zoomOut:ClearAllPoints()
-    zoomOut:SetPoint("RIGHT", mm, "RIGHT", -4, -10)
-    zoomOut:SetSize(18, 18)  -- Smaller
+    zoomOut:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -40)
   end
 end
 
@@ -627,6 +652,7 @@ local function EnableMinimapMouseZoom()
 end
 
 local function SetSquareMinimap(db)
+  -- Square minimap implementation forked from Leatrix Plus
   if not Minimap then return end
 
   -- Snapshot originals once
@@ -638,62 +664,74 @@ local function SetSquareMinimap(db)
   end
 
   if db.squareMinimap then
-    local base = 140
-    local target = tonumber(db.squareSize) or 140
-    if target < 100 then target = 100 end
-    if target > 220 then target = 220 end
+    -- Use SetSize approach from Leatrix Plus instead of SetScale
+    local size = db.squareSize or 140
+    if size < 140 then size = 140 end
+    if size > 560 then size = 560 end
 
-    local scale = target / base
-
-    -- Square mask + scale the minimap itself (more reliable than SetSize under cluster)
+    -- Set square mask texture (Leatrix Plus approach)
     Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
-    if Minimap.SetScale then
-      Minimap:SetScale(scale)
+    
+    -- Set minimap size directly (Leatrix Plus uses this instead of scaling)
+    if Minimap.SetSize then
+      Minimap:SetSize(size, size)
     end
     
-    -- Force-set the mask again after a brief delay to counter cluster resets
-    C_Timer.After(0.05, function()
-      if Minimap and db.squareMinimap then
-        Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
-        if Minimap.SetScale then
-          Minimap:SetScale(scale)
-        end
+    -- Refresh minimap by toggling zoom (Leatrix Plus pattern)
+    -- This forces the minimap to redraw with the new size
+    if Minimap.GetZoom and Minimap.SetZoom then
+      local currentZoom = Minimap:GetZoom()
+      if currentZoom ~= MAX_ZOOM_LEVEL then
+        Minimap:SetZoom(currentZoom + 1)
+        Minimap:SetZoom(currentZoom)
+      else
+        Minimap:SetZoom(currentZoom - 1)
+        Minimap:SetZoom(currentZoom)
+      end
+    end
+
+    -- Hide default cluster art and borders (Leatrix Plus pattern)
+    HideSquareClusterArt(true)
+
+    -- Position zone text for square minimap
+    PlaceZoneTextAboveSquare()
+    
+    -- Position Blizzard minimap buttons for square layout
+    PositionSquareBlizzardButtons()
+    
+    -- Refresh buttons after UI settles (Leatrix Plus uses a single 0.1 delay)
+    C_Timer.After(0.1, function()
+      if db.squareMinimap then
         PositionSquareBlizzardButtons()
       end
     end)
-
-    -- Hide default cluster “look” and day/night in square mode
-    HideSquareClusterArt(true)
-
-    -- Put zone name above square map and scale it
-    PlaceZoneTextAboveSquare(scale)
-    
-    -- Position Blizzard minimap buttons for square layout (immediately)
-    PositionSquareBlizzardButtons()
-    
-    -- Aggressively reposition buttons since Blizzard code keeps moving them
-    C_Timer.After(0.1, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
-    C_Timer.After(0.3, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
-    C_Timer.After(0.5, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
-    C_Timer.After(1.0, function() if db.squareMinimap then PositionSquareBlizzardButtons() end end)
     
     -- Enable mouse wheel zoom
     EnableMinimapMouseZoom()
 
   else
-    -- Restore original mask/scale
+    -- Restore round minimap
+    -- Restore original mask
     if squareState.minimapMask then
       Minimap:SetMaskTexture(squareState.minimapMask)
     else
-      Minimap:SetMaskTexture("Textures\\MinimapMask")
+      -- Use default round mask (Leatrix Plus fallback)
+      Minimap:SetMaskTexture(ROUND_MASK_TEXTURE)
     end
 
-    if Minimap.SetScale and squareState.minimapScale then
-      Minimap:SetScale(squareState.minimapScale)
+    -- Restore original size
+    if squareState.minimapSize and Minimap.SetSize then
+      Minimap:SetSize(squareState.minimapSize[1], squareState.minimapSize[2])
     end
 
+    -- Restore cluster art
     HideSquareClusterArt(false)
     RestoreZoneText()
+  end
+  
+  -- Override GetMinimapShape for addon compatibility (Leatrix Plus pattern)
+  _G.GetMinimapShape = function()
+    return db.squareMinimap and "SQUARE" or "ROUND"
   end
 end
 
@@ -1131,15 +1169,32 @@ function mod:Apply()
       local now = GetTime()
       if now - lastSquareCheck > 2.0 then
         lastSquareCheck = now
+        local needsRefresh = false
+        
         -- Check if mask has been reset (round mask)
-        -- Safe check: only compare if GetMaskTexture exists and returns a value
         if Minimap.GetMaskTexture then
           local currentMask = Minimap:GetMaskTexture()
           if currentMask and currentMask ~= SQUARE_MASK_TEXTURE then
             -- Mask was reset, reapply
             Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
-            HideSquareClusterArt(true)
+            needsRefresh = true
           end
+        end
+        
+        -- Check if size has been reset (Leatrix Plus also monitors size)
+        if Minimap.GetWidth and Minimap.SetSize then
+          local currentWidth = Minimap:GetWidth()
+          local targetSize = db2.squareSize or 140
+          -- Allow small tolerance to avoid constant re-application
+          if currentWidth and math.abs(currentWidth - targetSize) > SIZE_CHECK_TOLERANCE then
+            -- Size was reset, reapply
+            Minimap:SetSize(targetSize, targetSize)
+            needsRefresh = true
+          end
+        end
+        
+        if needsRefresh then
+          HideSquareClusterArt(true)
         end
       end
       
