@@ -114,9 +114,10 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       width = {
         type = "range",
         name = "Width",
+        desc = "Not functional due to Blizzard frame limitations. Use Scale instead.",
         order = 21,
         min = 120, max = 520, step = 1,
-        disabled = function() return not db.enabled end,
+        disabled = function() return true end,
         get = function() return db.width end,
         set = function(_, v) db.width = v; ETBC.ApplyBus:Notify("castbar") end,
       },
@@ -124,9 +125,10 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       height = {
         type = "range",
         name = "Height",
+        desc = "Not functional due to Blizzard frame limitations. Use Scale instead.",
         order = 22,
         min = 10, max = 40, step = 1,
-        disabled = function() return not db.enabled end,
+        disabled = function() return true end,
         get = function() return db.height end,
         set = function(_, v) db.height = v; ETBC.ApplyBus:Notify("castbar") end,
       },
