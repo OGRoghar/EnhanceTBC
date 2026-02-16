@@ -17,6 +17,8 @@ ETBC.Modules.MinimapPlus = mod
 -- Constants
 local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
 local ROUND_MASK_TEXTURE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local MAX_ZOOM_LEVEL = 5  -- WoW's maximum minimap zoom level
+local SIZE_CHECK_TOLERANCE = 1  -- Pixel tolerance for size drift detection
 
 local driver
 local sink
@@ -671,7 +673,7 @@ local function SetSquareMinimap(db)
     -- This forces the minimap to redraw with the new size
     if Minimap.GetZoom and Minimap.SetZoom then
       local currentZoom = Minimap:GetZoom()
-      if currentZoom ~= 5 then
+      if currentZoom ~= MAX_ZOOM_LEVEL then
         Minimap:SetZoom(currentZoom + 1)
         Minimap:SetZoom(currentZoom)
       else
@@ -1175,7 +1177,8 @@ function mod:Apply()
         if Minimap.GetWidth and Minimap.SetSize then
           local currentWidth = Minimap:GetWidth()
           local targetSize = db2.squareSize or 140
-          if currentWidth and math.abs(currentWidth - targetSize) > 1 then
+          -- Allow small tolerance to avoid constant re-application
+          if currentWidth and math.abs(currentWidth - targetSize) > SIZE_CHECK_TOLERANCE then
             -- Size was reset, reapply
             Minimap:SetSize(targetSize, targetSize)
             needsRefresh = true
