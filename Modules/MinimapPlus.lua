@@ -569,43 +569,43 @@ local function PositionSquareBlizzardButtons()
   if not mm then return end
   
   -- Tracking button - top left corner (scaled down like Leatrix Plus)
-  local tracking = _G.MiniMapTrackingButton or _G.MiniMapTracking
-  if tracking then
-    tracking:SetScale(0.75)
-    tracking:ClearAllPoints()
-    tracking:SetPoint("TOPLEFT", mm, "TOPLEFT", -20, -40)
+  local trackingButton = _G.MiniMapTrackingButton or _G.MiniMapTracking
+  if trackingButton then
+    trackingButton:SetScale(0.75)
+    trackingButton:ClearAllPoints()
+    trackingButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -20, -40)
   end
   
-  -- LFG/Queue button - position below mail button
-  local lfgFrame = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
-  if lfgFrame then
-    lfgFrame:SetScale(0.75)
-    lfgFrame:ClearAllPoints()
+  -- LFG/Queue/Battlefield button - position below mail button
+  local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
+  if queueButton then
+    queueButton:SetScale(0.75)
+    queueButton:ClearAllPoints()
     -- Position relative to mail button if it exists
-    local mail = _G.MiniMapMailFrame
-    if mail then
-      lfgFrame:SetPoint("TOP", mail, "BOTTOM", 0, 0)
+    local mailButton = _G.MiniMapMailFrame
+    if mailButton then
+      queueButton:SetPoint("TOP", mailButton, "BOTTOM", 0, 0)
     else
-      lfgFrame:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
+      queueButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
     end
   end
   
   -- Mail button - top left, below tracking
-  local mail = _G.MiniMapMailFrame
-  if mail then
-    mail:SetScale(0.75)
-    mail:ClearAllPoints()
-    mail:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
+  local mailButton = _G.MiniMapMailFrame
+  if mailButton then
+    mailButton:SetScale(0.75)
+    mailButton:ClearAllPoints()
+    mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
   end
   
   -- Instance difficulty - top left corner (like Leatrix Plus)
-  local difficulty = _G.MiniMapInstanceDifficulty
-  if difficulty then
-    difficulty:SetParent(mm)
-    difficulty:ClearAllPoints()
-    difficulty:SetPoint("TOPLEFT", mm, "TOPLEFT", -21, 10)
-    difficulty:SetScale(0.75)
-    difficulty:SetFrameLevel(4)
+  local difficultyButton = _G.MiniMapInstanceDifficulty
+  if difficultyButton then
+    difficultyButton:SetParent(mm)
+    difficultyButton:ClearAllPoints()
+    difficultyButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -21, 10)
+    difficultyButton:SetScale(0.75)
+    difficultyButton:SetFrameLevel(4)
   end
   
   -- Zoom buttons can be hidden or kept minimal
@@ -655,7 +655,7 @@ local function SetSquareMinimap(db)
 
   if db.squareMinimap then
     -- Use SetSize approach from Leatrix Plus instead of SetScale
-    local size = tonumber(db.squareSize) or 140
+    local size = db.squareSize or 140
     if size < 100 then size = 100 end
     if size > 560 then size = 560 end
 
