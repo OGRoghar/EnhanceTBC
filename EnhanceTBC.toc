@@ -1,0 +1,121 @@
+## Interface: 20505
+## Title: EnhanceTBC
+## Notes: QoL suite for TBC Anniversary (Ace3)
+## Author: Roghar
+## Version: 1.2.1
+## SavedVariables: EnhanceTBCDB
+## OptionalDeps: Ace3
+## X-Category: Interface Enhancements
+
+# ==========================================================
+# Embedded Libraries (load first)
+# ==========================================================
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+
+# --- Core Ace3 ---
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+Libs\AceHook-3.0\AceHook-3.0.xml
+Libs\AceTimer-3.0\AceTimer-3.0.xml
+Libs\AceBucket-3.0\AceBucket-3.0.xml
+Libs\AceComm-3.0\AceComm-3.0.xml
+Libs\AceSerializer-3.0\AceSerializer-3.0.xml
+Libs\AceLocale-3.0\AceLocale-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+
+# --- AceConfig (LOAD LUA FILES DIRECTLY to avoid broken XML include paths) ---
+Libs\AceConfigRegistry-3.0\AceConfigRegistry-3.0.lua
+Libs\AceConfigCmd-3.0\AceConfigCmd-3.0.lua
+Libs\AceConfigDialog-3.0\AceConfigDialog-3.0.lua
+Libs\AceConfig-3.0\AceConfig-3.0.lua
+
+# --- Shared utility libs ---
+Libs\LibSharedMedia-3.0\lib.xml
+Libs\LibDeflate\LibDeflate.lua
+
+# Minimap button libs (LDB before LibDBIcon)
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\lib.xml
+
+# ==========================================================
+# Locales
+# ==========================================================
+locales\enUS.lua
+
+# ==========================================================
+# Core Bootstrap (must load before Settings/Modules)
+# ==========================================================
+Core\Defaults.lua
+Core\Print.lua
+Core\Compat.lua
+Core\Theme.lua
+Core\ApplyBus.lua
+Core\SettingsRegistry.lua
+Core\Mover.lua
+Core\Init.lua
+Options\Options.lua
+Core\EnhanceTBC.lua
+Core\MinimapButton.lua
+
+# ==========================================================
+# UI
+# ==========================================================
+UI\ConfigWindow.lua
+UI\Theme.lua
+
+# ==========================================================
+# Settings
+# ==========================================================
+Settings\Settings_General.lua
+Settings\Settings_UI.lua
+Settings\Settings_MinimapPlus.lua
+Settings\Settings_Castbar.lua
+Settings\Settings_UnitFrames.lua
+Settings\Settings_ActionBars.lua
+Settings\Settings_Mouse.lua
+Settings\Settings_Tooltip.lua
+Settings\Settings_Sound.lua
+Settings\Settings_Friends.lua
+Settings\Settings_ChatIM.lua
+Settings\Settings_GCDBar.lua
+Settings\Settings_Auras.lua
+Settings\Settings_CombatText.lua
+Settings\Settings_ActionTracker.lua
+Settings\Settings_Cooldowns.lua
+Settings\Settings_Mover.lua
+Settings\Settings_Vendor.lua
+Settings\Settings_Mailbox.lua
+Settings\Settings_Objectives.lua
+Settings\Settings_Visibility.lua
+Settings\Settings_CVars.lua
+
+# ==========================================================
+# Modules
+# ==========================================================
+Modules\UI.lua
+Modules\Castbar.lua
+Modules\UnitFrames.lua
+Modules\ActionBars.lua
+Modules\MinimapPlus.lua
+Modules\Auras.lua
+Modules\ActionTracker.lua
+Modules\CombatText.lua
+Modules\FriendsListDecor.lua
+Modules\ChatIM.lua
+Modules\GCDBar.lua
+Modules\Mailbox.lua
+Modules\Mouse.lua
+Modules\Sound.lua
+Modules\Tooltip.lua
+Modules\Vendor.lua
+Modules\Cooldowns.lua
+Modules\Objectives.lua
+Modules\CVars.lua
+
+# Visibility (ONLY include files that truly exist and work)
+Visibility\Visibility_Helper.lua
+Visibility\Visibility.lua
