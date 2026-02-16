@@ -134,13 +134,16 @@ local function InstallAddMessageHooks()
   local n = NUM_CHAT_WINDOWS or 10
   for i = 1, n do
     local cf = _G["ChatFrame" .. i]
-    if cf and cf.AddMessage then
+    if cf and cf.AddMessage and type(cf.AddMessage) == "function" then
       hooksecurefunc(cf, "AddMessage", function(self, text)
+        if not ETBC.db or not ETBC.db.profile then return end
         local db = GetDB()
         if not (ETBC.db.profile.general.enabled and db.enabled) then return end
 
         local maxKeep = math.max(2000, tonumber(db.copyLines) or 200)
-        Push(i, StripCodes(text), maxKeep)
+        if type(text) == "string" then
+          Push(i, StripCodes(text), maxKeep)
+        end
       end)
     end
   end
@@ -490,13 +493,16 @@ local function EnsureCopyButton()
   icon:SetTexCoord(0.18, 0.82, 0.18, 0.82)
 
   copyButton:SetScript("OnEnter", function(self)
+    if not GameTooltip then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText("Copy Chat")
     GameTooltip:AddLine("Opens a window with recent chat lines.", 0.8, 0.8, 0.8, true)
     GameTooltip:AddLine("Command: /etbccopy", 0.8, 0.8, 0.8, true)
     GameTooltip:Show()
   end)
-  copyButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  copyButton:SetScript("OnLeave", function() 
+    if GameTooltip then GameTooltip:Hide() end
+  end)
 
   copyButton:SetScript("OnClick", function()
     mod:OpenCopy()
@@ -591,12 +597,16 @@ local function Apply()
     driver:RegisterEvent("CHAT_MSG_WHISPER_INFORM")
 
     driver:SetScript("OnEvent", function(_, event)
+      if not ETBC.db or not ETBC.db.profile then return end
+      
       if event == "CHAT_MSG_WHISPER" or event == "CHAT_MSG_WHISPER_INFORM" then
         MaybePlayWhisperSound(event)
         return
       end
 
       local db2 = GetDB()
+      if not (ETBC.db.profile.general.enabled and db2.enabled) then return end
+      
       if db2.copyButton then
         PositionCopyButton(db2)
       else
