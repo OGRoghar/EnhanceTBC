@@ -66,7 +66,26 @@ function ETBC:SlashCommand(input)
     return
   end
 
-  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap")
+  if input == "lag" then
+    if ETBC.Modules and ETBC.Modules.AutoGossip and ETBC.Modules.AutoGossip.ListPatterns then
+      ETBC.Modules.AutoGossip:ListPatterns()
+    else
+      self:Print("AutoGossip module not loaded.")
+    end
+    return
+  end
+
+  if input:match("^aag%s+(.+)") then
+    local pattern = input:match("^aag%s+(.+)")
+    if ETBC.Modules and ETBC.Modules.AutoGossip and ETBC.Modules.AutoGossip.AddPattern then
+      ETBC.Modules.AutoGossip:AddPattern(pattern)
+    else
+      self:Print("AutoGossip module not loaded.")
+    end
+    return
+  end
+
+  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap, /etbc lag (list auto-gossip), /etbc aag <pattern> (add auto-gossip)")
 end
 
 -- ---------------------------------------------------------
