@@ -24,6 +24,7 @@ local dropdown
 local collected = {} -- [frame] = { parent, points = {...}, scale, strata, level, shown, ignore }
 local orderedButtons = {}
 local lastScan = 0
+local isZoomHooked = false  -- Track if mouse wheel zoom has been hooked
 
 local squareState = {
   saved = false,
@@ -471,7 +472,7 @@ local function HideSquareClusterArt(hide)
     _G.MinimapBorderTop,
     _G.MinimapBackdrop,
     _G.MiniMapWorldMapButton,
-    _G.GameTimeFrame, -- Calendar/clock button (shouldn't appear on square minimap)
+    _G.GameTimeFrame, -- Calendar/clock button - hidden completely in square mode
     _G.TimeManagerClockButton, -- Alternative clock frame in some builds
     _G.MinimapCluster and _G.MinimapCluster.BorderTop,
     _G.MinimapCluster and _G.MinimapCluster.Tracking,
@@ -580,8 +581,8 @@ local function EnableMinimapMouseZoom()
   -- Enable mouse wheel scrolling on minimap to zoom in/out
   if not Minimap then return end
   
-  if Minimap.__ETBC_ZoomHooked then return end
-  Minimap.__ETBC_ZoomHooked = true
+  if isZoomHooked then return end
+  isZoomHooked = true
   
   Minimap:EnableMouseWheel(true)
   Minimap:SetScript("OnMouseWheel", function(self, delta)
@@ -823,8 +824,7 @@ local function MenuInit(self, level)
     info.text = db.locked and "Unlock Sink" or "Lock Sink"
     info.func = function()
       db.locked = not db.locked
-      if sink then sink:EnableMouse(not db.locked) end
-      Apply()
+      Apply()  -- Just call Apply to refresh everything
     end
     UIDropDownMenu_AddButton(info, level)
 
@@ -1000,7 +1000,7 @@ function mod:Apply()
   SetFramePointFromDB(sink, db)
 
   sink:SetShown(db.sinkEnabled and true or false)
-  sink:EnableMouse(not db.locked)
+  sink:EnableMouse(db.sinkEnabled and true or false)  -- Enable mouse when sink is shown (for drag and right-click)
 
   ApplyHides(db)
   ApplyLandingButtons(db)
