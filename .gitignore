@@ -5,3 +5,7 @@
 Thumbs.db
 WTF/
 Cache/
+
+# Test coverage files
+luacov.*.out
+*.rock
