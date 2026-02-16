@@ -476,7 +476,7 @@ local function HideSquareClusterArt(hide)
     _G.GameTimeFrame, -- Calendar/clock button - hidden completely in square mode
     _G.TimeManagerClockButton, -- Alternative clock frame in some builds
     _G.MinimapCluster and _G.MinimapCluster.BorderTop,
-    _G.MinimapCluster and _G.MinimapCluster.Tracking,
+    -- MinimapCluster.Tracking removed - we reposition it instead of hiding it
   }
 
   for _, f in ipairs(hideFrames) do
@@ -490,6 +490,20 @@ local function HideSquareClusterArt(hide)
       f:SetAlpha(0)
     elseif f and f.SetAlpha and not hide then
       f:SetAlpha(1)
+    end
+  end
+  
+  -- Ensure GameTimeFrame is completely hidden in square mode
+  if hide then
+    if _G.GameTimeFrame then
+      if _G.GameTimeFrame.Hide then _G.GameTimeFrame:Hide() end
+      if _G.GameTimeFrame.SetAlpha then _G.GameTimeFrame:SetAlpha(0) end
+      if _G.GameTimeFrame.SetParent then _G.GameTimeFrame:SetParent(UIParent) end
+      if _G.GameTimeFrame.ClearAllPoints then _G.GameTimeFrame:ClearAllPoints() end
+    end
+    if _G.TimeManagerClockButton then
+      if _G.TimeManagerClockButton.Hide then _G.TimeManagerClockButton:Hide() end
+      if _G.TimeManagerClockButton.SetAlpha then _G.TimeManagerClockButton:SetAlpha(0) end
     end
   end
 
@@ -540,20 +554,26 @@ local function PositionSquareBlizzardButtons()
   local mm = Minimap
   if not mm then return end
   
-  -- LFG/Queue button - bottom left, smaller
+  -- LFG/Queue button - bottom left corner
   local lfg = _G.QueueStatusMinimapButton or _G.LFGMinimapButton
   if lfg then
     lfg:ClearAllPoints()
     lfg:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 2, 2)
-    lfg:SetSize(20, 20)  -- Smaller
+    lfg:SetSize(20, 20)
+    -- Ensure it's shown
+    if lfg.Show then lfg:Show() end
+    if lfg.SetAlpha then lfg:SetAlpha(1) end
   end
   
-  -- Tracking button - top right, smaller
+  -- Tracking button - top right corner
   local tracking = _G.MinimapCluster and _G.MinimapCluster.Tracking or _G.MiniMapTrackingButton
   if tracking then
     tracking:ClearAllPoints()
     tracking:SetPoint("TOPRIGHT", mm, "TOPRIGHT", -2, -2)
-    tracking:SetSize(20, 20)  -- Smaller
+    tracking:SetSize(20, 20)
+    -- Ensure it's shown
+    if tracking.Show then tracking:Show() end
+    if tracking.SetAlpha then tracking:SetAlpha(1) end
   end
   
   -- Mail - left edge, centered vertically
