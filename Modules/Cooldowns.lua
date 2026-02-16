@@ -98,7 +98,6 @@ local function ShouldHandleCooldown(cooldown)
   local owner = cooldown:GetParent()
   if not owner or (owner.IsForbidden and owner:IsForbidden()) then return false end
 
-  -- Filter by owner types
   if IsActionButtonOwner(owner) then
     return db.actionButtons and true or false
   end
@@ -110,28 +109,21 @@ local function ShouldHandleCooldown(cooldown)
   return db.otherCooldownFrames and true or false
 end
 
-local function EnsureFS(owner)
-  owner._etbc_cdtext = owner._etbc_cdtext or {}
-  if owner._etbc_cdtext.fs and owner._etbc_cdtext.fs.SetText then
-    return owner._etbc_cdtext.fs
-  end
-
-  local fs = owner:CreateFontString(nil, "OVERLAY")
-  fs:SetPoint("CENTER", owner, "CENTER", 0, 0)
-  fs:SetText("")
-  fs:Hide()
-
-  owner._etbc_cdtext.fs = fs
-  return fs
-end
+-- Hard default font (always exists in Classic/TBC clients)
+local DEFAULT_FONT_PATH = "Fonts\\FRIZQT__.TTF"
 
 local function ApplyFont(fs, owner)
   local db = GetDB()
-  local fontPath = LSM_Fetch("font", db.font, "Fonts\\FRIZQT__.TTF")
-  local size = tonumber(db.size) or 16
-  local outline = db.outline or ""
 
-  -- Optional scale by icon size
+  local fontPath = LSM_Fetch("font", db.font, DEFAULT_FONT_PATH)
+  if type(fontPath) ~= "string" or fontPath == "" then
+    fontPath = DEFAULT_FONT_PATH
+  end
+
+  local size = tonumber(db.size) or 16
+  local outline = db.outline
+  if outline == nil then outline = "" end
+
   if db.scaleByIcon and owner and owner.GetWidth then
     local w = owner:GetWidth() or 36
     local h = owner:GetHeight() or 36
@@ -145,7 +137,11 @@ local function ApplyFont(fs, owner)
     if size < 8 then size = 8 end
   end
 
-  fs:SetFont(fontPath, size, outline)
+  -- SetFont can fail if the path is bad; always fall back to FRIZQT__.TTF
+  local ok = pcall(fs.SetFont, fs, fontPath, size, outline)
+  if not ok then
+    pcall(fs.SetFont, fs, DEFAULT_FONT_PATH, size, outline)
+  end
 
   if db.shadow then
     fs:SetShadowOffset(1, -1)
@@ -153,6 +149,35 @@ local function ApplyFont(fs, owner)
   else
     fs:SetShadowOffset(0, 0)
   end
+end
+
+local function EnsureFS(owner)
+  owner._etbc_cdtext = owner._etbc_cdtext or {}
+  local st = owner._etbc_cdtext
+
+  if st.fs and st.fs.SetText then
+    -- Safety: if something nuked the font, re-apply a valid one before any SetText calls.
+    local font = st.fs.GetFont and st.fs:GetFont()
+    if not font then
+      ApplyFont(st.fs, owner)
+    end
+    return st.fs
+  end
+
+  local fs = owner:CreateFontString(nil, "OVERLAY")
+  fs:SetPoint("CENTER", owner, "CENTER", 0, 0)
+  fs:SetJustifyH("CENTER")
+  fs:SetJustifyV("MIDDLE")
+
+  -- IMPORTANT: set a font BEFORE any SetText (prevents "Font not set" error)
+  ApplyFont(fs, owner)
+
+  -- Now it's safe
+  fs:SetText("")
+  fs:Hide()
+
+  st.fs = fs
+  return fs
 end
 
 local function FormatTime(remain)
@@ -199,7 +224,6 @@ local function PickColor(remain)
 end
 
 local function IsProbablyGCD(duration)
-  -- GCD is usually ~1.0-1.5. We don’t want to hide legitimate 1.5 CDs, so use a narrow range.
   return duration and duration > 0 and duration <= 1.7
 end
 
@@ -212,7 +236,6 @@ local function Track(cooldown, start, duration, enable, modRate)
   local db = GetDB()
 
   if not ShouldHandleCooldown(cooldown) then
-    -- If we were tracking, clean up and restore Blizzard swipe state.
     if tracked[cooldown] then
       local st = tracked[cooldown]
       if st and st.fs then st.fs:Hide() end
@@ -224,6 +247,8 @@ local function Track(cooldown, start, duration, enable, modRate)
 
   local owner = cooldown:GetParent()
   local fs = EnsureFS(owner)
+
+  -- Apply again here to reflect DB changes and icon scaling in case owner size changed.
   ApplyFont(fs, owner)
 
   tracked[cooldown] = tracked[cooldown] or {}
@@ -238,7 +263,6 @@ local function Track(cooldown, start, duration, enable, modRate)
   st.lastText = nil
   st.lastColorKey = nil
 
-  -- Hide/show swipe overlay based on setting
   SetSwipe(cooldown, db.showSwipe ~= false)
 end
 
@@ -246,13 +270,13 @@ local function RebuildOrdered()
   wipe(ordered)
   local count = 0
   local maxT = GetDB().maxTracked or 400
+
   for cd, st in pairs(tracked) do
     if cd and st and st.owner and st.fs then
       count = count + 1
       if count <= maxT then
         ordered[count] = st
       else
-        -- over cap: stop tracking extras
         st.fs:Hide()
         SetSwipe(cd, true)
         tracked[cd] = nil
@@ -272,6 +296,12 @@ local function UpdateOne(st, now)
 
   if not cd or not owner or not fs then return false end
   if not owner:IsShown() then fs:Hide(); return true end
+
+  -- Safety: if font got lost somehow, restore it before SetText
+  local f = fs.GetFont and fs:GetFont()
+  if not f then
+    ApplyFont(fs, owner)
+  end
 
   if db.hideWhenPaused and st.modRate and st.modRate == 0 then
     fs:Hide()
@@ -313,8 +343,10 @@ local function UpdateOne(st, now)
   end
 
   local r, g, b = PickColor(remain)
-  -- Key for color changes only when needed
-  local key = (remain <= (db.nowThreshold or 2.0) and "now") or (remain <= (db.soonThreshold or 5.0) and "soon") or "norm"
+  local key = (remain <= (db.nowThreshold or 2.0) and "now")
+    or (remain <= (db.soonThreshold or 5.0) and "soon")
+    or "norm"
+
   if st.lastColorKey ~= key then
     fs:SetTextColor(r, g, b)
     st.lastColorKey = key
@@ -359,7 +391,6 @@ local function StopDriver()
   driver:SetScript("OnUpdate", nil)
 end
 
--- Hooks
 local function HookCooldownSetters()
   if hooked then return end
   hooked = true
@@ -378,7 +409,6 @@ local function HookCooldownSetters()
     end)
   end
 
-  -- Some frames call :SetCooldown directly
   if _G.Cooldown and _G.Cooldown.SetCooldown and not _G.Cooldown._etbcHooked then
     _G.Cooldown._etbcHooked = true
     hooksecurefunc(_G.Cooldown, "SetCooldown", function(cooldown, start, duration, enable, forceShowDrawEdge, modRate)
@@ -411,7 +441,6 @@ local function Apply()
     return
   end
 
-  -- Re-style existing tracked FS with new font options
   for _, st in pairs(tracked) do
     if st and st.fs and st.owner then
       ApplyFont(st.fs, st.owner)
