@@ -550,41 +550,38 @@ local function PositionSquareBlizzardButtons()
   -- Position Blizzard minimap buttons for square minimap layout
   -- These buttons normally position themselves radially (for round map)
   -- We need to force them to corner/edge positions for square map
+  -- Based on Leatrix Plus approach
   
   local mm = Minimap
   if not mm then return end
   
-  -- Tracking button - top right corner
+  -- Tracking button - top right corner (scaled smaller)
   local tracking = _G.MiniMapTrackingButton
   if tracking then
+    -- Scale it down to be less obtrusive
+    tracking:SetScale(0.8)
     tracking:ClearAllPoints()
-    tracking:SetPoint("TOPRIGHT", mm, "TOPRIGHT", -5, -5)
+    tracking:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -2)
     if tracking.Show then tracking:Show() end
     if tracking.SetAlpha then tracking:SetAlpha(1) end
-    
-    -- Fix the tracking icon texture to match button position
-    if _G.MiniMapTrackingIcon then
-      _G.MiniMapTrackingIcon:ClearAllPoints()
-      _G.MiniMapTrackingIcon:SetPoint("TOPLEFT", tracking, "TOPLEFT", 6, -6)
-    end
-    if _G.MiniMapTrackingIconOverlay then
-      _G.MiniMapTrackingIconOverlay:ClearAllPoints()
-      _G.MiniMapTrackingIconOverlay:SetPoint("TOPLEFT", tracking, "TOPLEFT", 6, -6)
-    end
-    if _G.MiniMapTrackingBackground then
-      _G.MiniMapTrackingBackground:ClearAllPoints()
-      _G.MiniMapTrackingBackground:SetAllPoints(tracking)
-    end
   end
   
-  -- LFG button (actual LFG, not battlefield/queue) - bottom left corner
-  -- In TBC this might be MiniMapLFGFrame or similar
-  local lfg = _G.MiniMapLFGFrame
-  if lfg then
-    lfg:ClearAllPoints()
-    lfg:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 5, 5)
-    if lfg.Show then lfg:Show() end
-    if lfg.SetAlpha then lfg:SetAlpha(1) end
+  -- LFG button - bottom left corner
+  -- Try multiple possible frames
+  local lfgFrame = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.LFGMinimapButton
+  if lfgFrame then
+    -- Prevent Blizzard from moving it
+    if lfgFrame.SetMovable then lfgFrame:SetMovable(false) end
+    if lfgFrame.SetUserPlaced then lfgFrame:SetUserPlaced(false) end
+    lfgFrame:ClearAllPoints()
+    lfgFrame:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 5, 5)
+    if lfgFrame.SetParent then lfgFrame:SetParent(mm) end
+    if lfgFrame.Show then lfgFrame:Show() end
+    if lfgFrame.SetAlpha then lfgFrame:SetAlpha(1) end
+    -- Clear any scripts that might reposition it
+    if lfgFrame.SetScript then
+      lfgFrame:SetScript("OnUpdate", nil)
+    end
   end
   
   -- Mail - left edge, centered vertically
@@ -1119,6 +1116,7 @@ function mod:Apply()
   -- Optional auto-scan ticker via OnUpdate (simple + cheap)
   -- Also monitors square minimap to prevent cluster resets
   local lastSquareCheck = 0
+  local lastButtonCheck = 0
   driver:SetScript("OnUpdate", function(_, elapsed)
     local db2 = GetDB()
     if not db2.enabled then return end
@@ -1143,6 +1141,12 @@ function mod:Apply()
             HideSquareClusterArt(true)
           end
         end
+      end
+      
+      -- Reposition buttons frequently to counter Blizzard's repositioning
+      if now - lastButtonCheck > 0.5 then
+        lastButtonCheck = now
+        PositionSquareBlizzardButtons()
       end
     end
   end)
