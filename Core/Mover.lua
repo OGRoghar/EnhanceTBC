@@ -499,6 +499,7 @@ end
 
 function M:SetMoveMode(enabled)
   local db = GetDB()
+  -- Convert to boolean using Lua idiom
   db.moveMode = not not enabled
   ETBC.ApplyBus:Notify("mover")
 end
@@ -508,8 +509,9 @@ function M:GetGridSize()
 end
 
 function M:SetupChatCommands()
-  -- Ensures slash commands are registered for mover functionality (/etbcmove, etc.)
-  -- This is called by MoverUI to ensure commands are available when move mode is activated
+  -- Wrapper function called by MoverUI to ensure slash commands are registered
+  -- for mover functionality (/etbcmove, /etbc unlock, /etbc lock, /etbc reset)
+  -- This allows MoverUI to initialize commands without directly accessing internal functions
   EnsureSlash()
 end
 
