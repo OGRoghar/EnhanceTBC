@@ -1,6 +1,6 @@
 -- Settings/Settings_General.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.SettingsRegistry:RegisterGroup("general", {
   name = "General",
   order = 1,

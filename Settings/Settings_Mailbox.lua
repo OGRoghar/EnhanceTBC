@@ -1,6 +1,6 @@
 -- Settings/Settings_Mailbox.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.mailbox = ETBC.db.profile.mailbox or {}
   local db = ETBC.db.profile.mailbox

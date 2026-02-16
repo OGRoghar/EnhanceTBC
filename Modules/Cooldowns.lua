@@ -4,7 +4,7 @@
 -- Lightweight: one global OnUpdate that updates tracked cooldowns at an interval.
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CooldownText = mod

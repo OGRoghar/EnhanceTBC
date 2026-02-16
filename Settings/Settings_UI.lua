@@ -2,7 +2,7 @@
 -- EnhanceTBC - UI settings (global quality-of-life)
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.ui = ETBC.db.profile.ui or {}
   local db = ETBC.db.profile.ui

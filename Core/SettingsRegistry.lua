@@ -2,7 +2,7 @@
 -- Central registry of settings groups for the config window / options builder
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.SettingsRegistry = ETBC.SettingsRegistry or {}
 
 local reg = {

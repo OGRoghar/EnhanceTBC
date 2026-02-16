@@ -1,6 +1,6 @@
 -- Settings/Settings_Friends.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.friends = ETBC.db.profile.friends or {}
   local db = ETBC.db.profile.friends

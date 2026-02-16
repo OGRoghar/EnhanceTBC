@@ -2,7 +2,7 @@
 -- EnhanceTBC - Cooldown Text Engine settings (OmniCC-lite)
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.cooldowns = ETBC.db.profile.cooldowns or {}
   local db = ETBC.db.profile.cooldowns

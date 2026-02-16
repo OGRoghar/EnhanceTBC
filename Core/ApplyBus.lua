@@ -1,6 +1,6 @@
 -- Core/ApplyBus.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.ApplyBus = ETBC.ApplyBus or {}
 
 local listeners = {}

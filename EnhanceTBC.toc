@@ -45,6 +45,14 @@ Libs\LibDBIcon-1.0\lib.xml
 # Locales
 # ==========================================================
 locales\enUS.lua
+locales\deDE.lua
+locales\frFR.lua
+locales\esES.lua
+locales\ruRU.lua
+locales\koKR.lua
+locales\zhCN.lua
+locales\zhTW.lua
+locales\ptBR.lua
 
 # ==========================================================
 # Core Bootstrap (must load before Settings/Modules)

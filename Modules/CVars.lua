@@ -4,7 +4,7 @@
 -- Logic lives here; Settings/Settings_CVars.lua registers the options UI.
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CVars = mod

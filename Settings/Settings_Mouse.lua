@@ -3,7 +3,7 @@
 -- Includes camera tuning to reduce "boxy" PlayerModel look.
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function EnsureDB()
   if not ETBC.db or not ETBC.db.profile then
     return ETBC.defaults and ETBC.defaults.profile and ETBC.defaults.profile.mouse or {}

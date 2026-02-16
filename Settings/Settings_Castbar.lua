@@ -2,7 +2,7 @@
 -- EnhanceTBC - Castbar+ settings
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.castbar = ETBC.db.profile.castbar or {}
   local db = ETBC.db.profile.castbar

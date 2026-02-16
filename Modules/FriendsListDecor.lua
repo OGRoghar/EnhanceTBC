@@ -3,6 +3,7 @@
 -- Shows area and realm, class colors, level colors, and faction icons
 
 local ADDON_NAME, ETBC = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}

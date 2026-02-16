@@ -1,6 +1,6 @@
 -- Settings/Settings_Tooltip.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.tooltip = ETBC.db.profile.tooltip or {}
   local db = ETBC.db.profile.tooltip

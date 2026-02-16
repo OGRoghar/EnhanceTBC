@@ -6,7 +6,7 @@
 -- =========================================================
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 if not ETBC then return end
 
 ETBC.Theme = ETBC.Theme or {}

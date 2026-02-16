@@ -1,8 +1,7 @@
 -- locales/enUS.lua
-EnhanceTBC = EnhanceTBC or {}
-EnhanceTBC.L = EnhanceTBC.L or {}
-
-local L = EnhanceTBC.L
+local AceLocale = LibStub("AceLocale-3.0")
+local L = AceLocale:NewLocale("EnhanceTBC", "enUS", true)
+if not L then return end
 
 L.ADDON_NAME = "EnhanceTBC"
 L.CONFIG_TITLE = "EnhanceTBC Config"

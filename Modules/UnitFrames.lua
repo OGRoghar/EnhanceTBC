@@ -3,7 +3,7 @@
 -- Fix: Ensure font is set before any SetText calls to avoid "Font not set".
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.UnitFrames = mod

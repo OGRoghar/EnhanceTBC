@@ -2,7 +2,7 @@
 -- EnhanceTBC compatibility helpers for TBC Anniversary client API differences
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Compat = ETBC.Compat or {}
 local C = ETBC.Compat
 

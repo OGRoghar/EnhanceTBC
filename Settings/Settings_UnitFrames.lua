@@ -2,7 +2,7 @@
 -- EnhanceTBC - UnitFrame Micro Enhancer settings (Blizzard frames)
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.unitframes = ETBC.db.profile.unitframes or {}
   local db = ETBC.db.profile.unitframes

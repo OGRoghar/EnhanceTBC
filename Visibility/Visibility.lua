@@ -15,7 +15,7 @@
 --  - Uses safe guards for protected frames in combat (will not taint; skips SetShown when forbidden).
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Visibility = mod

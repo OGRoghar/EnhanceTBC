@@ -2,7 +2,7 @@
 -- AceConfig options for Modules/MinimapPlus.lua
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Settings = ETBC.Settings or {}
 
 local function EnsureDefaults()

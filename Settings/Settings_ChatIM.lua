@@ -1,6 +1,6 @@
 -- Settings/Settings_ChatIM.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.chatim = ETBC.db.profile.chatim or {}
   local db = ETBC.db.profile.chatim

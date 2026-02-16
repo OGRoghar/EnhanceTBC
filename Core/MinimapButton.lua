@@ -3,7 +3,7 @@
 -- Safe: no ETBC.db access at file load.
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 if not ETBC then return end
 
 local LDB = LibStub and LibStub("LibDataBroker-1.1", true)

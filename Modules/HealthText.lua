@@ -10,6 +10,7 @@ if not E then return end
 
 local LibStub = LibStub
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 
 local MOD = {}
 MOD.name = "HealthText"

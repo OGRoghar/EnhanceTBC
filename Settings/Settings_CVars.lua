@@ -2,7 +2,7 @@
 -- EnhanceTBC - SettingsRegistry registration for CVars module
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 if not ETBC.SettingsRegistry or type(ETBC.SettingsRegistry.RegisterGroup) ~= "function" then
   return
 end

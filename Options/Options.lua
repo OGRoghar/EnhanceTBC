@@ -2,6 +2,7 @@
 -- EnhanceTBC - builds the AceConfig options table from SettingsRegistry groups.
 
 local ADDON_NAME, ETBC = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 
 local function SafeCall(fn)
   if type(fn) ~= "function" then return false, nil, "not a function" end

@@ -1,6 +1,6 @@
 -- Visibility/Visibility_Helper.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Visibility = ETBC.Visibility or {}
 local V = ETBC.Visibility
 

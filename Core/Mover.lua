@@ -16,7 +16,7 @@
 -- - No heavy OnUpdate: only uses OnUpdate when unlocked for dragging label refresh (very light).
 
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.Mover = ETBC.Mover or {}
 local M = ETBC.Mover
 

@@ -1,6 +1,6 @@
 -- Core/Defaults.lua
 local ADDON_NAME, ETBC = ...
-
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 ETBC.defaults = {
   profile = {
     general = {
