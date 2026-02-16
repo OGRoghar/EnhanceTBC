@@ -76,7 +76,7 @@ end
 
 local function InboxInfo(i)
   -- Classic/TBC: GetInboxHeaderInfo(index)
-  local packageIcon, stationeryIcon, sender, subject, money, codAmount, daysLeft, itemCount, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(i)
+  local _, _, sender, subject, money, codAmount, _, itemCount, _, _, _, _, isGM = GetInboxHeaderInfo(i)
   if not sender then
     -- Invalid mail entry, return safe defaults
     return nil, nil, 0, 0, 0, false
