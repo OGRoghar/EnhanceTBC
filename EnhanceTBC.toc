@@ -82,6 +82,7 @@ Settings\Settings_Sound.lua
 Settings\Settings_Friends.lua
 Settings\Settings_ChatIM.lua
 Settings\Settings_GCDBar.lua
+Settings\Settings_SwingTimer.lua
 Settings\Settings_Auras.lua
 Settings\Settings_CombatText.lua
 Settings\Settings_ActionTracker.lua
@@ -107,6 +108,7 @@ Modules\CombatText.lua
 Modules\FriendsListDecor.lua
 Modules\ChatIM.lua
 Modules\GCDBar.lua
+Modules\SwingTimer.lua
 Modules\Mailbox.lua
 Modules\Mouse.lua
 Modules\Sound.lua
