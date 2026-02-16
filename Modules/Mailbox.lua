@@ -93,7 +93,8 @@ local function BuildQueue(db)
   -- IMPORTANT: work from high index -> low index to avoid shifting issues
   for i = num, 1, -1 do
     local sender, _, money, cod, itemCount, isGM = InboxInfo(i)
-    if CanTouchMail(db, sender, isGM, cod) then
+    -- Skip invalid mail entries (where sender is nil)
+    if sender and CanTouchMail(db, sender, isGM, cod) then
       local hasMoney = money > 0
       local hasItems = itemCount > 0
 
