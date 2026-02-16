@@ -337,6 +337,7 @@ local function CreateHandle(key, entry)
   end)
 
   h:SetScript("OnEnter", function(self)
+    if not GameTooltip or not GameTooltip.SetOwner then return end
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:AddLine("EnhanceTBC Mover", 0.20, 1.00, 0.20)
     GameTooltip:AddLine("Drag to move. Right-click to reset.", 1, 1, 1)
@@ -347,7 +348,9 @@ local function CreateHandle(key, entry)
   end)
 
   h:SetScript("OnLeave", function()
-    GameTooltip:Hide()
+    if GameTooltip and GameTooltip.Hide then
+      GameTooltip:Hide()
+    end
   end)
 
   h:Hide()
@@ -494,6 +497,24 @@ function M:Unlock()
   self:SetUnlocked(true)
 end
 
+function M:SetMoveMode(enabled)
+  local db = GetDB()
+  -- Convert to boolean using Lua idiom
+  db.moveMode = not not enabled
+  ETBC.ApplyBus:Notify("mover")
+end
+
+function M:GetGridSize()
+  return GetDB().gridSize or 8
+end
+
+function M:SetupChatCommands()
+  -- Wrapper function called by MoverUI to ensure slash commands are registered
+  -- for mover functionality (/etbcmove, /etbc unlock, /etbc lock, /etbc reset)
+  -- This allows MoverUI to initialize commands without directly accessing internal functions
+  EnsureSlash()
+end
+
 function M:Reset(key)
   local db = GetDB()
   if key == "all" or key == "*" then
@@ -505,13 +526,15 @@ function M:Reset(key)
     return
   end
 
-  if not key or not db.frames[key] then
-    -- still re-apply default if requested
-    ApplyPointToFrame(key)
-    UpdateAllHandles()
+  -- Exit early if key is nil or empty - resetting without a key is not supported
+  if not key or key == "" then
+    if ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.debug then
+      ETBC:Debug("Mover:Reset called with nil or empty key - operation skipped")
+    end
     return
   end
 
+  -- Reset specific key by removing saved data (if exists) and re-applying default
   db.frames[key] = nil
   ApplyPointToFrame(key)
   UpdateAllHandles()

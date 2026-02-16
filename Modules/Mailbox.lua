@@ -263,6 +263,9 @@ function mod:RunNow()
 
   ResetSession()
   queue = BuildQueue(db)
+  
+  -- Validate queue before proceeding
+  if not queue then return end
 
   StopTicker()
   local interval = 0.05
