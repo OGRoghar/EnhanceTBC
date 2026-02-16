@@ -137,33 +137,16 @@ local function EnsureSink()
   sink = CreateFrame("Frame", "EnhanceTBC_MinimapButtonSink", UIParent, "BackdropTemplate")
   sink:SetClampedToScreen(true)
   sink:SetMovable(true)
-  sink:EnableMouse(true)
-  sink:RegisterForDrag("LeftButton")
-  sink:SetFrameStrata("MEDIUM")
-  sink:SetFrameLevel(50)
-
-  sink:SetScript("OnDragStart", function(self)
-    local db = GetDB()
-    if db.locked then return end
-    self:StartMoving()
-  end)
-
-  sink:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
-    SaveFramePointToDB(self, GetDB())
-  end)
-
-  sink:SetScript("OnMouseUp", function(self, button)
-    if button == "RightButton" then
-      mod:ShowMenu(self)
-    end
-  end)
+  sink:EnableMouse(false)
+  sink:SetFrameStrata("LOW")
+  sink:SetFrameLevel(5)
 
   sink.drag = CreateFrame("Button", nil, sink, "BackdropTemplate")
   sink.drag:SetPoint("TOPLEFT", sink, "TOPLEFT", 0, 0)
   sink.drag:SetPoint("TOPRIGHT", sink, "TOPRIGHT", 0, 0)
-  sink.drag:SetHeight(18)
-  sink.drag:SetFrameLevel(sink:GetFrameLevel() + 10)
+  sink.drag:SetHeight(14)
+  sink.drag:SetFrameLevel(sink:GetFrameLevel() + 200)
+  sink.drag:SetFrameStrata("HIGH")
   sink.drag:EnableMouse(true)
   sink.drag:RegisterForClicks("AnyUp")
   sink.drag:SetScript("OnMouseDown", function(self, button)
@@ -185,6 +168,7 @@ local function EnsureSink()
       mod:ShowMenu(parent)
     end
   end)
+
 
   sink.title = sink:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   sink.title:SetPoint("TOP", sink, "TOP", 0, -4)
@@ -265,6 +249,11 @@ local function LooksLikeMinimapButton(child, db)
   local t = child:GetObjectType()
   if t ~= "Button" and t ~= "Frame" then return false end
 
+  local n = child.GetName and child:GetName() or ""
+  if n ~= "" and n:find("^LibDBIcon") then
+    return true
+  end
+
   if child.IsMouseEnabled and not child:IsMouseEnabled() then
     return false
   end
@@ -297,12 +286,18 @@ local function LooksLikeMinimapButton(child, db)
   end
 
   -- Optional includes for Blizzard widgets the user may want to keep on minimap
-  local n = child.GetName and child:GetName() or ""
   if n:find("MinimapZoneText") or n:find("MinimapNorthTag") or n:find("MinimapPOI") then
     return false
   end
-  if n ~= "" and (n:find("Questie") or n:find("QuestPOI") or n:find("Objective")) then
+  if n ~= "" and (n:find("QuestPOI") or n:find("Objective")) then
     return false
+  end
+
+  if n ~= "" and n:find("Questie") then
+    local isQuestieButton = n:find("LibDBIcon") or n:find("MinimapButton") or n:find("MiniMapButton") or t == "Button"
+    if not isQuestieButton then
+      return false
+    end
   end
 
   if t == "Frame" and n ~= "" then
@@ -400,7 +395,7 @@ local function LayoutSink(db)
     sink.drag:ClearAllPoints()
     sink.drag:SetPoint("TOPLEFT", sink, "TOPLEFT", 0, 0)
     sink.drag:SetPoint("TOPRIGHT", sink, "TOPRIGHT", 0, 0)
-    sink.drag:SetHeight(18)
+    sink.drag:SetHeight(14)
   end
 
   sink.title:SetShown(db.backdrop)
@@ -425,8 +420,8 @@ local function LayoutSink(db)
       b:SetSize(size, size)
 
       -- Keep them clickable
-      b:SetFrameStrata(sink:GetFrameStrata())
-      b:SetFrameLevel(sink:GetFrameLevel() + 5)
+      b:SetFrameStrata("MEDIUM")
+      b:SetFrameLevel(sink:GetFrameLevel() + 50)
       b:Show()
     end
   end
@@ -475,6 +470,53 @@ local function ScanMinimapButtons(force)
     for i = 1, #kids2 do
       local child = kids2[i]
       if LooksLikeMinimapButton(child, db) then
+        ReparentToSink(child)
+        orderedButtons[#orderedButtons + 1] = child
+      end
+    end
+  end
+
+  local LibDBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
+  if LibDBIcon and LibDBIcon.GetButtonList and LibDBIcon.GetMinimapButton then
+    local list = LibDBIcon:GetButtonList() or {}
+    for i = 1, #list do
+      local name = list[i]
+      local btn = LibDBIcon:GetMinimapButton(name)
+      if btn and LooksLikeMinimapButton(btn, db) then
+        ReparentToSink(btn)
+        orderedButtons[#orderedButtons + 1] = btn
+      end
+    end
+  end
+
+  local function IsAnchoredToMinimap(frame)
+    if not frame or not frame.GetNumPoints or not frame.GetPoint then return false end
+    local points = frame:GetNumPoints() or 0
+    for i = 1, points do
+      local _, rel = frame:GetPoint(i)
+      if rel == Minimap or rel == MinimapCluster or rel == MinimapBackdrop then
+        return true
+      end
+      local p = rel
+      local hops = 0
+      while p and hops < 6 do
+        if p == Minimap or p == MinimapCluster or p == MinimapBackdrop then
+          return true
+        end
+        p = p.GetParent and p:GetParent() or nil
+        hops = hops + 1
+      end
+    end
+    return false
+  end
+
+  -- Some LibDBIcon buttons parent to UIParent; include only if anchored to minimap.
+  if UIParent and UIParent.GetChildren then
+    local kids3 = { UIParent:GetChildren() }
+    for i = 1, #kids3 do
+      local child = kids3[i]
+      local n = child and child.GetName and child:GetName() or ""
+      if n ~= "" and n:find("^LibDBIcon") and IsAnchoredToMinimap(child) then
         ReparentToSink(child)
         orderedButtons[#orderedButtons + 1] = child
       end
@@ -701,8 +743,13 @@ local function PositionBlizzardMinimapButtons(db)
       trackingIcon:ClearAllPoints()
       trackingIcon:SetPoint("CENTER", trackingButton, "CENTER", 0, 0)
       if trackingIcon.SetSize then
-        trackingIcon:SetSize(16, 16)
+        trackingIcon:SetSize(14, 14)
       end
+    end
+
+    local border = trackingButton.Border or trackingButton.border
+    if border and border.SetDrawLayer then
+      border:SetDrawLayer("OVERLAY")
     end
   end
   
