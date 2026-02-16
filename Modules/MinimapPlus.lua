@@ -243,8 +243,13 @@ local function LooksLikeMinimapButton(child, db)
   end
 
   if t == "Frame" then
-    local onClick = child.GetScript and (child:GetScript("OnClick") or child:GetScript("OnMouseUp") or child:GetScript("OnMouseDown") or child:GetScript("OnDragStart"))
-    if not onClick then
+    local hasHandler = false
+    if child.HasScript then
+      hasHandler = child:HasScript("OnClick") or child:HasScript("OnMouseUp") or child:HasScript("OnMouseDown") or child:HasScript("OnDragStart")
+    elseif child.GetScript then
+      hasHandler = child:GetScript("OnClick") or child:GetScript("OnMouseUp") or child:GetScript("OnMouseDown") or child:GetScript("OnDragStart")
+    end
+    if not hasHandler then
       return false
     end
   end
