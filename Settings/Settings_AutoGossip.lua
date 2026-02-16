@@ -20,7 +20,7 @@ local function Apply()
   end
 end
 
-ETBC.SettingsRegistry:RegisterGroup("autoGossip", {
+ETBC.SettingsRegistry:RegisterGroup("autogossip", {
   name = "Auto-Gossip",
   order = 50,
   options = function()
