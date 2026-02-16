@@ -88,6 +88,19 @@ local function IsAuraOwner(owner)
   return false
 end
 
+local function IsEnhanceTBCIconOwner(owner)
+  if not owner or not owner.GetParent then return false end
+  local parent = owner:GetParent()
+  while parent do
+    local name = parent.GetName and parent:GetName() or ""
+    if name == "EnhanceTBC_BuffsContainer" or name == "EnhanceTBC_DebuffsContainer" or name == "EnhanceTBC_ActionTrackerContainer" then
+      return true
+    end
+    parent = parent.GetParent and parent:GetParent()
+  end
+  return false
+end
+
 local function ShouldHandleCooldown(cooldown)
   local db = GetDB()
   if not db.enabled then return false end
@@ -97,6 +110,10 @@ local function ShouldHandleCooldown(cooldown)
 
   local owner = cooldown:GetParent()
   if not owner or (owner.IsForbidden and owner:IsForbidden()) then return false end
+
+  if IsEnhanceTBCIconOwner(owner) then
+    return false
+  end
 
   if IsActionButtonOwner(owner) then
     return db.actionButtons and true or false

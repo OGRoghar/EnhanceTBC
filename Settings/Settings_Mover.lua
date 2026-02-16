@@ -9,6 +9,7 @@ local function GetDB()
 
   if db.enabled == nil then db.enabled = true end
   if db.unlocked == nil then db.unlocked = false end
+  if db.moveMode == nil then db.moveMode = false end
 
   if db.snapToGrid == nil then db.snapToGrid = true end
   if db.gridSize == nil then db.gridSize = 8 end
@@ -45,6 +46,25 @@ ETBC.SettingsRegistry:RegisterGroup("mover", {
         set = function(_, v)
           db.enabled = v and true or false
           ETBC.ApplyBus:Notify("mover")
+        end,
+      },
+
+      masterMove = {
+        type = "toggle",
+        name = "Master Move Mode",
+        desc = "Shows all mover handles and the move-mode overlay at once.",
+        order = 1.5,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.unlocked and db.moveMode end,
+        set = function(_, v)
+          if ETBC.Mover and ETBC.Mover.SetMasterMove then
+            ETBC.Mover:SetMasterMove(v and true or false)
+          else
+            db.unlocked = v and true or false
+            db.moveMode = v and true or false
+            ETBC.ApplyBus:Notify("mover")
+          end
         end,
       },
 

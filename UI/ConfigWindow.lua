@@ -683,12 +683,34 @@ local function RestoreWindow()
   end
 end
 
+local function ClearPreviewModes()
+  local p = ETBC.db and ETBC.db.profile
+  if not p then return end
+
+  local function DisablePreview(key, applyKey)
+    local db = p[key]
+    if db and db.preview then
+      db.preview = false
+      if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
+        ETBC.ApplyBus:Notify(applyKey or key)
+      end
+    end
+  end
+
+  DisablePreview("auras")
+  DisablePreview("actiontracker")
+  DisablePreview("gcdbar")
+  DisablePreview("swingtimer")
+  DisablePreview("combattext")
+end
+
 function ConfigWindow:Close()
   if state.closing then return end
   if not state.win then return end
   state.closing = true
 
   SaveWindow()
+  ClearPreviewModes()
 
   if state.searchTimer and state.searchTimer.Cancel then
     state.searchTimer:Cancel()
@@ -773,6 +795,14 @@ local function BuildWindow()
   win.frame:SetClampedToScreen(true)
 
   ApplyWindowStyle(win)
+
+  win.frame:EnableKeyboard(true)
+  win.frame:SetPropagateKeyboardInput(true)
+  win.frame:HookScript("OnKeyDown", function(_, key)
+    if key == "ESCAPE" then
+      ConfigWindow:Close()
+    end
+  end)
 
   win:SetCallback("OnClose", function()
     ConfigWindow:Close()

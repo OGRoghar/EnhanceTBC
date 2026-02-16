@@ -504,6 +504,17 @@ function M:SetMoveMode(enabled)
   ETBC.ApplyBus:Notify("mover")
 end
 
+function M:SetMasterMove(enabled)
+  self:SetUnlocked(enabled and true or false)
+  self:SetMoveMode(enabled and true or false)
+end
+
+function M:ToggleMasterMove()
+  local db = GetDB()
+  local nextState = not (db.moveMode and db.unlocked)
+  self:SetMasterMove(nextState)
+end
+
 function M:GetGridSize()
   return GetDB().gridSize or 8
 end

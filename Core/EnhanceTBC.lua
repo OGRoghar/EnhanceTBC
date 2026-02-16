@@ -67,6 +67,32 @@ function ETBC:SlashCommand(input)
     return
   end
 
+  if input:match("^moveall") then
+    if not (ETBC.Mover and ETBC.Mover.SetMasterMove) then
+      self:Print("Mover system not loaded.")
+      return
+    end
+
+    local arg = rawInput:match("^%s*[Mm][Oo][Vv][Ee][Aa][Ll][Ll]%s+(%S+)")
+    if not arg or arg == "" or arg:lower() == "toggle" then
+      ETBC.Mover:ToggleMasterMove()
+      return
+    end
+
+    arg = arg:lower()
+    if arg == "on" or arg == "1" or arg == "enable" then
+      ETBC.Mover:SetMasterMove(true)
+      return
+    end
+    if arg == "off" or arg == "0" or arg == "disable" then
+      ETBC.Mover:SetMasterMove(false)
+      return
+    end
+
+    self:Print("Usage: /etbc moveall [on|off|toggle]")
+    return
+  end
+
   if input == "listgossip" or input == "gossiplist" then
     if ETBC.Modules and ETBC.Modules.AutoGossip and ETBC.Modules.AutoGossip.ListPatterns then
       ETBC.Modules.AutoGossip:ListPatterns()
@@ -86,7 +112,7 @@ function ETBC:SlashCommand(input)
     return
   end
 
-  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap, /etbc listgossip (list auto-gossip), /etbc addgossip <pattern> (add auto-gossip)")
+  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap, /etbc moveall [on|off|toggle], /etbc listgossip (list auto-gossip), /etbc addgossip <pattern> (add auto-gossip)")
 end
 
 -- ---------------------------------------------------------

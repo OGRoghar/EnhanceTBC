@@ -38,6 +38,10 @@ local function EnsureOverlay()
   overlay.sub:SetPoint("TOP", overlay.title, "BOTTOM", 0, -6)
   overlay.sub:SetText("Left-drag to move • Right-click to reset • Shift+Right-click resets ALL • ESC to exit")
 
+  overlay.status = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  overlay.status:SetPoint("TOP", overlay.sub, "BOTTOM", 0, -4)
+  overlay.status:SetText("")
+
   escWatcher = CreateFrame("Frame", nil, overlay)
   escWatcher:EnableKeyboard(true)
   escWatcher:SetPropagateKeyboardInput(true)
@@ -250,6 +254,11 @@ function UI:Apply()
   if not (p.general.enabled and db.enabled and db.moveMode) then
     overlay:Hide()
     return
+  end
+
+  local masterOn = db.unlocked and db.moveMode
+  if overlay.status then
+    overlay.status:SetText(masterOn and "Master Move Mode: ON  (/etbc moveall)" or "Master Move Mode: OFF  (/etbc moveall)")
   end
 
   overlay:Show()
