@@ -352,7 +352,9 @@ local function Apply()
     driver:RegisterEvent("PLAYER_REGEN_DISABLED")
     driver:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-    -- SUCCEEDED-only: start gcd only when the spell actually fires.
+    -- START: begin GCD tracking when spell cast starts (on press)
+    -- Also register SUCCEEDED as fallback for instant-cast spells that may not fire START
+    driver:RegisterUnitEvent("UNIT_SPELLCAST_START", "player")
     driver:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 
     driver:SetScript("OnEvent", function(_, event, unit, castGUID, spellID)
@@ -366,9 +368,12 @@ local function Apply()
         return
       end
 
-      if event == "UNIT_SPELLCAST_SUCCEEDED" then
+      if event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_SUCCEEDED" then
         -- NOTE: Using fixed 1.5s GCD. This doesn't account for haste or spell-specific GCDs.
         -- For more accurate GCD tracking, would need to query GetSpellCooldown on a known GCD spell.
+        -- START fires for cast-time spells when the player presses the button
+        -- SUCCEEDED fires for instant-cast spells (and also for cast-time spells on completion)
+        -- We handle both to ensure all spell types trigger the GCD bar
         BeginGCDWindow(1.5)
       end
     end)

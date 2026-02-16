@@ -79,7 +79,7 @@ local function GetUIDB()
   local db = ETBC.db.profile.ui.config
 
   if db.w == nil then db.w = 980 end
-  if db.h == nil then db.h = 680 end
+  if db.h == nil then db.h = 720 end
 
   if db.point == nil then
     db.point, db.rel, db.relPoint, db.x, db.y = "CENTER", "UIParent", "CENTER", 0, 0
@@ -592,11 +592,11 @@ local function ApplyWindowStyle(win)
     win.frame._etbcLogo = logo
   end
 
-  -- Move AceGUI content DOWN under logo
+  -- Move AceGUI content DOWN under logo, but extend closer to bottom for TBC UI
   if win.content then
     win.content:ClearAllPoints()
     win.content:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 12, -100)
-    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 48)
+    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 32)  -- Reduced from 48 to 32 for more vertical space
   end
 
   -- Styled inner background aligned with content
@@ -650,7 +650,7 @@ local function RestoreWindow()
   if not db or not state.win or not state.win.frame then return end
 
   state.win:SetWidth(db.w or 980)
-  state.win:SetHeight(db.h or 680)
+  state.win:SetHeight(db.h or 720)
 
   state.win.frame:ClearAllPoints()
   state.win.frame:SetPoint(
@@ -753,7 +753,7 @@ local function BuildWindow()
   win:SetStatusText("TBC Anniversary UI • Live settings • /etbc")
   win:SetLayout("Fill")
   win:SetWidth(db.w or 980)
-  win:SetHeight(db.h or 680)
+  win:SetHeight(db.h or 720)
   win:EnableResize(true)
   win.frame:SetFrameStrata("DIALOG")
   win.frame:SetClampedToScreen(true)
