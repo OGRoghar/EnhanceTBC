@@ -191,7 +191,7 @@ local function IsBlacklisted(child)
   if child == MinimapBackdrop then return true end
   if child == MiniMapTracking or child == MiniMapTrackingButton or child == MiniMapTrackingDropDown then return true end
   if child == MiniMapMailFrame then return true end
-  if child == GameTimeFrame then return true end
+  -- GameTimeFrame removed from unconditional blacklist - now handled by includeCalendar option
   if child == MiniMapInstanceDifficulty or child == GuildInstanceDifficulty then return true end
   if child == MiniMapWorldMapButton then return true end
     -- Battleground / battlefield status buttons (the “weird icon”)
@@ -1074,14 +1074,13 @@ end
 
 -- Helper functions for sink visibility control
 function mod:ToggleSinkVisibility()
-  if not sink then
-    self:Apply()
-    return
-  end
+  local db = GetDB()
   
-  local isShown = sink:IsShown()
-  sink:SetShown(not isShown)
-  sink:EnableMouse(not isShown)
+  -- Toggle the persisted sinkEnabled flag
+  db.sinkEnabled = not db.sinkEnabled
+  
+  -- Re-apply to ensure sink visibility follows the persisted flag
+  self:Apply()
 end
 
 function mod:IsSinkShown()
