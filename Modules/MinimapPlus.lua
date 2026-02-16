@@ -470,8 +470,6 @@ local function HideSquareClusterArt(hide)
     _G.MinimapBorder,
     _G.MinimapBorderTop,
     _G.MinimapBackdrop,
-    _G.MinimapZoomIn,
-    _G.MinimapZoomOut,
     _G.MiniMapWorldMapButton,
     _G.GameTimeFrame, -- Calendar/clock button (shouldn't appear on square minimap)
     _G.TimeManagerClockButton, -- Alternative clock frame in some builds
@@ -532,6 +530,71 @@ local function PlaceZoneTextAboveSquare(scale)
   end
 end
 
+local function PositionSquareBlizzardButtons()
+  -- Position Blizzard minimap buttons for square minimap layout
+  -- These buttons normally position themselves radially (for round map)
+  -- We need to force them to corner/edge positions for square map
+  
+  local mm = Minimap
+  if not mm then return end
+  
+  -- LFG/Queue button - bottom left, smaller
+  local lfg = _G.QueueStatusMinimapButton or _G.LFGMinimapButton
+  if lfg then
+    lfg:ClearAllPoints()
+    lfg:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 2, 2)
+    lfg:SetSize(20, 20)  -- Smaller
+  end
+  
+  -- Tracking button - top right, smaller
+  local tracking = _G.MinimapCluster and _G.MinimapCluster.Tracking or _G.MiniMapTrackingButton
+  if tracking then
+    tracking:ClearAllPoints()
+    tracking:SetPoint("TOPRIGHT", mm, "TOPRIGHT", -2, -2)
+    tracking:SetSize(20, 20)  -- Smaller
+  end
+  
+  -- Mail - left edge, centered vertically
+  local mail = _G.MiniMapMailFrame
+  if mail then
+    mail:ClearAllPoints()
+    mail:SetPoint("LEFT", mm, "LEFT", 2, 0)
+    mail:SetSize(20, 20)  -- Keep consistent size
+  end
+  
+  -- Zoom in/out - right edge, smaller, centered vertically
+  local zoomIn = _G.MinimapZoomIn
+  local zoomOut = _G.MinimapZoomOut
+  if zoomIn and zoomOut then
+    zoomIn:ClearAllPoints()
+    zoomIn:SetPoint("RIGHT", mm, "RIGHT", -4, 10)
+    zoomIn:SetSize(18, 18)  -- Smaller
+    
+    zoomOut:ClearAllPoints()
+    zoomOut:SetPoint("RIGHT", mm, "RIGHT", -4, -10)
+    zoomOut:SetSize(18, 18)  -- Smaller
+  end
+end
+
+local function EnableMinimapMouseZoom()
+  -- Enable mouse wheel scrolling on minimap to zoom in/out
+  if not Minimap then return end
+  
+  if Minimap.__ETBC_ZoomHooked then return end
+  Minimap.__ETBC_ZoomHooked = true
+  
+  Minimap:EnableMouseWheel(true)
+  Minimap:SetScript("OnMouseWheel", function(self, delta)
+    if delta > 0 then
+      -- Scroll up = zoom in
+      Minimap_ZoomIn()
+    elseif delta < 0 then
+      -- Scroll down = zoom out
+      Minimap_ZoomOut()
+    end
+  end)
+end
+
 local function SetSquareMinimap(db)
   if not Minimap then return end
 
@@ -572,6 +635,12 @@ local function SetSquareMinimap(db)
 
     -- Put zone name above square map and scale it
     PlaceZoneTextAboveSquare(scale)
+    
+    -- Position Blizzard minimap buttons for square layout
+    PositionSquareBlizzardButtons()
+    
+    -- Enable mouse wheel zoom
+    EnableMinimapMouseZoom()
 
   else
     -- Restore original mask/scale
@@ -739,13 +808,23 @@ local function MenuInit(self, level)
     info.notCheckable = true
     info.text = "EnhanceTBC Minimap"
     UIDropDownMenu_AddButton(info, level)
+    
+    info = UIDropDownMenu_CreateInfo()
+    info.text = "Show Button Sink"
+    info.checked = db.sinkEnabled and true or false
+    info.func = function()
+      db.sinkEnabled = not db.sinkEnabled
+      Apply()
+    end
+    UIDropDownMenu_AddButton(info, level)
 
     info = UIDropDownMenu_CreateInfo()
     info.notCheckable = true
     info.text = db.locked and "Unlock Sink" or "Lock Sink"
     info.func = function()
       db.locked = not db.locked
-      if sink then sink:EnableMouse(true) end
+      if sink then sink:EnableMouse(not db.locked) end
+      Apply()
     end
     UIDropDownMenu_AddButton(info, level)
 
@@ -940,6 +1019,16 @@ function mod:Apply()
   -- Hook right-click on landing page buttons if they exist
   HookLandingPageRightClick(_G.ExpansionLandingPageMinimapButton, "Expansion Landing")
   HookLandingPageRightClick(_G.GarrisonLandingPageMinimapButton, "Garrison Landing")
+  
+  -- Hook right-click on Minimap to show sink menu
+  if Minimap and not Minimap.__ETBC_RightClickHooked then
+    Minimap.__ETBC_RightClickHooked = true
+    Minimap:HookScript("OnMouseUp", function(self, btn)
+      if btn == "RightButton" then
+        mod:ShowMenu(self)
+      end
+    end)
+  end
 
   -- First scan
   if db.sinkEnabled then

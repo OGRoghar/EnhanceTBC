@@ -88,7 +88,7 @@ local function GetDB()
   if db.copyButton == nil then db.copyButton = true end
   if db.copyButtonScale == nil then db.copyButtonScale = 1.0 end
   if db.copyButtonAlpha == nil then db.copyButtonAlpha = 0.95 end
-  if db.copyTarget == nil then db.copyTarget = "follow" end
+  if db.copyTarget == nil then db.copyTarget = "1" end  -- Default to General (ChatFrame1)
 
   return db
 end
