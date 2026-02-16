@@ -176,7 +176,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       extraWidth = {
         type = "range",
         name = "Extra width",
-        desc = "Not functional due to Blizzard frame limitations. Use Scale instead.",
+        desc = "Not functional due to Blizzard frame limitations. Use Frame scale instead.",
         order = 33,
         min = -60, max = 180, step = 1,
         disabled = function() return true end,
@@ -187,7 +187,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       extraHeight = {
         type = "range",
         name = "Extra height",
-        desc = "Not functional due to Blizzard frame limitations. Use Scale instead.",
+        desc = "Not functional due to Blizzard frame limitations. Use Frame scale instead.",
         order = 34,
         min = -20, max = 60, step = 1,
         disabled = function() return true end,
