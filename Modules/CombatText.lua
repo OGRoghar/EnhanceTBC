@@ -187,7 +187,7 @@ end
 local function ClampLines(maxLines)
   while #active > maxLines do
     ReleaseFS(active[#active])
-    table.remove(active)
+    active[#active] = nil
   end
 end
 
