@@ -410,7 +410,7 @@ local function HandleCLEU(db)
     local schoolMask = tonumber((select(14, CombatLogGetCurrentEventInfo())))
     local critical = select(18, CombatLogGetCurrentEventInfo())
 
-    AddToBatch(db, "DAMAGE", direction, 0, amount, nil, critical and true or false, schoolMask)
+    AddToBatch(db, "DAMAGE", direction, 0, amount, nil, not not critical, schoolMask)
     return
   end
 
@@ -422,7 +422,7 @@ local function HandleCLEU(db)
     local amount = tonumber((select(15, CombatLogGetCurrentEventInfo()))) or 0
     local critical = select(21, CombatLogGetCurrentEventInfo())
 
-    AddToBatch(db, "DAMAGE", direction, spellID, amount, nil, critical and true or false, schoolMask)
+    AddToBatch(db, "DAMAGE", direction, spellID, amount, nil, not not critical, schoolMask)
     return
   end
 
@@ -435,10 +435,10 @@ local function HandleCLEU(db)
     local critical = select(18, CombatLogGetCurrentEventInfo())
 
     if db.showOverheal and overheal > 0 then
-      AddToBatch(db, "HEAL", direction, spellID, amount, nil, critical and true or false, nil)
+      AddToBatch(db, "HEAL", direction, spellID, amount, nil, not not critical, nil)
       AddToBatch(db, "HEAL", direction, spellID, 0, nil, false, nil, "OH " .. overheal)
     else
-      AddToBatch(db, "HEAL", direction, spellID, amount, nil, critical and true or false, nil)
+      AddToBatch(db, "HEAL", direction, spellID, amount, nil, not not critical, nil)
     end
     return
   end

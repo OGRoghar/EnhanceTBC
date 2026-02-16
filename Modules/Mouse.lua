@@ -59,7 +59,7 @@ end
 
 local function InCombat()
   if InCombatLockdown and InCombatLockdown() then return true end
-  if UnitAffectingCombat then return UnitAffectingCombat("player") and true or false end
+  if UnitAffectingCombat then return not not UnitAffectingCombat("player") end
   return false
 end
 
@@ -195,7 +195,7 @@ local function SafeSetModel(pm, path, db)
   if not ok and db and db.debugModels then
     Print("Mouse model load failed: " .. tostring(path) .. " (" .. tostring(err) .. ")")
   end
-  return ok and true or false
+  return not not ok
 end
 
 local function GetDB()
@@ -647,7 +647,7 @@ local function Apply()
 
   local gEnabled = true
   if ETBC.db.profile.general and ETBC.db.profile.general.enabled ~= nil then
-    gEnabled = ETBC.db.profile.general.enabled and true or false
+    gEnabled = not not ETBC.db.profile.general.enabled
   end
 
   local db = GetDB()
@@ -714,7 +714,7 @@ end
 
 function mod:SetEnabled(v)
   local db = GetDB()
-  db.enabled = v and true or false
+  db.enabled = not not v
   Apply()
 end
 

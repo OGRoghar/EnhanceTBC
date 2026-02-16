@@ -74,11 +74,13 @@ function V:Evaluate(condition)
   if s == "never" then return false end
 
   if s == "incombat" then
-    return UnitAffectingCombat("player") and true or false
+    -- UnitAffectingCombat returns 1 or nil, not true/false
+    return not not UnitAffectingCombat("player")
   end
 
   if s == "outofcombat" then
-    return (not UnitAffectingCombat("player")) and true or false
+    -- 'not' already converts to boolean (true/false)
+    return not UnitAffectingCombat("player")
   end
 
   if s == "ininstance" then return IsInInstance() end

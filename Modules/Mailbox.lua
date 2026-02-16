@@ -77,10 +77,15 @@ end
 local function InboxInfo(i)
   -- Classic/TBC: GetInboxHeaderInfo(index)
   local _, _, sender, subject, money, codAmount, _, itemCount, _, _, _, _, isGM = GetInboxHeaderInfo(i)
+  if not sender then
+    -- Invalid mail entry (can happen with mail API), return safe defaults
+    -- Caller should check for nil sender to skip invalid entries
+    return nil, nil, 0, 0, 0, false
+  end
   money = tonumber(money) or 0
   codAmount = tonumber(codAmount) or 0
   itemCount = tonumber(itemCount) or 0
-  return sender, subject, money, codAmount, itemCount, isGM and true or false
+  return sender, subject, money, codAmount, itemCount, not not isGM
 end
 
 local function BuildQueue(db)
@@ -89,7 +94,8 @@ local function BuildQueue(db)
   -- IMPORTANT: work from high index -> low index to avoid shifting issues
   for i = num, 1, -1 do
     local sender, _, money, cod, itemCount, isGM = InboxInfo(i)
-    if CanTouchMail(db, sender, isGM, cod) then
+    -- Defensive: Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
+    if sender and CanTouchMail(db, sender, isGM, cod) then
       local hasMoney = money > 0
       local hasItems = itemCount > 0
 
@@ -176,7 +182,8 @@ local function Step(db)
     if idx and idx >= 1 and idx <= num then
       local sender, _, money, cod, itemCount, isGM = InboxInfo(idx)
 
-      if CanTouchMail(db, sender, isGM, cod) then
+      -- Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
+      if sender and CanTouchMail(db, sender, isGM, cod) then
         if job.action == "MONEY" then
           if db.collectGold and money and money > 0 then
             TakeInboxMoney(idx)
@@ -192,7 +199,8 @@ local function Step(db)
         elseif job.action == "MAYBE_DELETE" then
           if db.autoDeleteEmpty then
             local s2, _, m2, cod2, c2, gm2 = InboxInfo(idx)
-            if CanTouchMail(db, s2, gm2, cod2) then
+            -- Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
+            if s2 and CanTouchMail(db, s2, gm2, cod2) then
               local empty = ((tonumber(m2) or 0) == 0) and ((tonumber(c2) or 0) == 0)
               if empty or (not db.onlyOpenWhenEmpty) then
                 if deleteConfirmed then
