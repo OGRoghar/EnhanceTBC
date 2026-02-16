@@ -142,8 +142,11 @@ local function ExtractNPCID(unit)
   if not guid then return nil end
   
   -- TBC Anniversary uses modern GUID format: "Creature-0-<server>-<instance>-<zone>-<npcID>-<spawnUID>"
-  -- Split by hyphen and extract NPC ID
-  local unitType, _, _, _, _, npcID = strsplit("-", guid)
+  -- strsplit returns: unitType, "0", server, instance, zone, npcID, spawnUID
+  local parts = {strsplit("-", guid)}
+  local unitType = parts[1]
+  local npcID = parts[6]
+  
   if unitType and (unitType == "Creature" or unitType == "Vehicle") and npcID then
     return tonumber(npcID)
   end
@@ -260,30 +263,19 @@ function mod:Apply()
 
     if GameTooltip then
       -- Hook OnTooltipSetItem for item IDs
-      GameTooltip:HookScript("OnTooltipSetItem", function(tooltip)
-        OnTooltipSetItem(tooltip)
-      end)
-
+      GameTooltip:HookScript("OnTooltipSetItem", OnTooltipSetItem)
+      
       -- Hook OnTooltipSetSpell for spell IDs
-      GameTooltip:HookScript("OnTooltipSetSpell", function(tooltip)
-        OnTooltipSetSpell(tooltip)
-      end)
-
+      GameTooltip:HookScript("OnTooltipSetSpell", OnTooltipSetSpell)
+      
       -- Hook OnTooltipSetUnit for NPC IDs
-      GameTooltip:HookScript("OnTooltipSetUnit", function(tooltip)
-        OnTooltipSetUnit(tooltip)
-      end)
+      GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit)
     end
 
     -- Also hook ItemRefTooltip (for chat links)
     if ItemRefTooltip then
-      ItemRefTooltip:HookScript("OnTooltipSetItem", function(tooltip)
-        OnTooltipSetItem(tooltip)
-      end)
-
-      ItemRefTooltip:HookScript("OnTooltipSetSpell", function(tooltip)
-        OnTooltipSetSpell(tooltip)
-      end)
+      ItemRefTooltip:HookScript("OnTooltipSetItem", OnTooltipSetItem)
+      ItemRefTooltip:HookScript("OnTooltipSetSpell", OnTooltipSetSpell)
     end
   end
 
