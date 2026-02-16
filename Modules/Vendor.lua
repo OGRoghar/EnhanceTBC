@@ -152,7 +152,7 @@ local function AutoSellJunk(db)
         local link = GetBagItemLink(bag, slot)
         if link then
           local name, _, quality, _, _, _, _, _, _, _, vendorPrice = GetItemInfo(link)
-          if quality == 0 and vendorPrice and vendorPrice > 0 then
+          if name and quality == 0 and vendorPrice and vendorPrice > 0 then
             local count = GetBagItemCount(bag, slot) or 1
             local value = vendorPrice * count
 

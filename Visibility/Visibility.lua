@@ -46,7 +46,7 @@ end
 
 local function PlayerInCombat()
   if InCombatLockdown and InCombatLockdown() then return true end
-  if UnitAffectingCombat then return UnitAffectingCombat("player") and true or false end
+  if UnitAffectingCombat then return not not UnitAffectingCombat("player") end
   return false
 end
 
@@ -57,7 +57,7 @@ end
 
 local function InGroupAny()
   if IsInGroup then
-    return IsInGroup() and true or false
+    return not not IsInGroup()
   end
   if GetNumGroupMembers then
     return (GetNumGroupMembers() or 0) > 0
@@ -67,7 +67,7 @@ end
 
 local function InRaid()
   if IsInRaid then
-    return IsInRaid() and true or false
+    return not not IsInRaid()
   end
   if GetNumRaidMembers then
     return (GetNumRaidMembers() or 0) > 0
@@ -78,7 +78,7 @@ end
 local function InPartyNotRaid()
   if InRaid() then return false end
   if IsInGroup then
-    return IsInGroup() and true or false
+    return not not IsInGroup()
   end
   if GetNumPartyMembers then
     return (GetNumPartyMembers() or 0) > 0
@@ -89,21 +89,21 @@ end
 local function IsMountedSafe()
   if IsMounted then
     local ok, v = pcall(IsMounted)
-    if ok then return v and true or false end
+    if ok then return not not v end
   end
   -- fallback: some builds can infer from UnitBuff; but avoid heavy scanning here
   return false
 end
 
 local function UnitDeadState()
-  if UnitIsDeadOrGhost then return UnitIsDeadOrGhost("player") and true or false end
-  if UnitIsDead then return UnitIsDead("player") and true or false end
+  if UnitIsDeadOrGhost then return not not UnitIsDeadOrGhost("player") end
+  if UnitIsDead then return not not UnitIsDead("player") end
   return false
 end
 
 local function HasTarget()
   if UnitExists then
-    return UnitExists("target") and true or false
+    return not not UnitExists("target")
   end
   return false
 end
@@ -141,9 +141,9 @@ local function InstancePass(rule)
   end
   local t = GetInstanceType()
   if t == "world" then
-    return inst.world and true or false
+    return not not inst.world
   end
-  return inst[t] and true or false
+  return not not inst[t]
 end
 
 local function NormalizeRule(ruleOrKey)
@@ -162,7 +162,7 @@ local function NormalizeRule(ruleOrKey)
 end
 
 function V:IsEnabled()
-  return GetDB().enabled and true or false
+  return not not GetDB().enabled
 end
 
 function V:Evaluate(ruleOrPresetKey)
@@ -227,7 +227,7 @@ function V:Evaluate(ruleOrPresetKey)
   ok = ok and InstancePass(rule)
 
   if rule.invert then ok = not ok end
-  return ok and true or false
+  return not not ok
 end
 
 local function CanSafelyShowHide(frame)

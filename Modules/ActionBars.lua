@@ -53,7 +53,7 @@ end
 
 local function InCombat()
   if InCombatLockdown and InCombatLockdown() then return true end
-  if UnitAffectingCombat then return UnitAffectingCombat("player") and true or false end
+  if UnitAffectingCombat then return not not UnitAffectingCombat("player") end
   return false
 end
 
