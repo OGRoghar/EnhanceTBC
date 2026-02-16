@@ -108,17 +108,21 @@ local function ExtractItemID(itemLink)
   return id and tonumber(id) or nil
 end
 
--- Extract Spell ID from tooltip (WoW TBC doesn't always provide spellID directly)
+-- Extract Spell ID from tooltip (TBC Anniversary client)
 local function ExtractSpellID(tooltip)
   if not tooltip or not tooltip.GetSpell then return nil end
-  -- In TBC, GetSpell returns: spellName, spellRank
-  -- SpellID may not be directly available, we'll try to parse from hyperlinks if present
-  local name, rank = tooltip:GetSpell()
+  
+  -- Try GetSpell which may return spellID on TBC Anniversary
+  local name, rank, spellID = tooltip:GetSpell()
+  if spellID then return spellID end
   if not name then return nil end
   
-  -- Try to get spell ID from hyperlink if available (checking tooltip lines)
+  -- Fallback: try to extract from tooltip hyperlinks
+  local tooltipName = tooltip:GetName()
+  if not tooltipName then return nil end
+  
   for i = 1, tooltip:NumLines() do
-    local line = _G[tooltip:GetName().."TextLeft"..i]
+    local line = _G[tooltipName.."TextLeft"..i]
     if line then
       local text = line:GetText()
       if text then
@@ -137,16 +141,12 @@ local function ExtractNPCID(unit)
   local guid = UnitGUID(unit)
   if not guid then return nil end
   
-  -- GUID format in TBC: "0xF130<npcID><instance><server><spawnUID>"
-  -- For NPCs, we extract the NPC ID portion
+  -- TBC Anniversary uses modern GUID format: "Creature-0-<server>-<instance>-<zone>-<npcID>-<spawnUID>"
+  -- Split by hyphen and extract NPC ID
   local unitType, _, _, _, _, npcID = strsplit("-", guid)
   if unitType and (unitType == "Creature" or unitType == "Vehicle") and npcID then
     return tonumber(npcID)
   end
-  
-  -- Fallback for older GUID format (hex string)
-  local id = tonumber(guid:sub(7, 10), 16)
-  if id and id > 0 then return id end
   
   return nil
 end
@@ -155,9 +155,13 @@ end
 local function ExtractQuestID(tooltip)
   if not tooltip then return nil end
   
-  -- Check all tooltip lines for quest hyperlinks
+  -- Check tooltip name for quest hyperlinks
+  local tooltipName = tooltip:GetName()
+  if not tooltipName then return nil end
+  
+  -- Scan all tooltip lines for quest hyperlinks
   for i = 1, tooltip:NumLines() do
-    local line = _G[tooltip:GetName().."TextLeft"..i]
+    local line = _G[tooltipName.."TextLeft"..i]
     if line then
       local text = line:GetText()
       if text then
