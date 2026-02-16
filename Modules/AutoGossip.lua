@@ -99,12 +99,12 @@ local function AutoSelectGossip()
   
   if delay > 0 then
     C_Timer.After(delay, function()
-      -- Verify gossip is still showing before selecting
-      local options = { GetGossipOptions() }
-      if #options > 0 then
-        SelectGossipOption(optionIndex)
+      -- Re-find the matching option after delay to ensure index is still valid
+      local currentIndex, currentText = FindMatchingOption()
+      if currentIndex then
+        SelectGossipOption(currentIndex)
         if ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.debug then
-          Print("Auto-selected gossip option: " .. (optionText or "unknown"))
+          Print("Auto-selected gossip option: " .. (currentText or "unknown"))
         end
       end
       pendingGossip = false
@@ -170,7 +170,7 @@ end
 
 function mod:AddPattern(pattern)
   if not pattern or pattern == "" then
-    Print("Usage: /etbc aag <pattern text>")
+    Print("Usage: /etbc addgossip <pattern text>")
     return
   end
   

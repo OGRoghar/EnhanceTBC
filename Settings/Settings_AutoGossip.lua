@@ -137,13 +137,13 @@ ETBC.SettingsRegistry:RegisterGroup("autoGossip", {
             name = function()
               local db = GetDB()
               if #db.options == 0 then
-                return "|cffaaaaaa(No patterns added yet)\n\nUse /etbc lag to list patterns\nUse /etbc aag <text> to add patterns|r"
+                return "|cffaaaaaa(No patterns added yet)\n\nUse /etbc listgossip to list patterns\nUse /etbc addgossip <text> to add patterns|r"
               else
                 local text = "Current patterns:\n"
                 for i, pattern in ipairs(db.options) do
                   text = text .. "|cff00ff00" .. i .. ". " .. pattern .. "|r\n"
                 end
-                text = text .. "\n|cffffaa00Use /etbc lag to list in chat|r"
+                text = text .. "\n|cffffaa00Use /etbc listgossip to list in chat|r"
                 return text
               end
             end,
