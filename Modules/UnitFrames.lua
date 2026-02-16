@@ -189,14 +189,16 @@ local function UpdateHealthTextForUnit(unit)
 
   for _, bar in ipairs(bars) do
     local fs = EnsureText(bar, "_etbcHealthText", "CENTER", 0, 0, "CENTER")
-    StyleFontString(fs)
+    if fs then
+      StyleFontString(fs)
 
-    if show then
-      fs:SetText(pct .. "%")
-      fs:Show()
-    else
-      fs:SetText("")
-      fs:Hide()
+      if show then
+        fs:SetText(pct .. "%")
+        fs:Show()
+      else
+        fs:SetText("")
+        fs:Hide()
+      end
     end
   end
 end
@@ -219,9 +221,11 @@ local function UpdatePowerTextForUnit(unit)
 
   for _, bar in ipairs(bars) do
     local fs = EnsureText(bar, "_etbcPowerText", "RIGHT", -4, 0, "RIGHT")
-    StyleFontString(fs)
-    fs:SetText(tostring(cur))
-    fs:Show()
+    if fs then
+      StyleFontString(fs)
+      fs:SetText(tostring(cur))
+      fs:Show()
+    end
   end
 end
 
