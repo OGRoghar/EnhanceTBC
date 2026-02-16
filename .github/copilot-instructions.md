@@ -1,7 +1,7 @@
 # EnhanceTBC - GitHub Copilot Instructions
 
 ## Project Overview
-EnhanceTBC is a quality-of-life addon suite for World of Warcraft: The Burning Crusade Anniversary Edition (TBC 2026, version 20505). Built with Ace3 framework, it provides UI enhancements, minimap improvements, action bars, cast bars, unit frames, and various gameplay conveniences.
+EnhanceTBC is a quality-of-life addon suite for World of Warcraft: The Burning Crusade Anniversary Edition (TBC 2026, Ver 2.5.5, interface 20505). Built with Ace3 framework, it provides UI enhancements, minimap improvements, action bars, cast bars, unit frames, and various gameplay conveniences.
 
 ## Technology Stack
 - **Language**: Lua (WoW TBC API)
