@@ -115,5 +115,18 @@ function T:SetColor(name, r, g, b, a)
     db.colors = db.colors or {}
     db.colors[name] = db.colors[name] or {}
     local c = db.colors[name]
-    c.r, c.g, c.b, c.a = r, g, b, (a == nil and 1 or a)
+    
+    -- Validate and clamp color values to 0-1 range
+    if ETBC.Compat and ETBC.Compat.Clamp then
+        c.r = ETBC.Compat.Clamp(tonumber(r) or 0, 0, 1)
+        c.g = ETBC.Compat.Clamp(tonumber(g) or 0, 0, 1)
+        c.b = ETBC.Compat.Clamp(tonumber(b) or 0, 0, 1)
+        c.a = ETBC.Compat.Clamp(tonumber(a) or 1, 0, 1)
+    else
+        -- Fallback if Compat.Clamp not available
+        c.r = tonumber(r) or 0
+        c.g = tonumber(g) or 0
+        c.b = tonumber(b) or 0
+        c.a = tonumber(a) or 1
+    end
 end

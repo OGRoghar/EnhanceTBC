@@ -76,6 +76,7 @@ function ETBC:InitMinimapIcon()
   EnsureDataObject()
 
   if not self._minimapRegistered then
+    self._minimapRegistered = true
     LDBIcon:Register("EnhanceTBC", dataObject, db)
 
     local btn = LDBIcon:GetMinimapButton("EnhanceTBC")
@@ -84,8 +85,6 @@ function ETBC:InitMinimapIcon()
         btn.icon:SetTexCoord(unpackFn(ICON_COORDS))
       end
     end
-
-    self._minimapRegistered = true
   end
 
   if db.hide then

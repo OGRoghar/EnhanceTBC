@@ -18,6 +18,7 @@ function ETBC.SettingsRegistry:RegisterGroup(key, group)
     for i = #reg.groups, 1, -1 do
       if reg.groups[i] == existing then
         table.remove(reg.groups, i)
+        break  -- Only one instance should exist
       end
     end
   end
