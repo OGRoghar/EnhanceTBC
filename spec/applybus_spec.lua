@@ -5,15 +5,17 @@ require('spec.wow_mocks')
 
 describe("ApplyBus", function()
   local ETBC
-  local ADDON_NAME
+  local ADDON_NAME = "EnhanceTBC"
   
   before_each(function()
     -- Reset the addon namespace
-    ADDON_NAME = "EnhanceTBC"
     ETBC = {}
     
     -- Load the real ApplyBus module
-    local chunk = loadfile('Core/ApplyBus.lua')
+    local chunk, err = loadfile('Core/ApplyBus.lua')
+    if not chunk then
+      error("Failed to load Core/ApplyBus.lua: " .. tostring(err))
+    end
     chunk(ADDON_NAME, ETBC)
   end)
   
