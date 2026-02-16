@@ -10,6 +10,7 @@ ETBC.Modules.Objectives = mod
 
 local driver
 local hooked = false
+local cachedDB  -- Module-level cache for DB, updated by Apply()
 
 local function GetDB()
   ETBC.db.profile.objectives = ETBC.db.profile.objectives or {}
@@ -226,13 +227,12 @@ local function HookTracker(frame, kind)
   hooked = true
 
   EnsureDriver()
-  
-  local cachedDB = GetDB()
 
   -- Only run OnUpdate when there's an active fade
   driver:SetScript("OnUpdate", function()
     if not frame or not frame:IsShown() then return end
     if not frame._etbcFade or not frame._etbcFade.active then return end
+    if not cachedDB then cachedDB = GetDB() end
     UpdateFade(frame, cachedDB)
   end)
 
@@ -241,7 +241,7 @@ local function HookTracker(frame, kind)
   driver:RegisterEvent("PLAYER_REGEN_ENABLED")
   driver:RegisterEvent("PLAYER_ENTERING_WORLD")
   driver:SetScript("OnEvent", function()
-    cachedDB = GetDB()
+    if not cachedDB then cachedDB = GetDB() end
     ApplyCombatVisibility(frame, cachedDB)
   end)
 
@@ -249,7 +249,7 @@ local function HookTracker(frame, kind)
   if kind == "WATCHFRAME" then
     if type(_G.WatchFrame_Update) == "function" then
       hooksecurefunc("WatchFrame_Update", function()
-        cachedDB = GetDB()
+        if not cachedDB then cachedDB = GetDB() end
         if not cachedDB.enabled then return end
         ApplyLayout(frame, kind, cachedDB)
         AutoCollapseCompleted(cachedDB)
@@ -259,7 +259,7 @@ local function HookTracker(frame, kind)
     -- ObjectiveTracker: hook any safe update if exists
     if type(_G.ObjectiveTracker_Update) == "function" then
       hooksecurefunc("ObjectiveTracker_Update", function()
-        cachedDB = GetDB()
+        if not cachedDB then cachedDB = GetDB() end
         if not cachedDB.enabled then return end
         ApplyLayout(frame, kind, cachedDB)
       end)
@@ -271,6 +271,7 @@ local function Apply()
   EnsureDriver()
 
   local db = GetDB()
+  cachedDB = db  -- Update module-level cache so closures use latest settings
   local generalEnabled = ETBC.db.profile.general and ETBC.db.profile.general.enabled
 
   local frame, kind = FindTracker()

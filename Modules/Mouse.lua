@@ -509,26 +509,41 @@ local function Tick(elapsed)
           lastCursorModelPath = path
           if not SafeSetModel(cursorModel, path, db) then
             cursorModel:Hide()
-            return
+            -- Continue to allow trail processing
+          else
+            -- Model loaded successfully, configure it
+            cursorModel:SetSize(tonumber(db.model.size) or 96, tonumber(db.model.size) or 96)
+            cursorModel:SetAlpha(Clamp01(db.model.alpha))
+            ApplyModelScale(cursorModel, db.model.scale)
+            ApplyModelCamera(cursorModel, db.model.camDistance, db.model.portraitZoom, db.model.posZ)
+
+            cursorModelFacingRad = DegToRad(db.model.facing or 0)
+            local spinDeg = tonumber(db.model.spin) or 0
+            if spinDeg ~= 0 then
+              cursorModelFacingRad = cursorModelFacingRad + DegToRad(spinDeg) * (elapsed or 0)
+            end
+            if cursorModel.SetFacing then cursorModel:SetFacing(cursorModelFacingRad) end
+            cursorModel:Show()
           end
+        else
+          -- Path unchanged, still valid, update position and properties
+          cursorModel:SetSize(tonumber(db.model.size) or 96, tonumber(db.model.size) or 96)
+          cursorModel:SetAlpha(Clamp01(db.model.alpha))
+          ApplyModelScale(cursorModel, db.model.scale)
+          ApplyModelCamera(cursorModel, db.model.camDistance, db.model.portraitZoom, db.model.posZ)
+
+          cursorModelFacingRad = DegToRad(db.model.facing or 0)
+          local spinDeg = tonumber(db.model.spin) or 0
+          if spinDeg ~= 0 then
+            cursorModelFacingRad = cursorModelFacingRad + DegToRad(spinDeg) * (elapsed or 0)
+          end
+          if cursorModel.SetFacing then cursorModel:SetFacing(cursorModelFacingRad) end
+          cursorModel:Show()
         end
       else
         cursorModel:Hide()
-        return
+        -- Continue to allow trail processing
       end
-
-      cursorModel:SetSize(tonumber(db.model.size) or 96, tonumber(db.model.size) or 96)
-      cursorModel:SetAlpha(Clamp01(db.model.alpha))
-      ApplyModelScale(cursorModel, db.model.scale)
-      ApplyModelCamera(cursorModel, db.model.camDistance, db.model.portraitZoom, db.model.posZ)
-
-      cursorModelFacingRad = DegToRad(db.model.facing or 0)
-      local spinDeg = tonumber(db.model.spin) or 0
-      if spinDeg ~= 0 then
-        cursorModelFacingRad = cursorModelFacingRad + DegToRad(spinDeg) * (elapsed or 0)
-      end
-      if cursorModel.SetFacing then cursorModel:SetFacing(cursorModelFacingRad) end
-      cursorModel:Show()
     end
   elseif cursorModel then
     cursorModel:Hide()
