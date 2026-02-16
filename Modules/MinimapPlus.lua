@@ -474,11 +474,11 @@ local function HideSquareClusterArt(hide)
     if _G.MinimapNorthTag then
       _G.MinimapNorthTag:Hide()
       -- Hook to prevent it from showing again
-      if not _G.MinimapNorthTag.leatrixHooked then
+      if not _G.MinimapNorthTag.etbcHideHooked then
         hooksecurefunc(_G.MinimapNorthTag, "Show", function()
           _G.MinimapNorthTag:Hide()
         end)
-        _G.MinimapNorthTag.leatrixHooked = true
+        _G.MinimapNorthTag.etbcHideHooked = true
       end
     end
   end
@@ -716,18 +716,11 @@ local function SetSquareMinimap(db)
     -- Restore cluster art
     HideSquareClusterArt(false)
     RestoreZoneText()
-    
-    -- Override GetMinimapShape to return ROUND (Leatrix Plus pattern)
-    _G.GetMinimapShape = function()
-      return "ROUND"
-    end
   end
   
-  -- Override GetMinimapShape for square mode (Leatrix Plus pattern)
-  if db.squareMinimap then
-    _G.GetMinimapShape = function()
-      return "SQUARE"
-    end
+  -- Override GetMinimapShape for addon compatibility (Leatrix Plus pattern)
+  _G.GetMinimapShape = function()
+    return db.squareMinimap and "SQUARE" or "ROUND"
   end
 end
 
