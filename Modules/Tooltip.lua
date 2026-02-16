@@ -10,6 +10,7 @@ ETBC.Modules.Tooltip = mod
 
 mod.key = "tooltip"
 mod._hooked = false
+mod._idHooked = false
 
 -- ---------------------------------------------------------
 -- Helpers
@@ -97,13 +98,141 @@ local function ApplyStyleToTooltip(tip)
 end
 
 -- ---------------------------------------------------------
+-- ID Display Helpers
+-- ---------------------------------------------------------
+
+-- Extract Item ID from itemLink (format: "|cffffffff|Hitem:12345:...")
+local function ExtractItemID(itemLink)
+  if not itemLink then return nil end
+  local id = itemLink:match("item:(%d+)")
+  return id and tonumber(id) or nil
+end
+
+-- Extract Spell ID from tooltip (WoW TBC doesn't always provide spellID directly)
+local function ExtractSpellID(tooltip)
+  if not tooltip or not tooltip.GetSpell then return nil end
+  -- In TBC, GetSpell returns: spellName, spellRank
+  -- SpellID may not be directly available, we'll try to parse from hyperlinks if present
+  local name, rank = tooltip:GetSpell()
+  if not name then return nil end
+  
+  -- Try to get spell ID from hyperlink if available (checking tooltip lines)
+  for i = 1, tooltip:NumLines() do
+    local line = _G[tooltip:GetName().."TextLeft"..i]
+    if line then
+      local text = line:GetText()
+      if text then
+        local id = text:match("|Hspell:(%d+)")
+        if id then return tonumber(id) end
+      end
+    end
+  end
+  
+  return nil
+end
+
+-- Extract NPC ID from unit GUID
+local function ExtractNPCID(unit)
+  if not unit then return nil end
+  local guid = UnitGUID(unit)
+  if not guid then return nil end
+  
+  -- GUID format in TBC: "0xF130<npcID><instance><server><spawnUID>"
+  -- For NPCs, we extract the NPC ID portion
+  local unitType, _, _, _, _, npcID = strsplit("-", guid)
+  if unitType and (unitType == "Creature" or unitType == "Vehicle") and npcID then
+    return tonumber(npcID)
+  end
+  
+  -- Fallback for older GUID format (hex string)
+  local id = tonumber(guid:sub(7, 10), 16)
+  if id and id > 0 then return id end
+  
+  return nil
+end
+
+-- Extract Quest ID from hyperlink in tooltip
+local function ExtractQuestID(tooltip)
+  if not tooltip then return nil end
+  
+  -- Check all tooltip lines for quest hyperlinks
+  for i = 1, tooltip:NumLines() do
+    local line = _G[tooltip:GetName().."TextLeft"..i]
+    if line then
+      local text = line:GetText()
+      if text then
+        local id = text:match("|Hquest:(%d+)")
+        if id then return tonumber(id) end
+      end
+    end
+  end
+  
+  return nil
+end
+
+-- Add ID line to tooltip with color
+local function AddIDLine(tooltip, label, id, color)
+  if not tooltip or not id then return end
+  local r, g, b = color.r or 0.5, color.g or 0.9, color.b or 0.5
+  tooltip:AddLine(label .. id, r, g, b)
+end
+
+-- Hook handler for item tooltips
+local function OnTooltipSetItem(tooltip)
+  local db = GetDB()
+  if not db or not db.enabled or not db.showItemId then return end
+  
+  local _, itemLink = tooltip:GetItem()
+  local itemID = ExtractItemID(itemLink)
+  if itemID then
+    AddIDLine(tooltip, "Item ID: ", itemID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+  end
+end
+
+-- Hook handler for spell tooltips
+local function OnTooltipSetSpell(tooltip)
+  local db = GetDB()
+  if not db or not db.enabled or not db.showSpellId then return end
+  
+  local spellID = ExtractSpellID(tooltip)
+  if spellID then
+    AddIDLine(tooltip, "Spell ID: ", spellID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+  end
+end
+
+-- Hook handler for unit tooltips
+local function OnTooltipSetUnit(tooltip)
+  local db = GetDB()
+  if not db or not db.enabled then return end
+  
+  local _, unit = tooltip:GetUnit()
+  if not unit then return end
+  
+  -- Add NPC ID if enabled
+  if db.showNpcId then
+    local npcID = ExtractNPCID(unit)
+    if npcID then
+      AddIDLine(tooltip, "NPC ID: ", npcID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+    end
+  end
+  
+  -- Check for quest ID in the tooltip
+  if db.showQuestId then
+    local questID = ExtractQuestID(tooltip)
+    if questID then
+      AddIDLine(tooltip, "Quest ID: ", questID, db.idColor or { r = 0.5, g = 0.9, b = 0.5 })
+    end
+  end
+end
+
+-- ---------------------------------------------------------
 -- Public Apply (called by ApplyBus)
 -- ---------------------------------------------------------
 function mod:Apply()
   local db = GetDB()
   if not db then return end
 
-  -- Hook once
+  -- Hook once for styling
   if not mod._hooked then
     mod._hooked = true
 
@@ -119,6 +248,39 @@ function mod:Apply()
     end
     if ShoppingTooltip1 then ShoppingTooltip1:HookScript("OnShow", OnTooltipSet) end
     if ShoppingTooltip2 then ShoppingTooltip2:HookScript("OnShow", OnTooltipSet) end
+  end
+
+  -- Hook once for ID display
+  if not mod._idHooked then
+    mod._idHooked = true
+
+    if GameTooltip then
+      -- Hook OnTooltipSetItem for item IDs
+      GameTooltip:HookScript("OnTooltipSetItem", function(tooltip)
+        OnTooltipSetItem(tooltip)
+      end)
+
+      -- Hook OnTooltipSetSpell for spell IDs
+      GameTooltip:HookScript("OnTooltipSetSpell", function(tooltip)
+        OnTooltipSetSpell(tooltip)
+      end)
+
+      -- Hook OnTooltipSetUnit for NPC IDs
+      GameTooltip:HookScript("OnTooltipSetUnit", function(tooltip)
+        OnTooltipSetUnit(tooltip)
+      end)
+    end
+
+    -- Also hook ItemRefTooltip (for chat links)
+    if ItemRefTooltip then
+      ItemRefTooltip:HookScript("OnTooltipSetItem", function(tooltip)
+        OnTooltipSetItem(tooltip)
+      end)
+
+      ItemRefTooltip:HookScript("OnTooltipSetSpell", function(tooltip)
+        OnTooltipSetSpell(tooltip)
+      end)
+    end
   end
 
   -- Apply immediately to visible tooltips

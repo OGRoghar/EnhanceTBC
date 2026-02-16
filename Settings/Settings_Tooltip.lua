@@ -11,6 +11,8 @@ local function GetDB()
   if db.showTarget == nil then db.showTarget = true end
   if db.showItemId == nil then db.showItemId = true end
   if db.showSpellId == nil then db.showSpellId = true end
+  if db.showNpcId == nil then db.showNpcId = true end
+  if db.showQuestId == nil then db.showQuestId = true end
   if db.showItemLevel == nil then db.showItemLevel = true end
   if db.showVendorPrice == nil then db.showVendorPrice = true end
   if db.showStatSummary == nil then db.showStatSummary = true end
@@ -30,6 +32,9 @@ local function GetDB()
   if db.healthBar.enabled == nil then db.healthBar.enabled = true end
   if db.healthBar.classColor == nil then db.healthBar.classColor = true end
   db.healthBar.color = db.healthBar.color or { r = 0.2, g = 1.0, b = 0.2, a = 1.0 }
+
+  -- ID text color
+  db.idColor = db.idColor or { r = 0.5, g = 0.9, b = 0.5, a = 1.0 }
 
   return db
 end
@@ -92,6 +97,29 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
             type = "toggle", name = "Show Spell ID", order = 5,
             get = function() return db.showSpellId end,
             set = function(_, v) db.showSpellId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
+          },
+          showNpcId = {
+            type = "toggle", name = "Show NPC ID", order = 6,
+            get = function() return db.showNpcId end,
+            set = function(_, v) db.showNpcId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
+          },
+          showQuestId = {
+            type = "toggle", name = "Show Quest ID", order = 7,
+            get = function() return db.showQuestId end,
+            set = function(_, v) db.showQuestId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
+          },
+          idColor = {
+            type = "color", name = "ID Text Color", order = 8,
+            hasAlpha = false,
+            get = function()
+              local c = db.idColor
+              return c.r, c.g, c.b
+            end,
+            set = function(_, r, g, b)
+              local c = db.idColor
+              c.r, c.g, c.b = r, g, b
+              ETBC.ApplyBus:Notify("tooltip")
+            end,
           },
         },
       },
