@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppdbg",
+            "name": "Debug WoW TBC Addon",
+            "request": "launch",
+            "program": "${workspaceFolder}/path/to/your/addon",  // Change this to the path of your addon
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build",
+            "miDebuggerPath": "/usr/bin/gdb",  // Change this to your gdb path
+            "stopAtAttach": false,
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/path/to/remote",  // Change this if debugging remotely
+            "sourceFileMap": {
+                "/path/to/remote": "${workspaceFolder}"
+            }
+        }
+    ]
+}
