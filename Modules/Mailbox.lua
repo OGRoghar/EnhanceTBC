@@ -76,11 +76,15 @@ end
 
 local function InboxInfo(i)
   -- Classic/TBC: GetInboxHeaderInfo(index)
-  local _, _, sender, subject, money, codAmount, _, itemCount, _, _, _, _, isGM = GetInboxHeaderInfo(i)
+  local packageIcon, stationeryIcon, sender, subject, money, codAmount, daysLeft, itemCount, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(i)
+  if not sender then
+    -- Invalid mail entry, return safe defaults
+    return nil, nil, 0, 0, 0, false
+  end
   money = tonumber(money) or 0
   codAmount = tonumber(codAmount) or 0
   itemCount = tonumber(itemCount) or 0
-  return sender, subject, money, codAmount, itemCount, isGM and true or false
+  return sender, subject, money, codAmount, itemCount, not not isGM
 end
 
 local function BuildQueue(db)
