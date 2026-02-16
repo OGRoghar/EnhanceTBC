@@ -66,7 +66,8 @@ local function ApplyStyleToTooltip(tip)
   -- Avoid styling some internal frames if needed
   local name = tip:GetName()
   if name and name:find("ShoppingTooltip", 1, true) then
-    -- Skip shopping tooltips for now
+    -- Always skip shopping tooltips (item comparison tooltips)
+    -- These don't need custom styling as they're meant to be minimal
     return
   end
 
