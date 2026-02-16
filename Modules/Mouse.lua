@@ -311,9 +311,14 @@ local function AcquireTrail2D()
     return f
   end
   f = CreateFrame("Frame", nil, trailFrame)
+  if not f then return nil end
   f:SetFrameStrata("TOOLTIP")
   f:SetSize(32, 32)
   local tx = f:CreateTexture(nil, "OVERLAY")
+  if not tx then 
+    f:Hide()
+    return nil 
+  end
   tx:SetAllPoints(f)
   tx:SetTexture("Interface\\Buttons\\WHITE8x8")
   f._tex = tx
@@ -384,6 +389,8 @@ local function Spawn2DTrailAt(x, y, db)
   end
 
   local f = AcquireTrail2D()
+  if not f or not f._tex then return end
+  
   local size = tonumber(tdb.size) or 26
   f:SetSize(size, size)
   f:ClearAllPoints()
@@ -469,7 +476,16 @@ local function Tick(elapsed)
   local wantTexture = (effectType == "texture" or effectType == "both")
   local wantModel = (effectType == "model" or effectType == "both")
 
+  -- Early exit if nothing is active
+  local hasAnythingActive = 
+    (wantTexture and (db.cursor.enabled or db.trail.enabled)) or
+    (wantModel and (db.model.enabled or db.modelTrail.enabled)) or
+    #trailActive > 0 or #modelTrailActive > 0
+  
+  if not hasAnythingActive then return end
+
   local x, y = GetCursorXY()
+  local now = GetTime()
 
   -- 2D cursor overlay follow
   if wantTexture and db.cursor.enabled and cursorFrame then
@@ -488,26 +504,46 @@ local function Tick(elapsed)
       cursorModel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", mx, my)
 
       local path = ResolveSpellModelPath(db)
-      if path and path ~= "" and path ~= (lastCursorModelPath or "") then
-        lastCursorModelPath = path
-        if not SafeSetModel(cursorModel, path, db) then
-          cursorModel:Hide()
-          return
+      if path and path ~= "" then
+        if path ~= lastCursorModelPath then
+          lastCursorModelPath = path
+          if not SafeSetModel(cursorModel, path, db) then
+            cursorModel:Hide()
+            -- Continue to allow trail processing
+          else
+            -- Model loaded successfully, configure it
+            cursorModel:SetSize(tonumber(db.model.size) or 96, tonumber(db.model.size) or 96)
+            cursorModel:SetAlpha(Clamp01(db.model.alpha))
+            ApplyModelScale(cursorModel, db.model.scale)
+            ApplyModelCamera(cursorModel, db.model.camDistance, db.model.portraitZoom, db.model.posZ)
+
+            cursorModelFacingRad = DegToRad(db.model.facing or 0)
+            local spinDeg = tonumber(db.model.spin) or 0
+            if spinDeg ~= 0 then
+              cursorModelFacingRad = cursorModelFacingRad + DegToRad(spinDeg) * (elapsed or 0)
+            end
+            if cursorModel.SetFacing then cursorModel:SetFacing(cursorModelFacingRad) end
+            cursorModel:Show()
+          end
+        else
+          -- Path unchanged, still valid, update position and properties
+          cursorModel:SetSize(tonumber(db.model.size) or 96, tonumber(db.model.size) or 96)
+          cursorModel:SetAlpha(Clamp01(db.model.alpha))
+          ApplyModelScale(cursorModel, db.model.scale)
+          ApplyModelCamera(cursorModel, db.model.camDistance, db.model.portraitZoom, db.model.posZ)
+
+          cursorModelFacingRad = DegToRad(db.model.facing or 0)
+          local spinDeg = tonumber(db.model.spin) or 0
+          if spinDeg ~= 0 then
+            cursorModelFacingRad = cursorModelFacingRad + DegToRad(spinDeg) * (elapsed or 0)
+          end
+          if cursorModel.SetFacing then cursorModel:SetFacing(cursorModelFacingRad) end
+          cursorModel:Show()
         end
+      else
+        cursorModel:Hide()
+        -- Continue to allow trail processing
       end
-
-      cursorModel:SetSize(tonumber(db.model.size) or 96, tonumber(db.model.size) or 96)
-      cursorModel:SetAlpha(Clamp01(db.model.alpha))
-      ApplyModelScale(cursorModel, db.model.scale)
-      ApplyModelCamera(cursorModel, db.model.camDistance, db.model.portraitZoom, db.model.posZ)
-
-      cursorModelFacingRad = DegToRad(db.model.facing or 0)
-      local spinDeg = tonumber(db.model.spin) or 0
-      if spinDeg ~= 0 then
-        cursorModelFacingRad = cursorModelFacingRad + DegToRad(spinDeg) * (elapsed or 0)
-      end
-      if cursorModel.SetFacing then cursorModel:SetFacing(cursorModelFacingRad) end
-      cursorModel:Show()
     end
   elseif cursorModel then
     cursorModel:Hide()
@@ -528,7 +564,6 @@ local function Tick(elapsed)
         lastTrailX, lastTrailY = x, y
       end
     else
-      local now = GetTime()
       if now - lastSpawnT >= 0.03 then
         Spawn2DTrailAt(x, y, db)
         lastSpawnT = now
@@ -538,7 +573,6 @@ local function Tick(elapsed)
 
   -- 3D model trails
   if wantModel and db.modelTrail.enabled then
-    local now = GetTime()
     local mtdb = db.modelTrail
     local spacing = tonumber(mtdb.spacing) or 20
     if spacing < 2 then spacing = 2 end
@@ -568,15 +602,16 @@ local function Tick(elapsed)
   end
 
   -- fade 2D trails
-  local now2 = GetTime()
   for i = #trailActive, 1, -1 do
     local f = trailActive[i]
-    if not f._death or now2 >= f._death then
+    if not f or not f._tex then
+      table.remove(trailActive, i)
+    elseif not f._death or now >= f._death then
       ReleaseTrail2D(f)
       table.remove(trailActive, i)
     else
       local life = (f._life and f._life > 0) and f._life or 0.2
-      local t = (now2 - (f._birth or now2)) / life
+      local t = (now - (f._birth or now)) / life
       if t < 0 then t = 0 end
       if t > 1 then t = 1 end
       f._tex:SetAlpha((f._alpha0 or 0.5) * (1 - t))
@@ -587,19 +622,21 @@ local function Tick(elapsed)
   -- fade 3D model trails
   for i = #modelTrailActive, 1, -1 do
     local pm = modelTrailActive[i]
-    if not pm._death or now2 >= pm._death then
+    if not pm then
+      table.remove(modelTrailActive, i)
+    elseif not pm._death or now >= pm._death then
       ReleaseModelTrail(pm)
       table.remove(modelTrailActive, i)
     else
       local life = (pm._life and pm._life > 0) and pm._life or 0.25
-      local t = (now2 - (pm._birth or now2)) / life
+      local t = (now - (pm._birth or now)) / life
       if t < 0 then t = 0 end
       if t > 1 then t = 1 end
 
       pm:SetAlpha((pm._alpha0 or 0.9) * (1 - t))
 
       if pm.SetFacing and pm._spinRad and pm._facing0 then
-        pm:SetFacing(pm._facing0 + pm._spinRad * (now2 - (pm._birth or now2)))
+        pm:SetFacing(pm._facing0 + pm._spinRad * (now - (pm._birth or now)))
       end
     end
   end

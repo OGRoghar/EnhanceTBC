@@ -10,6 +10,7 @@ ETBC.Modules.Objectives = mod
 
 local driver
 local hooked = false
+local cachedDB  -- Module-level cache for DB, updated by Apply()
 
 local function GetDB()
   ETBC.db.profile.objectives = ETBC.db.profile.objectives or {}
@@ -88,19 +89,14 @@ local function SetBackdrop(frame, bgA, borderA)
 end
 
 
-local function UpdateBackdrop(frame)
-  local db = GetDB()
+local function UpdateBackdrop(frame, db)
   if not frame then return end
 
   if db.background then
     SetBackdrop(frame, db.bgAlpha or 0.35, db.borderAlpha or 0.95)
-    if frame._etbcBG.SetBackdropColor then
-      frame._etbcBG:SetBackdropColor(0, 0, 0, db.bgAlpha or 0.35)
+    if frame._etbcBG then
+      frame._etbcBG:Show()
     end
-    if frame._etbcBG.SetBackdropBorderColor then
-      frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, db.borderAlpha or 0.95)
-    end
-    frame._etbcBG:Show()
   else
     if frame._etbcBG then frame._etbcBG:Hide() end
   end
@@ -112,9 +108,9 @@ local function ScaleFonts_WatchFrame(scale)
 
   for i = 1, #_G.WatchFrameLines do
     local fs = _G.WatchFrameLines[i]
-    if fs and fs.GetFont and fs.SetFont then
+    if fs and type(fs) == "table" and fs.GetFont and fs.SetFont then
       local font, size, flags = fs:GetFont()
-      if font and size then
+      if font and size and tonumber(size) then
         fs._etbcBaseFont = fs._etbcBaseFont or font
         fs._etbcBaseFontFlags = fs._etbcBaseFontFlags or flags
         if not fs._etbcBaseFontSize then
@@ -124,14 +120,16 @@ local function ScaleFonts_WatchFrame(scale)
         local baseSize = tonumber(fs._etbcBaseFontSize) or size
         local targetSize = baseSize * scale
         if targetSize < 1 then targetSize = 1 end
-        fs:SetFont(fs._etbcBaseFont, targetSize, fs._etbcBaseFontFlags)
+        local ok, err = pcall(fs.SetFont, fs, fs._etbcBaseFont, targetSize, fs._etbcBaseFontFlags)
+        if not ok and ETBC.Debug then
+          ETBC:Debug("Failed to set font on WatchFrame line " .. i .. ": " .. tostring(err))
+        end
       end
     end
   end
 end
 
-local function ApplyLayout(frame, kind)
-  local db = GetDB()
+local function ApplyLayout(frame, kind, db)
   if not frame then return end
 
   frame:SetScale(db.scale or 1.0)
@@ -147,7 +145,7 @@ local function ApplyLayout(frame, kind)
     if frame.SetWidth then frame:SetWidth(db.width or 300) end
   end
 
-  UpdateBackdrop(frame)
+  UpdateBackdrop(frame, db)
 end
 
 -- Fade/hide in combat (simple lerp)
@@ -166,8 +164,7 @@ local function StopFade(frame)
   if frame and frame._etbcFade then frame._etbcFade.active = false end
 end
 
-local function UpdateFade(frame)
-  local db = GetDB()
+local function UpdateFade(frame, db)
   if not frame or not frame._etbcFade or not frame._etbcFade.active then return end
   local f = frame._etbcFade
   local t = tonumber(db.fadeTime) or 0
@@ -189,8 +186,7 @@ local function UpdateFade(frame)
   frame:SetAlpha(a)
 end
 
-local function ApplyCombatVisibility(frame)
-  local db = GetDB()
+local function ApplyCombatVisibility(frame, db)
   if not frame then return end
 
   local inCombat = (InCombatLockdown and InCombatLockdown()) or (UnitAffectingCombat and UnitAffectingCombat("player"))
@@ -215,16 +211,15 @@ local function ApplyCombatVisibility(frame)
 end
 
 -- Auto collapse completed quests (WatchFrame only, best-effort)
-local function AutoCollapseCompleted()
-  local db = GetDB()
+-- Note: TBC WatchFrame doesn't have per-quest collapse API like later expansions
+-- This is a placeholder for potential future implementation
+local function AutoCollapseCompleted(db)
   if not db.enabled or not db.autoCollapseCompleted then return end
   if db.onlyCollapseInDungeons and not IsInDungeonOrRaid() then return end
 
-  if type(_G.WatchFrame_Collapse) == "function" and _G.WatchFrame then
-    -- Collapse module is per quest in later clients; TBC is simpler.
-    -- Best-effort: call collapse if it exists for completed tracked quests.
-    -- If API isn't available, we do nothing.
-  end
+  -- TBC WatchFrame API doesn't support auto-collapsing individual completed quests
+  -- In later expansions, this would iterate tracked quests and collapse completed ones
+  -- For now, this is intentionally left as a no-op
 end
 
 local function HookTracker(frame, kind)
@@ -233,9 +228,12 @@ local function HookTracker(frame, kind)
 
   EnsureDriver()
 
+  -- Only run OnUpdate when there's an active fade
   driver:SetScript("OnUpdate", function()
     if not frame or not frame:IsShown() then return end
-    UpdateFade(frame)
+    if not frame._etbcFade or not frame._etbcFade.active then return end
+    if not cachedDB then cachedDB = GetDB() end
+    UpdateFade(frame, cachedDB)
   end)
 
   -- Combat visibility
@@ -243,26 +241,27 @@ local function HookTracker(frame, kind)
   driver:RegisterEvent("PLAYER_REGEN_ENABLED")
   driver:RegisterEvent("PLAYER_ENTERING_WORLD")
   driver:SetScript("OnEvent", function()
-    ApplyCombatVisibility(frame)
+    if not cachedDB then cachedDB = GetDB() end
+    ApplyCombatVisibility(frame, cachedDB)
   end)
 
   -- WatchFrame updates
   if kind == "WATCHFRAME" then
     if type(_G.WatchFrame_Update) == "function" then
       hooksecurefunc("WatchFrame_Update", function()
-        local db = GetDB()
-        if not db.enabled then return end
-        ApplyLayout(frame, kind)
-        AutoCollapseCompleted()
+        if not cachedDB then cachedDB = GetDB() end
+        if not cachedDB.enabled then return end
+        ApplyLayout(frame, kind, cachedDB)
+        AutoCollapseCompleted(cachedDB)
       end)
     end
   else
     -- ObjectiveTracker: hook any safe update if exists
     if type(_G.ObjectiveTracker_Update) == "function" then
       hooksecurefunc("ObjectiveTracker_Update", function()
-        local db = GetDB()
-        if not db.enabled then return end
-        ApplyLayout(frame, kind)
+        if not cachedDB then cachedDB = GetDB() end
+        if not cachedDB.enabled then return end
+        ApplyLayout(frame, kind, cachedDB)
       end)
     end
   end
@@ -272,6 +271,7 @@ local function Apply()
   EnsureDriver()
 
   local db = GetDB()
+  cachedDB = db  -- Update module-level cache so closures use latest settings
   local generalEnabled = ETBC.db.profile.general and ETBC.db.profile.general.enabled
 
   local frame, kind = FindTracker()
@@ -287,8 +287,8 @@ local function Apply()
   end
 
   HookTracker(frame, kind)
-  ApplyLayout(frame, kind)
-  ApplyCombatVisibility(frame)
+  ApplyLayout(frame, kind, db)
+  ApplyCombatVisibility(frame, db)
 end
 
 ETBC.ApplyBus:Register("objectives", Apply)
