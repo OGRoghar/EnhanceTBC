@@ -79,7 +79,7 @@ end)
 ### WoW API Conventions
 
 #### Boolean Conversion
-WoW TBC APIs return `1` or `nil`, not `true`/`false`. Use double negation to convert:
+WoW API functions return `1` or `nil`, not `true`/`false`. Use double negation to convert:
 ```lua
 -- Correct
 local inCombat = not not UnitAffectingCombat("player")
