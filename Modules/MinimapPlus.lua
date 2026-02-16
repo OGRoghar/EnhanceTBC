@@ -201,6 +201,9 @@ local function IsBlacklisted(child)
 
   -- Name-based ignore
   if n then
+    -- Exclude EnhanceTBC minimap button from sink
+    if n:find("EnhanceTBC") or n:find("ETBC") then return true end
+    
     if n:find("LibDBIcon") then
       -- We DO want to sink LibDBIcon buttons, so don't blacklist.
       return false
@@ -504,8 +507,6 @@ local function HideSquareClusterArt(hide)
     _G.MinimapBorderTop,
     _G.MinimapBackdrop,
     _G.MiniMapWorldMapButton,
-    _G.GameTimeFrame, -- Calendar/clock button - hidden completely in square mode
-    _G.TimeManagerClockButton, -- Alternative clock frame in some builds
     _G.MinimapCluster and _G.MinimapCluster.BorderTop,
   }
 
@@ -517,8 +518,10 @@ local function HideSquareClusterArt(hide)
     end
   end
   
-  -- Ensure GameTimeFrame is completely hidden in square mode
+  -- GameTimeFrame and TimeManagerClockButton - only hide in square mode
+  -- When NOT in square mode, let them show normally
   if hide then
+    -- Hide time/calendar in square mode
     if _G.GameTimeFrame then
       if _G.GameTimeFrame.Hide then _G.GameTimeFrame:Hide() end
       if _G.GameTimeFrame.SetAlpha then _G.GameTimeFrame:SetAlpha(0) end
@@ -526,6 +529,16 @@ local function HideSquareClusterArt(hide)
     if _G.TimeManagerClockButton then
       if _G.TimeManagerClockButton.Hide then _G.TimeManagerClockButton:Hide() end
       if _G.TimeManagerClockButton.SetAlpha then _G.TimeManagerClockButton:SetAlpha(0) end
+    end
+  else
+    -- Restore time/calendar when not in square mode
+    if _G.GameTimeFrame then
+      if _G.GameTimeFrame.Show then _G.GameTimeFrame:Show() end
+      if _G.GameTimeFrame.SetAlpha then _G.GameTimeFrame:SetAlpha(1) end
+    end
+    if _G.TimeManagerClockButton then
+      if _G.TimeManagerClockButton.Show then _G.TimeManagerClockButton:Show() end
+      if _G.TimeManagerClockButton.SetAlpha then _G.TimeManagerClockButton:SetAlpha(1) end
     end
   end
 
@@ -579,33 +592,29 @@ local function PositionSquareBlizzardButtons()
   local mm = Minimap
   if not mm then return end
   
-  -- Tracking button - top left corner (scaled down like Leatrix Plus)
+  -- Tracking button - bottom left corner (TBC Anniversary standard)
   local trackingButton = _G.MiniMapTrackingButton or _G.MiniMapTracking
   if trackingButton then
     trackingButton:SetScale(0.75)
     trackingButton:ClearAllPoints()
-    trackingButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -20, -40)
+    trackingButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 2, 2)
   end
   
-  -- Mail button - top left, below tracking (position this first before queue button)
+  -- Mail button - top left corner
   local mailButton = _G.MiniMapMailFrame
   if mailButton then
     mailButton:SetScale(0.75)
     mailButton:ClearAllPoints()
-    mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
+    mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, 10)
   end
   
-  -- LFG/Queue/Battlefield button - position below mail button
+  -- LFG/Queue/Battlefield button - bottom left (TBC Anniversary standard)
   local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
   if queueButton then
     queueButton:SetScale(0.75)
     queueButton:ClearAllPoints()
-    -- Position relative to mail button if it exists (now properly positioned above)
-    if mailButton then
-      queueButton:SetPoint("TOP", mailButton, "BOTTOM", 0, 0)
-    else
-      queueButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, -75)
-    end
+    -- Anchor to bottom left, above the tracking button
+    queueButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 2, 28)
   end
   
   -- Instance difficulty - top left corner (like Leatrix Plus)
@@ -1061,6 +1070,23 @@ function mod:ShowMenu(anchor, displayName)
   -- anchor can be nil; use sink/minimap
   local a = anchor or sink or Minimap or UIParent
   ToggleDropDownMenu(1, nil, dropdown, a, 0, 0)
+end
+
+-- Helper functions for sink visibility control
+function mod:ToggleSinkVisibility()
+  if not sink then
+    self:Apply()
+    return
+  end
+  
+  local isShown = sink:IsShown()
+  sink:SetShown(not isShown)
+  sink:EnableMouse(not isShown)
+end
+
+function mod:IsSinkShown()
+  if not sink then return false end
+  return sink:IsShown()
 end
 
 -- ------------

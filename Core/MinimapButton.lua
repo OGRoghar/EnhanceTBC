@@ -43,12 +43,9 @@ local function EnsureDataObject()
           ETBC:SlashCommand("")
         end
       elseif button == "RightButton" then
-        -- Toggle minimap button sink instead of disabling the entire addon
-        if ETBC.db and ETBC.db.profile and ETBC.db.profile.minimapPlus then
-          ETBC.db.profile.minimapPlus.sinkEnabled = not ETBC.db.profile.minimapPlus.sinkEnabled
-          if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
-            ETBC.ApplyBus:Notify("minimapplus")
-          end
+        -- Show/hide the sink tray (not toggle enabled state)
+        if ETBC.Modules and ETBC.Modules.MinimapPlus and ETBC.Modules.MinimapPlus.ToggleSinkVisibility then
+          ETBC.Modules.MinimapPlus:ToggleSinkVisibility()
         end
       end
     end,
@@ -59,11 +56,13 @@ local function EnsureDataObject()
       tooltip:AddLine("|cff33ff99EnhanceTBC|r")
       tooltip:AddLine(" ")
       tooltip:AddLine("|cffffffffLeft Click:|r Open Config")
-      tooltip:AddLine("|cffffffffRight Click:|r Toggle Button Sink")
+      tooltip:AddLine("|cffffffffRight Click:|r Show/Hide Button Sink")
       tooltip:AddLine(" ")
 
       if ETBC.db and ETBC.db.profile and ETBC.db.profile.minimapPlus then
-        local state = ETBC.db.profile.minimapPlus.sinkEnabled and "|cff00ff00Visible|r" or "|cffff0000Hidden|r"
+        local sinkShown = ETBC.Modules and ETBC.Modules.MinimapPlus and ETBC.Modules.MinimapPlus.IsSinkShown 
+          and ETBC.Modules.MinimapPlus:IsSinkShown() or false
+        local state = sinkShown and "|cff00ff00Visible|r" or "|cffff0000Hidden|r"
         tooltip:AddLine("Button Sink: " .. state)
       end
     end,
