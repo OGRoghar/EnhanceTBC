@@ -4,9 +4,12 @@ local ADDON_NAME, ETBC = ...
 ETBC.Visibility = ETBC.Visibility or {}
 local V = ETBC.Visibility
 
+-- Cache the Blizzard API function to avoid shadowing
+local BlizzIsInInstance = IsInInstance
+
 local function IsInInstance()
-  if IsInInstance then
-    local inInstance = IsInInstance()
+  if BlizzIsInInstance then
+    local inInstance = BlizzIsInInstance()
     return inInstance and true or false
   end
   return false
@@ -53,8 +56,8 @@ function V:Evaluate(condition)
     -- If condition.enabled is false, treat it as "no override" -> true (safe)
     if condition.enabled == false then return true end
 
-    if condition.inCombat and not (UnitAffectingCombat("player") and true or false) then return false end
-    if condition.outOfCombat and (UnitAffectingCombat("player") and true or false) then return false end
+    if condition.inCombat and not UnitAffectingCombat("player") then return false end
+    if condition.outOfCombat and UnitAffectingCombat("player") then return false end
 
     if condition.inInstance and not IsInInstance() then return false end
     if condition.inRaid and not IsInRaidGroup() then return false end
