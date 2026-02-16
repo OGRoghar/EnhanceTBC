@@ -148,6 +148,9 @@ end
 local function GetCursorXY()
   local x, y = GetCursorPosition()
   local s = UIParent:GetEffectiveScale()
+  if not x or not y or not s or s == 0 then
+    return 0, 0
+  end
   return x / s, y / s
 end
 

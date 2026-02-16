@@ -59,25 +59,36 @@ local function FindTracker()
 end
 
 local function SetBackdrop(frame, bgA, borderA)
-  if not frame or frame._etbcBG then return end
-  frame._etbcBG = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
-  frame._etbcBG:SetPoint("TOPLEFT", frame, "TOPLEFT", -6, 6)
-  frame._etbcBG:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 6, -6)
+  if not frame then return end
+  
+  -- Create backdrop frame if it doesn't exist
+  if not frame._etbcBG then
+    frame._etbcBG = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    frame._etbcBG:SetPoint("TOPLEFT", frame, "TOPLEFT", -6, 6)
+    frame._etbcBG:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 6, -6)
 
-  if frame._etbcBG.SetBackdrop then
-    frame._etbcBG:SetBackdrop({
-      bgFile = "Interface\\Buttons\\WHITE8x8",
-      edgeFile = "Interface\\Buttons\\WHITE8x8",
-      tile = false,
-      edgeSize = 1,
-      insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    })
-
+    if frame._etbcBG.SetBackdrop then
+      frame._etbcBG:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        tile = false,
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+      })
+    end
+  end
+  
+  -- Update colors (allow re-application even if backdrop exists)
+  if frame._etbcBG and frame._etbcBG.SetBackdropColor then
     frame._etbcBG:SetBackdropColor(0, 0, 0, bgA or 0.35)
+  end
+  if frame._etbcBG and frame._etbcBG.SetBackdropBorderColor then
     frame._etbcBG:SetBackdropBorderColor(0.12, 0.20, 0.12, borderA or 0.95)
   end
-
-  frame._etbcBG:Show()
+  
+  if frame._etbcBG then
+    frame._etbcBG:Show()
+  end
 end
 
 
