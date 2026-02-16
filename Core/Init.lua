@@ -23,3 +23,4 @@ ETBC.media = ETBC.media or {}
 ETBC.media.root = "Interface\\AddOns\\EnhanceTBC\\Media\\"
 ETBC.media.images = ETBC.media.images or (ETBC.media.root .. "Images\\")
 ETBC.media.cursor = ETBC.media.cursor or (ETBC.media.root .. "Cursor\\")
+ETBC.media.spells = ETBC.media.spells or (ETBC.media.root .. "Spells\\")
