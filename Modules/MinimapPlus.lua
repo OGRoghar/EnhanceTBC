@@ -554,42 +554,37 @@ local function PositionSquareBlizzardButtons()
   local mm = Minimap
   if not mm then return end
   
-  -- LFG/Queue/Battlefield button - bottom left corner
-  -- Try multiple possible frame names (varies by client version)
-  local lfgButtons = {
-    _G.MiniMapBattlefieldFrame,
-    _G.QueueStatusMinimapButton, 
-    _G.LFGMinimapButton,
-    _G.BattlefieldMinimap,
-  }
-  
-  for _, lfg in ipairs(lfgButtons) do
-    if lfg and lfg.ClearAllPoints then
-      lfg:ClearAllPoints()
-      lfg:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 5, 5)
-      -- Ensure it's shown and enabled
-      if lfg.Show then lfg:Show() end
-      if lfg.SetAlpha then lfg:SetAlpha(1) end
-      if lfg.Enable then lfg:Enable() end
-      -- Don't resize - keep natural size
+  -- Tracking button - top right corner
+  local tracking = _G.MiniMapTrackingButton
+  if tracking then
+    tracking:ClearAllPoints()
+    tracking:SetPoint("TOPRIGHT", mm, "TOPRIGHT", -5, -5)
+    if tracking.Show then tracking:Show() end
+    if tracking.SetAlpha then tracking:SetAlpha(1) end
+    
+    -- Fix the tracking icon texture to match button position
+    if _G.MiniMapTrackingIcon then
+      _G.MiniMapTrackingIcon:ClearAllPoints()
+      _G.MiniMapTrackingIcon:SetPoint("TOPLEFT", tracking, "TOPLEFT", 6, -6)
+    end
+    if _G.MiniMapTrackingIconOverlay then
+      _G.MiniMapTrackingIconOverlay:ClearAllPoints()
+      _G.MiniMapTrackingIconOverlay:SetPoint("TOPLEFT", tracking, "TOPLEFT", 6, -6)
+    end
+    if _G.MiniMapTrackingBackground then
+      _G.MiniMapTrackingBackground:ClearAllPoints()
+      _G.MiniMapTrackingBackground:SetAllPoints(tracking)
     end
   end
   
-  -- Tracking button - top right corner
-  local trackingButtons = {
-    _G.MiniMapTrackingButton,
-    _G.MinimapCluster and _G.MinimapCluster.Tracking,
-  }
-  
-  for _, tracking in ipairs(trackingButtons) do
-    if tracking and tracking.ClearAllPoints then
-      tracking:ClearAllPoints()
-      tracking:SetPoint("TOPRIGHT", mm, "TOPRIGHT", -5, -5)
-      -- Ensure it's shown
-      if tracking.Show then tracking:Show() end
-      if tracking.SetAlpha then tracking:SetAlpha(1) end
-      -- Don't resize - keep natural size for proper texture alignment
-    end
+  -- LFG button (actual LFG, not battlefield/queue) - bottom left corner
+  -- In TBC this might be MiniMapLFGFrame or similar
+  local lfg = _G.MiniMapLFGFrame
+  if lfg then
+    lfg:ClearAllPoints()
+    lfg:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 5, 5)
+    if lfg.Show then lfg:Show() end
+    if lfg.SetAlpha then lfg:SetAlpha(1) end
   end
   
   -- Mail - left edge, centered vertically
