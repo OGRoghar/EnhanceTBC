@@ -6,6 +6,19 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
   order = 1,
   options = function()
     return {
+      infoHeader = {
+        type = "header",
+        name = "EnhanceTBC Settings",
+        order = 0,
+      },
+      
+      liveUpdateInfo = {
+        type = "description",
+        name = "|cff00ff00✓ Live Updates:|r Most settings apply immediately without requiring /reload.\n|cffffaa00Note:|r Some CVars and certain UI changes may require a reload to take full effect.",
+        order = 0.5,
+        width = "full",
+      },
+      
       enabled = {
         type = "toggle",
         name = "Enable EnhanceTBC",
