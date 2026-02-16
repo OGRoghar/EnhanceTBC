@@ -238,6 +238,17 @@ local function LooksLikeMinimapButton(child, db)
   local t = child:GetObjectType()
   if t ~= "Button" and t ~= "Frame" then return false end
 
+  if child.IsMouseEnabled and not child:IsMouseEnabled() then
+    return false
+  end
+
+  if t == "Frame" then
+    local onClick = child.GetScript and (child:GetScript("OnClick") or child:GetScript("OnMouseUp") or child:GetScript("OnMouseDown") or child:GetScript("OnDragStart"))
+    if not onClick then
+      return false
+    end
+  end
+
   if not child:IsShown() and child:GetAlpha() == 0 then
     -- hidden at scan time, still might be a minimap button; allow
   end
@@ -255,6 +266,9 @@ local function LooksLikeMinimapButton(child, db)
 
   -- Optional includes for Blizzard widgets the user may want to keep on minimap
   local n = child.GetName and child:GetName() or ""
+  if n:find("MinimapZoneText") or n:find("MinimapNorthTag") or n:find("MinimapPOI") then
+    return false
+  end
   if n == "QueueStatusMinimapButton" and not db.includeQueue then return false end
   if (n:find("MiniMapTracking") or n == "MiniMapTrackingButton") and not db.includeTracking then return false end
   if n == "GameTimeFrame" and not db.includeCalendar then return false end
