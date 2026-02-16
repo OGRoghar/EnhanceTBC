@@ -309,6 +309,13 @@ function mod:BuildOptions()
     order = 60,
     args = {
       header = { type = "header", name = "Interface CVars (20505)", order = 0 },
+      
+      infoBox = {
+        type = "description",
+        name = "|cffffaa00Note:|r Most CVars apply immediately. Some may require a UI reload (/reload) to take full effect.",
+        order = 0.5,
+        width = "full",
+      },
 
       enabled = {
         type = "toggle",

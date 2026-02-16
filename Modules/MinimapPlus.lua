@@ -14,6 +14,9 @@ ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.MinimapPlus = mod
 
+-- Constants
+local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
+
 local driver
 local sink
 local dropdown
@@ -480,14 +483,27 @@ local function HideSquareClusterArt(hide)
     elseif f and f.Show and f.Hide then
       if hide then f:Hide() else f:Show() end
     end
+    -- Also set alpha to 0 when hiding for extra assurance
+    if f and f.SetAlpha and hide then
+      f:SetAlpha(0)
+    elseif f and f.SetAlpha and not hide then
+      f:SetAlpha(1)
+    end
   end
 
   -- Day/Night indicator (varies by client)
   local dayNight = _G.DayNightFrame or (_G.MinimapCluster and _G.MinimapCluster.IndicatorFrame)
-  if dayNight and dayNight.SetShown then
-    dayNight:SetShown(not hide)
-  elseif dayNight and dayNight.Show and dayNight.Hide then
-    if hide then dayNight:Hide() else dayNight:Show() end
+  if dayNight then
+    if dayNight.SetShown then
+      dayNight:SetShown(not hide)
+    elseif dayNight.Show and dayNight.Hide then
+      if hide then dayNight:Hide() else dayNight:Show() end
+    end
+    if dayNight.SetAlpha and hide then
+      dayNight:SetAlpha(0)
+    elseif dayNight.SetAlpha and not hide then
+      dayNight:SetAlpha(1)
+    end
   end
 end
 
@@ -534,10 +550,20 @@ local function SetSquareMinimap(db)
     local scale = target / base
 
     -- Square mask + scale the minimap itself (more reliable than SetSize under cluster)
-    Minimap:SetMaskTexture("Interface\\ChatFrame\\ChatFrameBackground")
+    Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
     if Minimap.SetScale then
       Minimap:SetScale(scale)
     end
+    
+    -- Force-set the mask again after a brief delay to counter cluster resets
+    C_Timer.After(0.05, function()
+      if Minimap and db.squareMinimap then
+        Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
+        if Minimap.SetScale then
+          Minimap:SetScale(scale)
+        end
+      end
+    end)
 
     -- Hide default cluster “look” and day/night in square mode
     HideSquareClusterArt(true)
@@ -899,9 +925,13 @@ function mod:Apply()
   ApplyLandingButtons(db)
   SetSquareMinimap(db)
     -- Re-apply square after UI settles (cluster sometimes resets scale)
+    -- Multiple timers to ensure persistence
   if db.squareMinimap then
     C_Timer.After(0.10, function() SetSquareMinimap(GetDB()) end)
+    C_Timer.After(0.30, function() SetSquareMinimap(GetDB()) end)
     C_Timer.After(0.50, function() SetSquareMinimap(GetDB()) end)
+    C_Timer.After(1.00, function() SetSquareMinimap(GetDB()) end)
+    C_Timer.After(2.00, function() SetSquareMinimap(GetDB()) end)
   end
   ApplyCustomDifficultyIcon(db)
 
@@ -940,10 +970,34 @@ function mod:Apply()
   driver:RegisterEvent("UPDATE_PENDING_MAIL")
 
   -- Optional auto-scan ticker via OnUpdate (simple + cheap)
+  -- Also monitors square minimap to prevent cluster resets
+  local lastSquareCheck = 0
   driver:SetScript("OnUpdate", function(_, elapsed)
     local db2 = GetDB()
-    if not db2.enabled or not db2.sinkEnabled or not db2.autoScan then return end
-    ScanMinimapButtons(false)
+    if not db2.enabled then return end
+    
+    -- Auto-scan minimap buttons
+    if db2.sinkEnabled and db2.autoScan then
+      ScanMinimapButtons(false)
+    end
+    
+    -- Monitor and enforce square minimap every 2 seconds
+    if db2.squareMinimap and Minimap then
+      local now = GetTime()
+      if now - lastSquareCheck > 2.0 then
+        lastSquareCheck = now
+        -- Check if mask has been reset (round mask)
+        -- Safe check: only compare if GetMaskTexture exists and returns a value
+        if Minimap.GetMaskTexture then
+          local currentMask = Minimap:GetMaskTexture()
+          if currentMask and currentMask ~= SQUARE_MASK_TEXTURE then
+            -- Mask was reset, reapply
+            Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
+            HideSquareClusterArt(true)
+          end
+        end
+      end
+    end
   end)
 end
 
