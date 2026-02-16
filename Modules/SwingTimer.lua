@@ -550,7 +550,7 @@ local function Apply()
       end
 
       if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        local timestamp, subevent, _, sourceGUID, sourceName, sourceFlags = CombatLogGetCurrentEventInfo()
+        local _, subevent, _, sourceGUID = CombatLogGetCurrentEventInfo()
         
         -- Only track player's swings
         if sourceGUID ~= UnitGUID("player") then return end
@@ -563,18 +563,25 @@ local function Apply()
           
           -- If we have both weapons, use timing to determine which hand
           if offHandSpeed > 0 and mainHandSpeed > 0 then
-            -- Check which swing is expected next
+            -- Check which swing is expected next (within threshold)
+            local threshold = 0.05  -- 50ms tolerance
             if mainHandActive and offHandActive then
-              -- Both active, pick the one that's closer to finishing
+              -- Both active, pick the one that's about to finish
               local mhRemain = mainHandNext - now
               local ohRemain = offHandNext - now
-              isOffHand = (ohRemain < mhRemain)
+              
+              -- If off-hand is within threshold, it's likely the off-hand
+              if ohRemain <= threshold and ohRemain < mhRemain then
+                isOffHand = true
+              elseif mhRemain > threshold and ohRemain < mhRemain then
+                isOffHand = true
+              end
             elseif offHandActive then
               -- Only off-hand is active
-              isOffHand = true
-            else
-              -- Default to main hand
-              isOffHand = false
+              local ohRemain = offHandNext - now
+              if ohRemain <= threshold then
+                isOffHand = true
+              end
             end
           end
           
