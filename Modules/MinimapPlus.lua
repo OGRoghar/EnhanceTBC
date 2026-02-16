@@ -159,26 +159,30 @@ local function EnsureSink()
     end
   end)
 
-  sink.drag = CreateFrame("Frame", nil, sink, "BackdropTemplate")
+  sink.drag = CreateFrame("Button", nil, sink, "BackdropTemplate")
   sink.drag:SetPoint("TOPLEFT", sink, "TOPLEFT", 0, 0)
   sink.drag:SetPoint("TOPRIGHT", sink, "TOPRIGHT", 0, 0)
   sink.drag:SetHeight(18)
   sink.drag:SetFrameLevel(sink:GetFrameLevel() + 10)
   sink.drag:EnableMouse(true)
-  sink.drag:RegisterForDrag("LeftButton")
-  sink.drag:SetScript("OnDragStart", function(self)
+  sink.drag:RegisterForClicks("AnyUp")
+  sink.drag:SetScript("OnMouseDown", function(self, button)
+    if button ~= "LeftButton" then return end
     local db = GetDB()
     if db.locked then return end
+    self._dragging = true
     self:GetParent():StartMoving()
   end)
-  sink.drag:SetScript("OnDragStop", function(self)
-    local parent = self:GetParent()
-    parent:StopMovingOrSizing()
-    SaveFramePointToDB(parent, GetDB())
-  end)
   sink.drag:SetScript("OnMouseUp", function(self, button)
+    local parent = self:GetParent()
+    if button == "LeftButton" and self._dragging then
+      self._dragging = false
+      parent:StopMovingOrSizing()
+      SaveFramePointToDB(parent, GetDB())
+      return
+    end
     if button == "RightButton" then
-      mod:ShowMenu(self:GetParent())
+      mod:ShowMenu(parent)
     end
   end)
 
