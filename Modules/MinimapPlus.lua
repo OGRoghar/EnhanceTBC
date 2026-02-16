@@ -1022,13 +1022,29 @@ function mod:Apply()
   HookLandingPageRightClick(_G.ExpansionLandingPageMinimapButton, "Expansion Landing")
   HookLandingPageRightClick(_G.GarrisonLandingPageMinimapButton, "Garrison Landing")
   
-  -- Hook right-click on Minimap to show sink menu
+  -- Hook modified right-click on Minimap to show sink menu (Shift+RightClick to avoid conflicting with Blizzard's tracking dropdown)
   if Minimap and not isMinimapRightClickHooked then
     isMinimapRightClickHooked = true
     Minimap:HookScript("OnMouseUp", function(self, btn)
-      if btn == "RightButton" then
-        mod:ShowMenu(self)
+      -- Only handle right-clicks when addon/module are enabled
+      if btn ~= "RightButton" or not IsShiftKeyDown() then
+        return
       end
+
+      local db = GetDB()
+      if not db or not db.enabled then
+        return
+      end
+
+      -- Optional guard for general addon enabled state (nil-safe)
+      if ETBC and ETBC.db and ETBC.db.profile and ETBC.db.profile.general then
+        local generalEnabled = ETBC.db.profile.general.enabled
+        if generalEnabled == false then
+          return
+        end
+      end
+
+      mod:ShowMenu(self)
     end)
   end
 

@@ -650,7 +650,7 @@ local function RestoreWindow()
   if not db or not state.win or not state.win.frame then return end
 
   state.win:SetWidth(db.w or 980)
-  state.win:SetHeight(db.h or 680)
+  state.win:SetHeight(db.h or 720)
 
   state.win.frame:ClearAllPoints()
   state.win.frame:SetPoint(
