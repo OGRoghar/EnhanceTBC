@@ -663,19 +663,47 @@ local function PlaceZoneTextAboveSquare()
   end
 end
 
-local function PositionSquareBlizzardButtons()
-  -- Position Blizzard minimap buttons for square minimap layout
-  -- Based on Leatrix Plus implementation
-  
+local function PositionBlizzardMinimapButtons(db)
+  -- Position Blizzard minimap buttons for both square and round minimap layouts.
   local mm = Minimap
   if not mm then return end
+
+  local isSquare = db and db.squareMinimap
+  local trackingScale = isSquare and 0.75 or 1.0
+  local queueScale = isSquare and 0.75 or 1.0
+  local trackingX, trackingY = 2, 2
+  local queueX, queueY = 2, isSquare and 28 or 26
+
+  local function HookMinimapPosition(btn, point, x, y, scale)
+    if not btn or btn._etbcMinimapHooked then return end
+    btn._etbcMinimapHooked = true
+    hooksecurefunc(btn, "Show", function()
+      local db2 = GetDB()
+      if not Minimap or not db2 then return end
+      btn:SetParent(Minimap)
+      btn:ClearAllPoints()
+      btn:SetPoint(point, Minimap, point, x, y)
+      if scale then btn:SetScale(scale) end
+    end)
+  end
   
   -- Tracking button - bottom left corner (TBC Anniversary standard)
   local trackingButton = _G.MiniMapTrackingButton or _G.MiniMapTracking
   if trackingButton then
-    trackingButton:SetScale(0.75)
+    trackingButton:SetParent(mm)
+    trackingButton:SetScale(trackingScale)
     trackingButton:ClearAllPoints()
-    trackingButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 2, 2)
+    trackingButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", trackingX, trackingY)
+    HookMinimapPosition(trackingButton, "BOTTOMLEFT", trackingX, trackingY, trackingScale)
+
+    local trackingIcon = trackingButton.icon or trackingButton.Icon or _G.MiniMapTrackingIcon
+    if trackingIcon then
+      trackingIcon:ClearAllPoints()
+      trackingIcon:SetPoint("CENTER", trackingButton, "CENTER", 0, 0)
+      if trackingIcon.SetSize then
+        trackingIcon:SetSize(16, 16)
+      end
+    end
   end
   
   -- Mail button - top left corner
@@ -689,10 +717,12 @@ local function PositionSquareBlizzardButtons()
   -- LFG/Queue/Battlefield button - bottom left (TBC Anniversary standard)
   local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
   if queueButton then
-    queueButton:SetScale(0.75)
+    queueButton:SetParent(mm)
+    queueButton:SetScale(queueScale)
     queueButton:ClearAllPoints()
     -- Anchor to bottom left, above the tracking button
-    queueButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 2, 28)
+    queueButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", queueX, queueY)
+    HookMinimapPosition(queueButton, "BOTTOMLEFT", queueX, queueY, queueScale)
   end
   
   -- Instance difficulty - top left corner (like Leatrix Plus)
@@ -784,12 +814,12 @@ local function SetSquareMinimap(db)
     PlaceZoneTextAboveSquare()
     
     -- Position Blizzard minimap buttons for square layout
-    PositionSquareBlizzardButtons()
+    PositionBlizzardMinimapButtons(db)
     
     -- Refresh buttons after UI settles (Leatrix Plus uses a single 0.1 delay)
     C_Timer.After(0.1, function()
       if db.squareMinimap then
-        PositionSquareBlizzardButtons()
+        PositionBlizzardMinimapButtons(GetDB())
       end
     end)
     
@@ -1183,6 +1213,7 @@ function mod:Apply()
   ApplyHides(db)
   ApplyLandingButtons(db)
   SetSquareMinimap(db)
+  PositionBlizzardMinimapButtons(db)
     -- Re-apply square after UI settles (cluster sometimes resets scale)
     -- Multiple timers to ensure persistence
   if db.squareMinimap then
@@ -1258,6 +1289,7 @@ function mod:Apply()
   -- Also monitors square minimap to prevent cluster resets
   local lastSquareCheck = 0
   local lastButtonCheck = 0
+  local lastButtonLayoutCheck = 0
   driver:SetScript("OnUpdate", function(_, elapsed)
     local db2 = GetDB()
     if not db2.enabled then return end
@@ -1304,7 +1336,16 @@ function mod:Apply()
       -- Reposition buttons frequently to counter Blizzard's repositioning
       if now - lastButtonCheck > 0.5 then
         lastButtonCheck = now
-        PositionSquareBlizzardButtons()
+        PositionBlizzardMinimapButtons(db2)
+      end
+    end
+
+    -- Re-apply button layout regularly (round and square)
+    if Minimap then
+      local now = GetTime()
+      if now - lastButtonLayoutCheck > 2.0 then
+        lastButtonLayoutCheck = now
+        PositionBlizzardMinimapButtons(db2)
       end
     end
   end)
