@@ -367,6 +367,8 @@ local function Apply()
       end
 
       if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        -- NOTE: Using fixed 1.5s GCD. This doesn't account for haste or spell-specific GCDs.
+        -- For more accurate GCD tracking, would need to query GetSpellCooldown on a known GCD spell.
         BeginGCDWindow(1.5)
       end
     end)

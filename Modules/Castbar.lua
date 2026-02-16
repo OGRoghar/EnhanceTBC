@@ -167,7 +167,9 @@ local function ApplySizing(bar)
   end
 
   if bar.SetScale then bar:SetScale(tonumber(db.scale) or 1) end
-  if bar.SetSize then bar:SetSize(tonumber(db.width) or 195, tonumber(db.height) or 18) end
+  -- NOTE: Width/Height resizing disabled - causes size mismatch between frame and internal statusbar texture
+  -- Use scale setting instead
+  -- if bar.SetSize then bar:SetSize(tonumber(db.width) or 195, tonumber(db.height) or 18) end
 end
 
 local function ApplyAlpha(bar)

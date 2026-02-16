@@ -473,6 +473,8 @@ local function HideSquareClusterArt(hide)
     _G.MinimapZoomIn,
     _G.MinimapZoomOut,
     _G.MiniMapWorldMapButton,
+    _G.GameTimeFrame, -- Calendar/clock button (shouldn't appear on square minimap)
+    _G.TimeManagerClockButton, -- Alternative clock frame in some builds
     _G.MinimapCluster and _G.MinimapCluster.BorderTop,
     _G.MinimapCluster and _G.MinimapCluster.Tracking,
   }
