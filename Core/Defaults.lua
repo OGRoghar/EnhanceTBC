@@ -133,7 +133,7 @@ ETBC.defaults = {
       sortMode = "TIME",
       sortAscending = true,
       showCooldownSpiral = true,
-      showDurationText = true,
+      showDurationText = false,
       durationText = { font = "Friz Quadrata TT", size = 12, outline = "OUTLINE" },
       border = {
         enabled = true,

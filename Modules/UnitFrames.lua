@@ -257,9 +257,13 @@ local function ApplyFrameSizing(frame)
   if frame.SetSize then
     local o = orig.sizes[frame]
     if o and o.w and o.h then
-      local ew = tonumber(db.extraWidth) or 0
-      local eh = tonumber(db.extraHeight) or 0
-      frame:SetSize(o.w + ew, o.h + eh)
+      -- NOTE: extraWidth/extraHeight disabled - resizing the frame doesn't properly resize
+      -- the internal health bar textures in Blizzard's unit frames, causing visual issues.
+      -- Just use the scale setting instead.
+      -- local ew = tonumber(db.extraWidth) or 0
+      -- local eh = tonumber(db.extraHeight) or 0
+      -- frame:SetSize(o.w + ew, o.h + eh)
+      frame:SetSize(o.w, o.h)
     end
   end
 end
