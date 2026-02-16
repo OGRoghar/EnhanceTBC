@@ -36,7 +36,12 @@ jobs:
       
       - name: Generate coverage report
         if: always()
-        run: luacov
+        run: |
+          if [ -f luacov.stats.out ]; then
+            luacov
+          else
+            echo "No coverage stats file found, skipping coverage report"
+          fi
       
       - name: Upload coverage
         if: always()
@@ -44,3 +49,4 @@ jobs:
         with:
           name: coverage-report
           path: luacov.report.out
+          if-no-files-found: warn

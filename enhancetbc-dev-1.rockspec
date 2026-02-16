@@ -2,7 +2,7 @@ package = "EnhanceTBC"
 version = "dev-1"
 
 source = {
-  url = "git://github.com/OGRoghar/EnhanceTBC.git"
+  url = "https://github.com/OGRoghar/EnhanceTBC.git"
 }
 
 description = {
