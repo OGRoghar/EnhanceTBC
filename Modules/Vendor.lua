@@ -183,7 +183,8 @@ end
 
 local function OnMerchantShow()
   local db = GetDB()
-  if not (ETBC.db.profile.general.enabled and db.enabled) then return end
+  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  if not (generalEnabled and db.enabled) then return end
 
   -- Order matters: repair first (doesn't affect bags), then sell.
   AutoRepair(db)
@@ -194,7 +195,8 @@ local function Apply()
   EnsureDriver()
 
   local db = GetDB()
-  local enabled = ETBC.db.profile.general.enabled and db.enabled
+  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  local enabled = generalEnabled and db.enabled
 
   driver:UnregisterAllEvents()
   driver:SetScript("OnEvent", nil)
@@ -212,5 +214,10 @@ local function Apply()
   end
 end
 
-ETBC.ApplyBus:Register("vendor", Apply)
-ETBC.ApplyBus:Register("general", Apply)
+-- -------------------------------------------------------
+-- Register with ApplyBus
+-- -------------------------------------------------------
+if ETBC.ApplyBus and ETBC.ApplyBus.Register then
+  ETBC.ApplyBus:Register("vendor", Apply)
+  ETBC.ApplyBus:Register("general", Apply)
+end
