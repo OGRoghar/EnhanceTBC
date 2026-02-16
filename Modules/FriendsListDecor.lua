@@ -471,7 +471,7 @@ local function DecorateWoWFriend(button)
     return
   end
 
-  local isConnected = info.connected == true
+  local isConnected = not not info.connected
   local status
   if isConnected then
     if info.dnd then
@@ -565,12 +565,12 @@ local function DecorateBNetFriend(button)
   end
 
   local gameInfo = accountInfo.gameAccountInfo
-  local isOnline = gameInfo and gameInfo.isOnline == true
+  local isOnline = not not (gameInfo and gameInfo.isOnline)
   local status
   if isOnline then
-    if accountInfo.isDND or (gameInfo.isGameBusy == true) then
+    if accountInfo.isDND or (gameInfo and gameInfo.isGameBusy) then
       status = "DND"
-    elseif accountInfo.isAFK or (gameInfo.isGameAFK == true) then
+    elseif accountInfo.isAFK or (gameInfo and gameInfo.isGameAFK) then
       status = "AFK"
     else
       status = "Online"
@@ -661,15 +661,6 @@ local function UpdateFriendButton(button)
   
   local db = GetDB()
   if not (ETBC.db.profile.general.enabled and db.enabled) then
-    local nameFont = button.name
-    if nameFont then
-      if nameFont._etbcNameColorR or nameFont._etbcNameColorG or 
-         nameFont._etbcNameColorB then
-        nameFont._etbcNameColorR = nil
-        nameFont._etbcNameColorG = nil
-        nameFont._etbcNameColorB = nil
-      end
-    end
     if button._etbcFactionIcon then button._etbcFactionIcon:Hide() end
     RestoreNameFont(button)
     RestoreFavoriteAnchor(button)
@@ -682,11 +673,6 @@ local function UpdateFriendButton(button)
     DecorateBNetFriend(button)
   else
     if button._etbcFactionIcon then button._etbcFactionIcon:Hide() end
-    if button.name then
-      button.name._etbcNameColorR = nil
-      button.name._etbcNameColorG = nil
-      button.name._etbcNameColorB = nil
-    end
     RestoreNameFont(button)
   end
 end
@@ -758,6 +744,22 @@ if ETBC.ApplyBus and ETBC.ApplyBus.Register then
     mod:Apply()
   end)
 end
+
+-- ---------------------------------------------------------
+-- Event handling for late-loading friends UI
+-- ---------------------------------------------------------
+local driver = CreateFrame("Frame", "EnhanceTBC_FriendsDecorDriver", UIParent)
+driver:Hide()
+
+driver:RegisterEvent("ADDON_LOADED")
+driver:SetScript("OnEvent", function(_, event, addonName)
+  if event == "ADDON_LOADED" then
+    if addonName == "Blizzard_FriendsUI" or addonName == "Blizzard_FriendsFrame" then
+      mod:EnsureHook()
+      mod:Refresh()
+    end
+  end
+end)
 
 -- Initialize on load
 mod:EnsureHook()

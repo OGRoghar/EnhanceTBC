@@ -76,7 +76,7 @@ ETBC.SettingsRegistry:RegisterGroup("friends", {
       nameFontSize = {
         type = "range",
         name = "Name Font Size",
-        desc = "Adjust the font size for friend names (0 = default size)",
+        desc = "Adjust the font size for friend names (0 = default size, 1-7 treated as 8)",
         order = 13,
         min = 0,
         max = 24,
