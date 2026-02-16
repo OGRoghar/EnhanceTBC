@@ -703,14 +703,31 @@ function mod:Refresh()
     return
   end
 
+  -- Don't update if FriendsFrame isn't loaded or shown
+  if not FriendsFrame or not FriendsFrame.IsShown or not FriendsFrame:IsShown() then
+    return
+  end
+
+  -- Safely call update functions with pcall to prevent errors propagating
+  local function SafeUpdate(fn)
+    if type(fn) == "function" then
+      local ok, err = pcall(fn)
+      if not ok and ETBC and ETBC.Debug then
+        ETBC:Debug("FriendsListDecor update error: "..tostring(err))
+      end
+      return ok
+    end
+    return false
+  end
+
   if FriendsList_UpdateFriends then
-    FriendsList_UpdateFriends()
+    SafeUpdate(FriendsList_UpdateFriends)
   elseif FriendsFrame_UpdateFriends then
-    FriendsFrame_UpdateFriends()
+    SafeUpdate(FriendsFrame_UpdateFriends)
   elseif FriendsList_Update then
-    FriendsList_Update()
+    SafeUpdate(FriendsList_Update)
   elseif FriendsFrame and FriendsFrame.ScrollBox and FriendsFrame.ScrollBox.Update then
-    FriendsFrame.ScrollBox:Update()
+    SafeUpdate(function() FriendsFrame.ScrollBox:Update() end)
   end
 end
 
