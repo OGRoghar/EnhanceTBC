@@ -555,6 +555,13 @@ local function RenderOptions(scroll, groups, moduleKey, searchText)
   if type(args) ~= "table" then args = {} end
 
   RenderArgsRecursive(scroll, args, q, { moduleKey })
+
+  if scroll.DoLayout then
+    scroll:DoLayout()
+  end
+  if scroll.UpdateScroll then
+    scroll:UpdateScroll()
+  end
 end
 
 -- ---------------------------------------------------------
@@ -773,11 +780,16 @@ local function BuildWindow()
 
   -- Handle window resize dynamically
   win.frame:HookScript("OnSizeChanged", function()
-    if state.tree and state.tree.content then
-      state.tree.content:DoLayout()
+    if state.tree and state.tree.DoLayout then
+      state.tree:DoLayout()
     end
-    if state.rightScroll and state.rightScroll.content then
-      state.rightScroll.content:DoLayout()
+    if state.rightScroll then
+      if state.rightScroll.DoLayout then
+        state.rightScroll:DoLayout()
+      end
+      if state.rightScroll.UpdateScroll then
+        state.rightScroll:UpdateScroll()
+      end
     end
     ApplyWindowStyle(win)
   end)
@@ -818,16 +830,6 @@ local function BuildWindow()
   root:AddChild(tree)
   state.tree = tree
 
-  -- Ensure tree frame extends properly
-  if tree.treeframe then
-    tree.treeframe:SetAllPoints(tree.treeframe:GetParent())
-  end
-  if tree.content then
-    tree.content:ClearAllPoints()
-    tree.content:SetPoint("TOPLEFT", tree.border, "TOPLEFT", 0, 0)
-    tree.content:SetPoint("BOTTOMRIGHT", tree.border, "BOTTOMRIGHT", 0, 0)
-  end
-
   -- Add subtle vertical divider on right edge of tree
   if tree.treeframe and not tree.treeframe._etbcDivider then
     local divider = tree.treeframe:CreateTexture(nil, "BORDER")
@@ -846,16 +848,6 @@ local function BuildWindow()
   right:SetFullHeight(true)
   tree:AddChild(right)
   state.rightScroll = right
-
-  -- Ensure scroll frame fills the content area properly
-  if right.scrollframe then
-    right.scrollframe:SetAllPoints(right.content:GetParent())
-  end
-  if right.content then
-    right.content:ClearAllPoints()
-    right.content:SetPoint("TOPLEFT", right.scrollframe, "TOPLEFT", 0, 0)
-    right.content:SetPoint("TOPRIGHT", right.scrollframe, "TOPRIGHT", -20, 0)  -- Account for scrollbar
-  end
 
   RestoreWindow()
 
