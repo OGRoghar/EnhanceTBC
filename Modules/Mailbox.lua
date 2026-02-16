@@ -182,7 +182,8 @@ local function Step(db)
     if idx and idx >= 1 and idx <= num then
       local sender, _, money, cod, itemCount, isGM = InboxInfo(idx)
 
-      if CanTouchMail(db, sender, isGM, cod) then
+      -- Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
+      if sender and CanTouchMail(db, sender, isGM, cod) then
         if job.action == "MONEY" then
           if db.collectGold and money and money > 0 then
             TakeInboxMoney(idx)
@@ -198,7 +199,8 @@ local function Step(db)
         elseif job.action == "MAYBE_DELETE" then
           if db.autoDeleteEmpty then
             local s2, _, m2, cod2, c2, gm2 = InboxInfo(idx)
-            if CanTouchMail(db, s2, gm2, cod2) then
+            -- Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
+            if s2 and CanTouchMail(db, s2, gm2, cod2) then
               local empty = ((tonumber(m2) or 0) == 0) and ((tonumber(c2) or 0) == 0)
               if empty or (not db.onlyOpenWhenEmpty) then
                 if deleteConfirmed then
