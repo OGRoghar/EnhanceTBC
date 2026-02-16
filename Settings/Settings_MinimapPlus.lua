@@ -205,7 +205,7 @@ ETBC.Settings.MinimapPlus = function()
       squareMinimap = {
         type = "toggle",
         name = "Square Minimap",
-        desc = "Transform the round minimap into a square. Hides default borders and repositions zone text. Has aggressive live update monitoring to prevent UI resets.",
+        desc = "Transform the round minimap into a square (forked from Leatrix Plus). Hides default borders and repositions zone text.",
         order = 51,
         get = function() return GetDB().squareMinimap end,
         set = function(_, v) GetDB().squareMinimap = v; Apply() end,
@@ -214,9 +214,9 @@ ETBC.Settings.MinimapPlus = function()
       squareSize = {
         type = "range",
         name = "Square Size",
-        desc = "Adjust the size of the square minimap. Changes apply immediately.",
+        desc = "Adjust the size of the square minimap (forked from Leatrix Plus). Changes apply immediately.",
         order = 52,
-        min = 100, max = 220, step = 1,
+        min = 140, max = 560, step = 1,
         disabled = function() return not GetDB().squareMinimap end,
         get = function() return GetDB().squareSize end,
         set = function(_, v) GetDB().squareSize = v; Apply() end,
