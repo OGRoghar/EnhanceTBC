@@ -25,6 +25,7 @@ local collected = {} -- [frame] = { parent, points = {...}, scale, strata, level
 local orderedButtons = {}
 local lastScan = 0
 local isZoomHooked = false  -- Track if mouse wheel zoom has been hooked
+local isMinimapRightClickHooked = false  -- Track if minimap right-click has been hooked
 
 local squareState = {
   saved = false,
@@ -581,7 +582,8 @@ local function EnableMinimapMouseZoom()
   -- Enable mouse wheel scrolling on minimap to zoom in/out
   if not Minimap then return end
   
-  if isZoomHooked then return end
+  -- Check if script is already set to avoid duplicate hooks
+  if isZoomHooked or Minimap:GetScript("OnMouseWheel") then return end
   isZoomHooked = true
   
   Minimap:EnableMouseWheel(true)
@@ -824,7 +826,7 @@ local function MenuInit(self, level)
     info.text = db.locked and "Unlock Sink" or "Lock Sink"
     info.func = function()
       db.locked = not db.locked
-      Apply()  -- Just call Apply to refresh everything
+      -- No need for full Apply() - lock state only affects drag behavior which is checked in OnDragStart
     end
     UIDropDownMenu_AddButton(info, level)
 
@@ -1021,8 +1023,8 @@ function mod:Apply()
   HookLandingPageRightClick(_G.GarrisonLandingPageMinimapButton, "Garrison Landing")
   
   -- Hook right-click on Minimap to show sink menu
-  if Minimap and not Minimap.__ETBC_RightClickHooked then
-    Minimap.__ETBC_RightClickHooked = true
+  if Minimap and not isMinimapRightClickHooked then
+    isMinimapRightClickHooked = true
     Minimap:HookScript("OnMouseUp", function(self, btn)
       if btn == "RightButton" then
         mod:ShowMenu(self)
