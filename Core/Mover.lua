@@ -508,7 +508,8 @@ function M:GetGridSize()
 end
 
 function M:SetupChatCommands()
-  -- Ensures slash commands are registered for mover functionality
+  -- Ensures slash commands are registered for mover functionality (/etbcmove, etc.)
+  -- This is called by MoverUI to ensure commands are available when move mode is activated
   EnsureSlash()
 end
 
@@ -525,6 +526,9 @@ function M:Reset(key)
 
   -- Exit early if key is nil or empty - resetting without a key is not supported
   if not key or key == "" then
+    if ETBC.Debug then
+      ETBC:Debug("Mover:Reset called with nil or empty key - operation skipped")
+    end
     return
   end
 

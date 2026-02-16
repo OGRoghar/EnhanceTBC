@@ -9,8 +9,7 @@ local BlizzIsInInstance = IsInInstance
 
 local function IsInInstance()
   if BlizzIsInInstance then
-    local inInstance = BlizzIsInInstance()
-    return inInstance and true or false
+    return BlizzIsInInstance()
   end
   return false
 end

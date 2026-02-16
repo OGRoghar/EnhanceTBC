@@ -117,16 +117,23 @@ function T:SetColor(name, r, g, b, a)
     local c = db.colors[name]
     
     -- Validate and clamp color values to 0-1 range
+    local function clamp(v, lo, hi)
+        v = tonumber(v) or 0
+        if v < lo then return lo end
+        if v > hi then return hi end
+        return v
+    end
+    
     if ETBC.Compat and ETBC.Compat.Clamp then
         c.r = ETBC.Compat.Clamp(tonumber(r) or 0, 0, 1)
         c.g = ETBC.Compat.Clamp(tonumber(g) or 0, 0, 1)
         c.b = ETBC.Compat.Clamp(tonumber(b) or 0, 0, 1)
         c.a = ETBC.Compat.Clamp(tonumber(a) or 1, 0, 1)
     else
-        -- Fallback if Compat.Clamp not available
-        c.r = tonumber(r) or 0
-        c.g = tonumber(g) or 0
-        c.b = tonumber(b) or 0
-        c.a = tonumber(a) or 1
+        -- Fallback with inline clamping
+        c.r = clamp(r, 0, 1)
+        c.g = clamp(g, 0, 1)
+        c.b = clamp(b, 0, 1)
+        c.a = clamp(a or 1, 0, 1)
     end
 end
