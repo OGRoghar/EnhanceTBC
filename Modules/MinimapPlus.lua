@@ -231,8 +231,9 @@ local function IsBlacklisted(child)
     end
     if n:find("MinimapBackdrop") or n:find("MinimapBorder") then return true end
     if n:find("MinimapToggleButton") or n:find("MiniMapTrackingButton") then return true end
+    if n:find("MinimapToggleButton%.") then return true end
     if n:find("MinimapClusterBorderTop") or n:find("MinimapCluster") then return true end
-    if n:find("Minimap%.xml") then return true end
+    if n:find("Minimap%.xml") or n:find("Minimal%.xml") then return true end
     if n:find("MiniMapTracking") then return true end
     if n:find("MiniMapMail") then return true end
     if n:find("GameTimeFrame") then return true end
