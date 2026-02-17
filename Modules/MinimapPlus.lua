@@ -993,10 +993,30 @@ local function ApplyCustomDifficultyIcon(db)
 end
 
 local function ApplyHides(db)
+  local function HideFrame(frame)
+    if not frame or not frame.Hide then return end
+    frame:Hide()
+    if frame.Show and not frame._etbcHideHooked then
+      frame._etbcHideHooked = true
+      hooksecurefunc(frame, "Show", function()
+        local db2 = GetDB()
+        if db2 and db2.hideMinimapToggleButton then
+          frame:Hide()
+        end
+      end)
+    end
+  end
+
   -- Hide EnhanceTBC minimap toggle button (if you have one)
   if db.hideMinimapToggleButton then
     local b = _G.EnhanceTBC_MinimapButton or _G.ETBC_MinimapButton or _G.EnhanceTBCMinimapButton
     if b and b.Hide then b:Hide() end
+
+    -- Hide Blizzard minimap top bar/toggles
+    HideFrame(_G.MinimapCluster and _G.MinimapCluster.BorderTop)
+    HideFrame(_G.MinimapBackdrop)
+    HideFrame(_G.MinimapToggleButton)
+    HideFrame(_G.MinimapToggleButton and _G.MinimapToggleButton.Icon)
   end
 
   -- Bags bar
