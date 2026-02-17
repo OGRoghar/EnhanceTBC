@@ -838,7 +838,10 @@ local function PositionBlizzardMinimapButtons(db)
         trackingIcon:SetSize(14, 14)
       end
       if trackingIcon.SetDrawLayer then
-        trackingIcon:SetDrawLayer("BACKGROUND", 0)
+        trackingIcon:SetDrawLayer("ARTWORK", 0)
+      end
+      if trackingIcon.SetFrameLevel and trackingButton.GetFrameLevel then
+        trackingIcon:SetFrameLevel(trackingButton:GetFrameLevel() + 1)
       end
       if trackingIcon.SetAlpha then
         trackingIcon:SetAlpha(1)
@@ -914,30 +917,49 @@ local function PositionBlizzardMinimapButtons(db)
     end
     if lfgFrame.Show then lfgFrame:Show() end
 
-    local lfgIcon = _G.LFGMinimapFrameIcon or _G.LFGMinimapFrameIconTexture
-    if lfgIcon and lfgIcon.SetPoint then
-      if lfgIcon.SetParent then lfgIcon:SetParent(lfgFrame) end
-      lfgIcon:ClearAllPoints()
-      lfgIcon:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
-      if lfgIcon.SetSize and lfgFrame.GetSize then
-        local w, h = lfgFrame:GetSize()
-        if w and h and w > 0 and h > 0 then
-          lfgIcon:SetSize(w, h)
+    local function ApplyLFGParts()
+      if lfgFrame.SetParent then lfgFrame:SetParent(mm) end
+      if lfgFrame.SetFrameStrata then lfgFrame:SetFrameStrata("LOW") end
+      if lfgFrame.SetFrameLevel and mm.GetFrameLevel then
+        lfgFrame:SetFrameLevel(mm:GetFrameLevel() + 2)
+      end
+
+      local lfgIcon = _G.LFGMinimapFrameIcon or _G.LFGMinimapFrameIconTexture
+      if lfgIcon and lfgIcon.SetPoint then
+        if lfgIcon.SetParent then lfgIcon:SetParent(lfgFrame) end
+        lfgIcon:ClearAllPoints()
+        lfgIcon:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
+        if lfgIcon.SetSize and lfgFrame.GetSize then
+          local w, h = lfgFrame:GetSize()
+          if w and h and w > 0 and h > 0 then
+            lfgIcon:SetSize(w, h)
+          end
+        end
+      end
+
+      local lfgBorder = _G.LFGMinimapFrameBorder
+      if lfgBorder and lfgBorder.SetPoint then
+        if lfgBorder.SetParent then lfgBorder:SetParent(lfgFrame) end
+        lfgBorder:ClearAllPoints()
+        lfgBorder:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
+        if lfgBorder.SetSize and lfgFrame.GetSize then
+          local w, h = lfgFrame:GetSize()
+          if w and h and w > 0 and h > 0 then
+            lfgBorder:SetSize(w, h)
+          end
         end
       end
     end
 
-    local lfgBorder = _G.LFGMinimapFrameBorder
-    if lfgBorder and lfgBorder.SetPoint then
-      if lfgBorder.SetParent then lfgBorder:SetParent(lfgFrame) end
-      lfgBorder:ClearAllPoints()
-      lfgBorder:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
-      if lfgBorder.SetSize and lfgFrame.GetSize then
-        local w, h = lfgFrame:GetSize()
-        if w and h and w > 0 and h > 0 then
-          lfgBorder:SetSize(w, h)
-        end
-      end
+    ApplyLFGParts()
+
+    if not lfgFrame._etbcPartsHooked then
+      lfgFrame._etbcPartsHooked = true
+      hooksecurefunc(lfgFrame, "SetPoint", function(self)
+        if self._etbcAnchoring then return end
+        ApplyMinimapAnchor(self, queuePoint, queueX, queueY, queueScale)
+        ApplyLFGParts()
+      end)
     end
   end
   
