@@ -101,6 +101,10 @@ local function GetDB()
   db.sinkX = db.sinkX or -200
   db.sinkY = db.sinkY or -120
 
+  -- Clamp scale to sane bounds (prevents invisible sink)
+  if db.scale < 0.5 then db.scale = 0.5 end
+  if db.scale > 2.0 then db.scale = 2.0 end
+
   return db
 end
 
@@ -548,13 +552,20 @@ local function ScanMinimapButtons(force)
   end
 
   -- Sort by name to reduce shuffling (stable-ish)
+  local function SafeGetName(obj)
+    if not obj or not obj.GetName then return "" end
+    local ok, name = pcall(function() return obj:GetName() end)
+    if ok and type(name) == "string" then return name end
+    return ""
+  end
   table.sort(orderedButtons, function(a, b)
-    local an = a.GetName and a:GetName() or ""
-    local bn = b.GetName and b:GetName() or ""
+    local an = SafeGetName(a)
+    local bn = SafeGetName(b)
     return an < bn
   end)
 
   LayoutSink(db)
+  EnsureSinkVisible(db)
 end
 
 local function SnapshotZoneText()
@@ -777,13 +788,19 @@ local function PositionBlizzardMinimapButtons(db)
       if trackingIcon.SetSize then
         trackingIcon:SetSize(14, 14)
       end
+      if trackingIcon.SetDrawLayer then
+        trackingIcon:SetDrawLayer("ARTWORK", 0)
+      end
     end
 
     local border = _G.MiniMapTrackingButtonBorder or trackingButton.Border or trackingButton.border
     if border and border.SetDrawLayer then
-      border:SetDrawLayer("OVERLAY")
+      border:SetDrawLayer("OVERLAY", 7)
     end
     if border and border.SetFrameLevel and trackingButton.GetFrameLevel then
+      if border.SetParent then
+        border:SetParent(trackingButton)
+      end
       border:SetFrameLevel(trackingButton:GetFrameLevel() + 5)
     end
   end
@@ -1354,6 +1371,9 @@ function mod:Apply()
   -- First scan
   if db.sinkEnabled then
     ScanMinimapButtons(true)
+    if sink and not sink:IsShown() then
+      sink:Show()
+    end
   end
 
   -- Event driver
