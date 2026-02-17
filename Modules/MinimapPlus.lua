@@ -138,8 +138,8 @@ local function EnsureSink()
   sink:SetClampedToScreen(true)
   sink:SetMovable(true)
   sink:EnableMouse(false)
-  sink:SetFrameStrata("LOW")
-  sink:SetFrameLevel(5)
+  sink:SetFrameStrata("MEDIUM")
+  sink:SetFrameLevel(50)
 
   sink.drag = CreateFrame("Button", nil, sink, "BackdropTemplate")
   sink.drag:SetPoint("TOPLEFT", sink, "TOPLEFT", 0, 0)
@@ -716,16 +716,24 @@ local function PositionBlizzardMinimapButtons(db)
   local trackingX, trackingY = 2, 2
   local queueX, queueY = 2, isSquare and 28 or 26
 
+  local function ApplyMinimapAnchor(btn, point, x, y, scale)
+    if not btn or not Minimap then return end
+    if btn._etbcAnchoring then return end
+    btn._etbcAnchoring = true
+    btn:SetParent(Minimap)
+    btn:ClearAllPoints()
+    btn:SetPoint(point, Minimap, point, x, y)
+    if scale then btn:SetScale(scale) end
+    btn._etbcAnchoring = false
+  end
+
   local function HookMinimapPosition(btn, point, x, y, scale)
     if not btn or btn._etbcMinimapHooked then return end
     btn._etbcMinimapHooked = true
     hooksecurefunc(btn, "Show", function()
       local db2 = GetDB()
       if not Minimap or not db2 then return end
-      btn:SetParent(Minimap)
-      btn:ClearAllPoints()
-      btn:SetPoint(point, Minimap, point, x, y)
-      if scale then btn:SetScale(scale) end
+      ApplyMinimapAnchor(btn, point, x, y, scale)
     end)
   end
   
@@ -764,12 +772,19 @@ local function PositionBlizzardMinimapButtons(db)
   -- LFG/Queue/Battlefield button - bottom left (TBC Anniversary standard)
   local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
   if queueButton then
-    queueButton:SetParent(mm)
-    queueButton:SetScale(queueScale)
-    queueButton:ClearAllPoints()
-    -- Anchor to bottom left, above the tracking button
-    queueButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", queueX, queueY)
+    ApplyMinimapAnchor(queueButton, "BOTTOMLEFT", queueX, queueY, queueScale)
     HookMinimapPosition(queueButton, "BOTTOMLEFT", queueX, queueY, queueScale)
+    if not queueButton._etbcSetPointHooked then
+      queueButton._etbcSetPointHooked = true
+      hooksecurefunc(queueButton, "SetPoint", function(self)
+        if self._etbcAnchoring then return end
+        local db2 = GetDB()
+        local isSq = db2 and db2.squareMinimap
+        local qx, qy = 2, (isSq and 28 or 26)
+        local qs = isSq and 0.75 or 1.0
+        ApplyMinimapAnchor(self, "BOTTOMLEFT", qx, qy, qs)
+      end)
+    end
   end
   
   -- Instance difficulty - top left corner (like Leatrix Plus)
@@ -1254,7 +1269,11 @@ function mod:Apply()
   EnsureSink()
   SetFramePointFromDB(sink, db)
 
-  sink:SetShown(db.sinkEnabled and true or false)
+  if db.sinkEnabled then
+    sink:Show()
+  else
+    sink:Hide()
+  end
   sink:EnableMouse(db.sinkEnabled and true or false)  -- Enable mouse when sink is shown (for drag and right-click)
 
   ApplyHides(db)

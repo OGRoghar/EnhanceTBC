@@ -25,6 +25,11 @@ ETBC.media.images = ETBC.media.images or (ETBC.media.root .. "Images\\")
 ETBC.media.cursor = ETBC.media.cursor or (ETBC.media.root .. "Cursor\\")
 ETBC.media.spells = ETBC.media.spells or (ETBC.media.root .. "Spells\\")
 
+-- LibSharedMedia access (used by modules/settings for font/texture lists)
+if LibStub then
+	ETBC.LSM = LibStub("LibSharedMedia-3.0", true)
+end
+
 -- Attach AceLocale table for legacy access (EnhanceTBC.L)
 local ok, locale = pcall(function()
 	return LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")

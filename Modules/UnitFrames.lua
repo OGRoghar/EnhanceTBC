@@ -45,6 +45,20 @@ local function GetDB()
 
   if db.onlyShowTextWhenNotFull == nil then db.onlyShowTextWhenNotFull = true end
 
+  if db.healthTextMode == nil then
+    db.healthTextMode = db.healthPercentText and "PERCENT" or "NONE"
+  end
+  if db.powerTextMode == nil then
+    db.powerTextMode = db.powerValueText and "VALUE" or "NONE"
+  end
+
+  if db.healthTextOffsetX == nil then db.healthTextOffsetX = 0 end
+  if db.healthTextOffsetY == nil then db.healthTextOffsetY = 0 end
+  if db.powerTextOffsetX == nil then db.powerTextOffsetX = 0 end
+  if db.powerTextOffsetY == nil then db.powerTextOffsetY = 0 end
+
+  if db.disableBlizzardStatusText == nil then db.disableBlizzardStatusText = true end
+
   return db
 end
 
@@ -130,6 +144,13 @@ local function EnsureText(bar, key, point, x, y, justify)
   return fs
 end
 
+local function PositionText(fs, bar, point, x, y, justify)
+  if not fs or not bar then return end
+  fs:ClearAllPoints()
+  fs:SetPoint(point, bar, point, x or 0, y or 0)
+  if justify and fs.SetJustifyH then fs:SetJustifyH(justify) end
+end
+
 local function UnitIsPlayerClass(unit)
   if not unit or unit == "" then return nil end
   if not UnitIsPlayer or not UnitClass then return nil end
@@ -169,7 +190,18 @@ end
 
 local function UpdateHealthTextForUnit(unit)
   local db = GetDB()
-  if not (db.enabled and db.healthPercentText) then return end
+  if not db.enabled then return end
+
+  local mode = db.healthTextMode or "NONE"
+  if mode == "NONE" then
+    local barsNone = mod._unitBars and mod._unitBars[unit]
+    if barsNone then
+      for _, bar in ipairs(barsNone) do
+        if bar._etbcHealthText then bar._etbcHealthText:SetText(""); bar._etbcHealthText:Hide() end
+      end
+    end
+    return
+  end
 
   local bars = mod._unitBars and mod._unitBars[unit]
   if not bars then return end
@@ -187,13 +219,26 @@ local function UpdateHealthTextForUnit(unit)
   local show = true
   if db.onlyShowTextWhenNotFull and pct >= 100 then show = false end
 
+  local text
+  if mode == "PERCENT" then
+    text = pct .. "%"
+  elseif mode == "VALUE" then
+    text = tostring(cur)
+  elseif mode == "BOTH" then
+    text = tostring(cur) .. " / " .. tostring(maxv) .. " (" .. pct .. "%)"
+  else
+    text = ""
+  end
+
   for _, bar in ipairs(bars) do
     local fs = EnsureText(bar, "_etbcHealthText", "CENTER", 0, 0, "CENTER")
     if fs then
       StyleFontString(fs)
 
+      PositionText(fs, bar, "CENTER", db.healthTextOffsetX or 0, db.healthTextOffsetY or 0, "CENTER")
+
       if show then
-        fs:SetText(pct .. "%")
+        fs:SetText(text)
         fs:Show()
       else
         fs:SetText("")
@@ -205,7 +250,18 @@ end
 
 local function UpdatePowerTextForUnit(unit)
   local db = GetDB()
-  if not (db.enabled and db.powerValueText) then return end
+  if not db.enabled then return end
+
+  local mode = db.powerTextMode or "NONE"
+  if mode == "NONE" then
+    local barsNone = mod._unitPowerBars and mod._unitPowerBars[unit]
+    if barsNone then
+      for _, bar in ipairs(barsNone) do
+        if bar._etbcPowerText then bar._etbcPowerText:SetText(""); bar._etbcPowerText:Hide() end
+      end
+    end
+    return
+  end
 
   local bars = mod._unitPowerBars and mod._unitPowerBars[unit]
   if not bars then return end
@@ -219,11 +275,25 @@ local function UpdatePowerTextForUnit(unit)
     return
   end
 
+  local pct = math.floor((cur / maxv) * 100 + 0.5)
+
+  local text
+  if mode == "PERCENT" then
+    text = pct .. "%"
+  elseif mode == "VALUE" then
+    text = tostring(cur)
+  elseif mode == "BOTH" then
+    text = tostring(cur) .. " / " .. tostring(maxv) .. " (" .. pct .. "%)"
+  else
+    text = ""
+  end
+
   for _, bar in ipairs(bars) do
     local fs = EnsureText(bar, "_etbcPowerText", "RIGHT", -4, 0, "RIGHT")
     if fs then
       StyleFontString(fs)
-      fs:SetText(tostring(cur))
+      PositionText(fs, bar, "RIGHT", (db.powerTextOffsetX or 0) - 4, db.powerTextOffsetY or 0, "RIGHT")
+      fs:SetText(text)
       fs:Show()
     end
   end
@@ -307,7 +377,7 @@ local function ApplyToUnitFrame(frame, unit, which)
 
   local hb = GetFrameHealthBar(frame)
   if hb then
-    if db.healthPercentText then
+    if db.healthTextMode and db.healthTextMode ~= "NONE" then
       local fs = EnsureText(hb, "_etbcHealthText", "CENTER", 0, 0, "CENTER")
       StyleFontString(fs)
       RegisterManagedBar(unit, hb)
@@ -322,7 +392,7 @@ local function ApplyToUnitFrame(frame, unit, which)
 
   local pb = GetFrameManaBar(frame)
   if pb then
-    if db.powerValueText then
+    if db.powerTextMode and db.powerTextMode ~= "NONE" then
       local fs = EnsureText(pb, "_etbcPowerText", "RIGHT", -4, 0, "RIGHT")
       StyleFontString(fs)
       RegisterManagedPowerBar(unit, pb)
@@ -332,12 +402,46 @@ local function ApplyToUnitFrame(frame, unit, which)
   end
 end
 
+local blizzStatusText = nil
+
+local function SaveBlizzardStatusText()
+  if blizzStatusText then return end
+  blizzStatusText = {
+    statusTextDisplay = GetCVar("statusTextDisplay"),
+    statusTextPercentage = GetCVar("statusTextPercentage"),
+    statusText = GetCVar("statusText"),
+    statusTextMana = GetCVar("statusTextMana"),
+  }
+end
+
+local function ApplyBlizzardStatusText(db, enable)
+  if not db.disableBlizzardStatusText then return end
+
+  if enable then
+    SaveBlizzardStatusText()
+    pcall(SetCVar, "statusTextDisplay", "NONE")
+    pcall(SetCVar, "statusTextPercentage", "0")
+    pcall(SetCVar, "statusText", "0")
+    pcall(SetCVar, "statusTextMana", "0")
+    return
+  end
+
+  if blizzStatusText then
+    if blizzStatusText.statusTextDisplay ~= nil then pcall(SetCVar, "statusTextDisplay", blizzStatusText.statusTextDisplay) end
+    if blizzStatusText.statusTextPercentage ~= nil then pcall(SetCVar, "statusTextPercentage", blizzStatusText.statusTextPercentage) end
+    if blizzStatusText.statusText ~= nil then pcall(SetCVar, "statusText", blizzStatusText.statusText) end
+    if blizzStatusText.statusTextMana ~= nil then pcall(SetCVar, "statusTextMana", blizzStatusText.statusTextMana) end
+    blizzStatusText = nil
+  end
+end
+
 local function RefreshAll()
   ClearManagedBars()
 
   local db = GetDB()
   local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
   if not (generalEnabled and db.enabled) then
+    ApplyBlizzardStatusText(db, false)
     if _G.PlayerFrame then RestoreOriginalFrameSize(PlayerFrame); ApplyPortrait(PlayerFrame) end
     if _G.TargetFrame then RestoreOriginalFrameSize(TargetFrame); ApplyPortrait(TargetFrame) end
     if _G.FocusFrame then RestoreOriginalFrameSize(FocusFrame); ApplyPortrait(FocusFrame) end
@@ -348,6 +452,8 @@ local function RefreshAll()
     return
   end
 
+  ApplyBlizzardStatusText(db, true)
+
   if _G.PlayerFrame then ApplyToUnitFrame(PlayerFrame, "player", "player") end
   if _G.TargetFrame then ApplyToUnitFrame(TargetFrame, "target", "target") end
   if _G.FocusFrame then ApplyToUnitFrame(FocusFrame, "focus", "focus") end
@@ -357,14 +463,14 @@ local function RefreshAll()
     if f then ApplyToUnitFrame(f, "party" .. i, "party") end
   end
 
-  if db.healthPercentText then
+  if db.healthTextMode and db.healthTextMode ~= "NONE" then
     UpdateHealthTextForUnit("player")
     UpdateHealthTextForUnit("target")
     UpdateHealthTextForUnit("focus")
     for i = 1, 4 do UpdateHealthTextForUnit("party" .. i) end
   end
 
-  if db.powerValueText then
+  if db.powerTextMode and db.powerTextMode ~= "NONE" then
     UpdatePowerTextForUnit("player")
     UpdatePowerTextForUnit("target")
     UpdatePowerTextForUnit("focus")
@@ -429,7 +535,7 @@ local function EnsureHooks()
     end
 
     if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
-      if db.healthPercentText and arg1 then
+      if db.healthTextMode and db.healthTextMode ~= "NONE" and arg1 then
         UpdateHealthTextForUnit(arg1)
       end
       if db.classColorHealth and arg1 then
@@ -444,7 +550,7 @@ local function EnsureHooks()
     end
 
     if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then
-      if db.powerValueText and arg1 then
+      if db.powerTextMode and db.powerTextMode ~= "NONE" and arg1 then
         UpdatePowerTextForUnit(arg1)
       end
       return

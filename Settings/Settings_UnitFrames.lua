@@ -37,6 +37,20 @@ local function GetDB()
   -- Misc
   if db.onlyShowTextWhenNotFull == nil then db.onlyShowTextWhenNotFull = true end
 
+  if db.healthTextMode == nil then
+    db.healthTextMode = db.healthPercentText and "PERCENT" or "NONE"
+  end
+  if db.powerTextMode == nil then
+    db.powerTextMode = db.powerValueText and "VALUE" or "NONE"
+  end
+
+  if db.healthTextOffsetX == nil then db.healthTextOffsetX = 0 end
+  if db.healthTextOffsetY == nil then db.healthTextOffsetY = 0 end
+  if db.powerTextOffsetX == nil then db.powerTextOffsetX = 0 end
+  if db.powerTextOffsetY == nil then db.powerTextOffsetY = 0 end
+
+  if db.disableBlizzardStatusText == nil then db.disableBlizzardStatusText = true end
+
   return db
 end
 
@@ -116,22 +130,25 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       },
 
       healthPercentText = {
-        type = "toggle",
-        name = "Show health percent text",
+        type = "select",
+        name = "Health text",
+        desc = "Choose percent, full values, or both.",
         order = 22, width = "full",
         disabled = function() return not db.enabled end,
-        get = function() return db.healthPercentText end,
-        set = function(_, v) db.healthPercentText = v and true or false; ETBC.ApplyBus:Notify("unitframes") end,
+        values = function() return { NONE = "None", PERCENT = "Percent", VALUE = "Value", BOTH = "Value + Percent" } end,
+        get = function() return db.healthTextMode or "PERCENT" end,
+        set = function(_, v) db.healthTextMode = v; ETBC.ApplyBus:Notify("unitframes") end,
       },
 
       powerValueText = {
-        type = "toggle",
-        name = "Show power value text",
-        desc = "Shows numeric power on the power bar (mana/rage/energy).",
+        type = "select",
+        name = "Power text",
+        desc = "Shows power as percent, value, or both.",
         order = 23, width = "full",
         disabled = function() return not db.enabled end,
-        get = function() return db.powerValueText end,
-        set = function(_, v) db.powerValueText = v and true or false; ETBC.ApplyBus:Notify("unitframes") end,
+        values = function() return { NONE = "None", PERCENT = "Percent", VALUE = "Value", BOTH = "Value + Percent" } end,
+        get = function() return db.powerTextMode or "NONE" end,
+        set = function(_, v) db.powerTextMode = v; ETBC.ApplyBus:Notify("unitframes") end,
       },
 
       hidePortraits = {
@@ -147,17 +164,67 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         type = "toggle",
         name = "Only show health % when not full",
         order = 25, width = "full",
-        disabled = function() return not (db.enabled and db.healthPercentText) end,
+        disabled = function() return not (db.enabled and db.healthTextMode and db.healthTextMode ~= "NONE") end,
         get = function() return db.onlyShowTextWhenNotFull end,
         set = function(_, v) db.onlyShowTextWhenNotFull = v and true or false; ETBC.ApplyBus:Notify("unitframes") end,
       },
 
-      sizingHeader = { type = "header", name = "Sizing (Player/Target/Focus)", order = 30 },
+      healthTextOffsetX = {
+        type = "range",
+        name = "Health text X offset",
+        order = 26,
+        min = -40, max = 40, step = 1,
+        disabled = function() return not (db.enabled and db.healthTextMode and db.healthTextMode ~= "NONE") end,
+        get = function() return db.healthTextOffsetX or 0 end,
+        set = function(_, v) db.healthTextOffsetX = v; ETBC.ApplyBus:Notify("unitframes") end,
+      },
+
+      healthTextOffsetY = {
+        type = "range",
+        name = "Health text Y offset",
+        order = 27,
+        min = -40, max = 40, step = 1,
+        disabled = function() return not (db.enabled and db.healthTextMode and db.healthTextMode ~= "NONE") end,
+        get = function() return db.healthTextOffsetY or 0 end,
+        set = function(_, v) db.healthTextOffsetY = v; ETBC.ApplyBus:Notify("unitframes") end,
+      },
+
+      powerTextOffsetX = {
+        type = "range",
+        name = "Power text X offset",
+        order = 28,
+        min = -40, max = 40, step = 1,
+        disabled = function() return not (db.enabled and db.powerTextMode and db.powerTextMode ~= "NONE") end,
+        get = function() return db.powerTextOffsetX or 0 end,
+        set = function(_, v) db.powerTextOffsetX = v; ETBC.ApplyBus:Notify("unitframes") end,
+      },
+
+      powerTextOffsetY = {
+        type = "range",
+        name = "Power text Y offset",
+        order = 29,
+        min = -40, max = 40, step = 1,
+        disabled = function() return not (db.enabled and db.powerTextMode and db.powerTextMode ~= "NONE") end,
+        get = function() return db.powerTextOffsetY or 0 end,
+        set = function(_, v) db.powerTextOffsetY = v; ETBC.ApplyBus:Notify("unitframes") end,
+      },
+
+      disableBlizzardStatusText = {
+        type = "toggle",
+        name = "Disable Blizzard status text",
+        desc = "Turns off Blizzard unit-frame numbers so only EnhanceTBC text shows.",
+        order = 30, width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.disableBlizzardStatusText end,
+        set = function(_, v) db.disableBlizzardStatusText = v and true or false; ETBC.ApplyBus:Notify("unitframes") end,
+      },
+
+      sizingHeader = { type = "header", name = "Sizing (Player/Target/Focus)", order = 40 },
 
       resize = {
         type = "toggle",
         name = "Enable sizing tweaks",
-        order = 31, width = "full",
+        order = 41, width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.resize end,
         set = function(_, v) db.resize = v and true or false; ETBC.ApplyBus:Notify("unitframes") end,
@@ -166,7 +233,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       scale = {
         type = "range",
         name = "Frame scale",
-        order = 32,
+        order = 42,
         min = 0.80, max = 1.40, step = 0.01,
         disabled = function() return not (db.enabled and db.resize) end,
         get = function() return db.scale end,
@@ -177,7 +244,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         type = "range",
         name = "Extra width",
         desc = "Not functional due to Blizzard frame limitations. Use Frame scale instead.",
-        order = 33,
+        order = 43,
         min = -60, max = 180, step = 1,
         disabled = function() return true end,
         get = function() return db.extraWidth end,
@@ -188,19 +255,19 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         type = "range",
         name = "Extra height",
         desc = "Not functional due to Blizzard frame limitations. Use Frame scale instead.",
-        order = 34,
+        order = 44,
         min = -20, max = 60, step = 1,
         disabled = function() return true end,
         get = function() return db.extraHeight end,
         set = function(_, v) end, -- No-op: setting is disabled
       },
 
-      textHeader = { type = "header", name = "Text Style", order = 40 },
+      textHeader = { type = "header", name = "Text Style", order = 50 },
 
       font = {
         type = "select",
         name = "Font",
-        order = 41,
+        order = 51,
         disabled = function() return not db.enabled end,
         values = LSM_Fonts,
         get = function() return db.font end,
@@ -210,7 +277,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       fontSize = {
         type = "range",
         name = "Font size",
-        order = 42,
+        order = 52,
         min = 8, max = 18, step = 1,
         disabled = function() return not db.enabled end,
         get = function() return db.fontSize end,
@@ -220,7 +287,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       outline = {
         type = "select",
         name = "Outline",
-        order = 43,
+        order = 53,
         disabled = function() return not db.enabled end,
         values = function() return { [""] = "None", OUTLINE = "Outline", THICKOUTLINE = "Thick" } end,
         get = function() return db.outline end,
@@ -230,7 +297,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       shadow = {
         type = "toggle",
         name = "Shadow",
-        order = 44, width = "full",
+        order = 54, width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.shadow end,
         set = function(_, v) db.shadow = v and true or false; ETBC.ApplyBus:Notify("unitframes") end,
@@ -239,7 +306,7 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
       textColor = {
         type = "color",
         name = "Text color",
-        order = 45,
+        order = 55,
         disabled = function() return not db.enabled end,
         get = function()
           local c = db.textColor or { 1, 1, 1 }
