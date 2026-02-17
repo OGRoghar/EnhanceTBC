@@ -9,152 +9,142 @@
 --  - Show/hide specific landing page buttons (if they exist)
 
 local ADDON_NAME, ETBC = ...
-local function PositionBlizzardMinimapButtons(db)
-  -- Position Blizzard minimap buttons for both square and round minimap layouts.
-  local mm = Minimap
-  if not mm then return end
+local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+ETBC.Modules = ETBC.Modules or {}
+local mod = {}
+ETBC.Modules.MinimapPlus = mod
 
-  local isSquare = db and db.squareMinimap
-  local trackingScale = isSquare and 0.75 or 1.0
-  local queueScale = isSquare and 0.75 or 1.0
-  local trackingX, trackingY = 2, 2
-  local queuePoint = "TOPRIGHT"
-  local queueX, queueY = -2, -2
+-- Constants
+local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
+local ROUND_MASK_TEXTURE = "Textures\\MinimapMask"  -- WoW TBC default minimap mask
+local MAX_ZOOM_LEVEL = 5  -- WoW's maximum minimap zoom level
+local SIZE_CHECK_TOLERANCE = 1  -- Pixel tolerance for size drift detection
 
-  local function ApplyMinimapAnchor(btn, point, x, y, scale)
-    if not btn or not Minimap then return end
-    if btn._etbcAnchoring then return end
-    btn._etbcAnchoring = true
-    btn:SetParent(Minimap)
-    btn:ClearAllPoints()
-    btn:SetPoint(point, Minimap, point, x, y)
-    if scale then btn:SetScale(scale) end
-    btn._etbcAnchoring = false
-  end
+local driver
+local sink
+local dropdown
 
-  local function HookMinimapPosition(btn, point, x, y, scale)
-    if not btn or btn._etbcMinimapHooked then return end
-    btn._etbcMinimapHooked = true
-    hooksecurefunc(btn, "Show", function()
-      local db2 = GetDB()
-      if not Minimap or not db2 then return end
-      ApplyMinimapAnchor(btn, point, x, y, scale)
-    end)
-  end
+local collected = {} -- [frame] = { parent, points = {...}, scale, strata, level, shown, ignore }
+local orderedButtons = {}
+local lastScan = 0
+local isZoomHooked = false  -- Track if mouse wheel zoom has been hooked
+local isMinimapRightClickHooked = false  -- Track if minimap right-click has been hooked
 
-  -- Tracking button - bottom left corner (TBC Anniversary standard)
-  local trackingButton = _G.MiniMapTrackingButton or _G.MiniMapTracking
-  if trackingButton then
-    trackingButton:SetParent(mm)
-    trackingButton:SetScale(trackingScale)
-    trackingButton:ClearAllPoints()
-    trackingButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", trackingX, trackingY)
-    HookMinimapPosition(trackingButton, "BOTTOMLEFT", trackingX, trackingY, trackingScale)
+local squareState = {
+  saved = false,
+  minimapScale = 1,
+  minimapMask = nil,
+  minimapSize = { 140, 140 },
+  zoneParent = nil,
+  zonePoints = nil,
+  zoneScale = 1,
+}
 
-    local trackingIcon = trackingButton.icon or trackingButton.Icon or _G.MiniMapTrackingIcon
-    if trackingIcon then
-      trackingIcon:ClearAllPoints()
-      trackingIcon:SetPoint("CENTER", trackingButton, "CENTER", 0, 0)
-      if trackingIcon.SetSize then
-        trackingIcon:SetSize(14, 14)
-      end
-      if trackingIcon.SetDrawLayer then
-        trackingIcon:SetDrawLayer("BORDER", 0)
-      end
-      if trackingIcon.SetAlpha then
-        trackingIcon:SetAlpha(1)
-      end
-      if trackingIcon.Show then
-        trackingIcon:Show()
-      end
-    end
-
-    local border = _G.MiniMapTrackingButtonBorder or trackingButton.Border or trackingButton.border
-    if border and border.SetDrawLayer then
-      border:SetDrawLayer("OVERLAY", 7)
-    end
-    if border and border.SetFrameLevel and trackingButton.GetFrameLevel then
-      if border.SetParent then
-        border:SetParent(trackingButton)
-      end
-      border:SetFrameLevel(trackingButton:GetFrameLevel() + 5)
-    end
-    if border and border.Show then
-      border:Show()
-    end
-  end
-
-  -- Mail button - top left corner
-  local mailButton = _G.MiniMapMailFrame
-  if mailButton then
-    mailButton:SetParent(mm)
-    mailButton:SetScale(0.75)
-    mailButton:ClearAllPoints()
-    mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, 10)
-    if mailButton.Show then mailButton:Show() end
-  end
-
-  -- LFG/Queue button - top right corner
-  local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
-  if queueButton then
-    ApplyMinimapAnchor(queueButton, queuePoint, queueX, queueY, queueScale)
-    HookMinimapPosition(queueButton, queuePoint, queueX, queueY, queueScale)
-    if not queueButton._etbcSetPointHooked then
-      queueButton._etbcSetPointHooked = true
-      hooksecurefunc(queueButton, "SetPoint", function(self)
-        if self._etbcAnchoring then return end
-        local db2 = GetDB()
-        local isSq = db2 and db2.squareMinimap
-        local qx, qy = -2, -2
-        local qs = isSq and 0.75 or 1.0
-        ApplyMinimapAnchor(self, queuePoint, qx, qy, qs)
-      end)
-    end
-    if queueButton.Show then queueButton:Show() end
-  end
-
-  -- Instance difficulty - top left corner (like Leatrix Plus)
-  local difficultyButton = _G.MiniMapInstanceDifficulty
-  if difficultyButton then
-    difficultyButton:SetParent(mm)
-    difficultyButton:ClearAllPoints()
-    difficultyButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -21, 10)
-    difficultyButton:SetScale(0.75)
-    difficultyButton:SetFrameLevel(4)
-  end
-
-  -- Zoom buttons can be hidden or kept minimal
-  local zoomIn = _G.MinimapZoomIn
-  local zoomOut = _G.MinimapZoomOut
-  if zoomIn and zoomOut then
-    -- Keep them but make them less visible
-    zoomIn:ClearAllPoints()
-    zoomIn:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -20)
-
-    zoomOut:ClearAllPoints()
-    zoomOut:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -40)
-  end
-
-  local clockButton = _G.TimeManagerClockButton
-  if clockButton then
-    clockButton:SetParent(mm)
-    clockButton:ClearAllPoints()
-    clockButton:SetPoint("BOTTOM", mm, "BOTTOM", 0, 2)
-    clockButton:SetScale(0.8)
-    clockButton:SetFrameLevel(4)
-    if clockButton.Show then clockButton:Show() end
-  end
-
-  if not isSquare then
-    local zone = _G.MinimapZoneTextButton or _G.MinimapZoneText
-    if zone then
-      if _G.MinimapBackdrop and zone:GetParent() ~= _G.MinimapBackdrop then
-        zone:SetParent(_G.MinimapBackdrop)
-      end
-      if zone.Show then zone:Show() end
-    end
+local function Print(msg)
+  if ETBC and ETBC.Print then
+    ETBC:Print(msg)
+  elseif DEFAULT_CHAT_FRAME then
+    DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99EnhanceTBC|r " .. tostring(msg))
   end
 end
+
+local function GetDB()
+  ETBC.db.profile.minimapPlus = ETBC.db.profile.minimapPlus or {}
+  local db = ETBC.db.profile.minimapPlus
+
+  if db.enabled == nil then db.enabled = true end
+
+  -- Button sink
+  if db.sinkEnabled == nil then db.sinkEnabled = true end
+  if db.locked == nil then db.locked = false end
+  if db.scale == nil then db.scale = 1.0 end
+  if db.buttonSize == nil then db.buttonSize = 28 end
+  if db.padding == nil then db.padding = 6 end
+  if db.columns == nil then db.columns = 6 end
+  if db.growDown == nil then db.growDown = true end
+  if db.backdrop == nil then db.backdrop = true end
+  if db.autoScan == nil then db.autoScan = true end
+  if db.scanInterval == nil then db.scanInterval = 2.0 end
+  if db.includeQueue == nil then db.includeQueue = false end
+  if db.includeTracking == nil then db.includeTracking = false end
+  if db.includeCalendar == nil then db.includeCalendar = false end
+  if db.includeClock == nil then db.includeClock = false end
+  if db.includeMail == nil then db.includeMail = false end
+  if db.includeDifficulty == nil then db.includeDifficulty = false end
+
+  -- Minimap shape + difficulty icon
+  if db.squareMinimap == nil then db.squareMinimap = false end
+  if db.squareSize == nil then db.squareSize = 140 end
+  if db.customDifficultyIcon == nil then db.customDifficultyIcon = true end
+
+  -- Hides
+  if db.hideMinimapToggleButton == nil then db.hideMinimapToggleButton = true end
+  if db.hideBagsBar == nil then db.hideBagsBar = false end
+  if db.hideMicroMenu == nil then db.hideMicroMenu = false end
+  if db.hideQuickJoinToast == nil then db.hideQuickJoinToast = true end
+  if db.hideRaidToolsInParty == nil then db.hideRaidToolsInParty = true end
+
+  -- Landing page buttons
+  db.landingButtons = db.landingButtons or {}
+  if db.landingButtons.ExpansionLandingPageMinimapButton == nil then db.landingButtons.ExpansionLandingPageMinimapButton = true end
+  if db.landingButtons.GarrisonLandingPageMinimapButton == nil then db.landingButtons.GarrisonLandingPageMinimapButton = true end
+  if db.landingButtons.QueueStatusMinimapButton == nil then db.landingButtons.QueueStatusMinimapButton = true end
+
+  -- Quick switches
+  if db.quickEnabled == nil then db.quickEnabled = true end
+  if db.defaultLootMethod == nil then db.defaultLootMethod = "group" end
+  if db.defaultLootThreshold == nil then db.defaultLootThreshold = 2 end -- Uncommon
+
+  -- Sink position
+  db.sinkPoint = db.sinkPoint or "TOPRIGHT"
+  db.sinkRelPoint = db.sinkRelPoint or "TOPRIGHT"
+  db.sinkX = db.sinkX or -200
+  db.sinkY = db.sinkY or -120
+
+  -- Clamp scale to sane bounds (prevents invisible sink)
+  if db.scale < 0.5 then db.scale = 0.5 end
+  if db.scale > 2.0 then db.scale = 2.0 end
+
+  return db
+end
+
+local function EnsureDriver()
+  if driver then return end
+  driver = CreateFrame("Frame", "EnhanceTBC_MinimapPlusDriver", UIParent)
+  driver:Hide()
+end
+
+local function EnsureDropdown()
+  if dropdown then return end
+  dropdown = CreateFrame("Frame", "EnhanceTBC_MinimapPlusDropDown", UIParent, "UIDropDownMenuTemplate")
+end
+
+local function SetFramePointFromDB(frame, db)
+  frame:ClearAllPoints()
+  frame:SetPoint(db.sinkPoint, UIParent, db.sinkRelPoint, db.sinkX, db.sinkY)
+end
+
+local function SaveFramePointToDB(frame, db)
+  local p, _, rp, x, y = frame:GetPoint(1)
+  if p then
+    db.sinkPoint = p
+    db.sinkRelPoint = rp
+    db.sinkX = x
+    db.sinkY = y
+  end
+end
+
+local function EnsureSink()
+  if sink then return end
+
+  -- BackdropTemplate exists in later classic; safe to pass even if nil in some builds
+  sink = CreateFrame("Frame", "EnhanceTBC_MinimapButtonSink", UIParent, "BackdropTemplate")
+  sink:SetClampedToScreen(true)
+  sink:SetMovable(true)
+  sink:EnableMouse(false)
+  sink:SetFrameStrata("MEDIUM")
+  sink:SetFrameLevel(50)
+
   sink.drag = CreateFrame("Button", nil, sink, "BackdropTemplate")
   sink.drag:SetPoint("TOPLEFT", sink, "TOPLEFT", 0, 0)
   sink.drag:SetPoint("TOPRIGHT", sink, "TOPRIGHT", 0, 0)
@@ -791,7 +781,7 @@ local function PositionBlizzardMinimapButtons(db)
       ApplyMinimapAnchor(btn, point, x, y, scale)
     end)
   end
-
+  
   -- Tracking button - bottom left corner (TBC Anniversary standard)
   local trackingButton = _G.MiniMapTrackingButton or _G.MiniMapTracking
   if trackingButton then
@@ -809,7 +799,7 @@ local function PositionBlizzardMinimapButtons(db)
         trackingIcon:SetSize(14, 14)
       end
       if trackingIcon.SetDrawLayer then
-        trackingIcon:SetDrawLayer("ARTWORK", 0)
+        trackingIcon:SetDrawLayer("BORDER", 0)
       end
       if trackingIcon.SetAlpha then
         trackingIcon:SetAlpha(1)
@@ -833,7 +823,7 @@ local function PositionBlizzardMinimapButtons(db)
       border:Show()
     end
   end
-
+  
   -- Mail button - top left corner
   local mailButton = _G.MiniMapMailFrame
   if mailButton then
@@ -843,7 +833,7 @@ local function PositionBlizzardMinimapButtons(db)
     mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, 10)
     if mailButton.Show then mailButton:Show() end
   end
-
+  
   -- LFG/Queue button - top right corner
   local queueButton = _G.MiniMapLFGFrame or _G.QueueStatusMinimapButton or _G.MiniMapBattlefieldFrame
   if queueButton then
@@ -862,7 +852,7 @@ local function PositionBlizzardMinimapButtons(db)
     end
     if queueButton.Show then queueButton:Show() end
   end
-
+  
   -- Instance difficulty - top left corner (like Leatrix Plus)
   local difficultyButton = _G.MiniMapInstanceDifficulty
   if difficultyButton then
@@ -872,7 +862,7 @@ local function PositionBlizzardMinimapButtons(db)
     difficultyButton:SetScale(0.75)
     difficultyButton:SetFrameLevel(4)
   end
-
+  
   -- Zoom buttons can be hidden or kept minimal
   local zoomIn = _G.MinimapZoomIn
   local zoomOut = _G.MinimapZoomOut
@@ -880,7 +870,7 @@ local function PositionBlizzardMinimapButtons(db)
     -- Keep them but make them less visible
     zoomIn:ClearAllPoints()
     zoomIn:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -20)
-
+    
     zoomOut:ClearAllPoints()
     zoomOut:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -40)
   end
