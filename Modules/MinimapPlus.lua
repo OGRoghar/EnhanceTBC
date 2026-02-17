@@ -427,6 +427,30 @@ local function LayoutSink(db)
   end
 end
 
+local function EnsureSinkVisible(db)
+  if not sink or not UIParent then return end
+  if not db then return end
+
+  local left = sink:GetLeft()
+  local right = sink:GetRight()
+  local top = sink:GetTop()
+  local bottom = sink:GetBottom()
+  if not left or not right or not top or not bottom then return end
+
+  local w = UIParent:GetWidth() or 0
+  local h = UIParent:GetHeight() or 0
+  if w <= 0 or h <= 0 then return end
+
+  local offscreen = (right < 0) or (left > w) or (top < 0) or (bottom > h)
+  if offscreen then
+    db.sinkPoint = "TOPRIGHT"
+    db.sinkRelPoint = "TOPRIGHT"
+    db.sinkX = -200
+    db.sinkY = -120
+    SetFramePointFromDB(sink, db)
+  end
+end
+
 local function ReparentToSink(frame)
   if not sink then return end
   if not frame or not frame.SetParent then return end
@@ -755,9 +779,12 @@ local function PositionBlizzardMinimapButtons(db)
       end
     end
 
-    local border = trackingButton.Border or trackingButton.border
+    local border = _G.MiniMapTrackingButtonBorder or trackingButton.Border or trackingButton.border
     if border and border.SetDrawLayer then
       border:SetDrawLayer("OVERLAY")
+    end
+    if border and border.SetFrameLevel and trackingButton.GetFrameLevel then
+      border:SetFrameLevel(trackingButton:GetFrameLevel() + 5)
     end
   end
   
@@ -1275,6 +1302,9 @@ function mod:Apply()
     sink:Hide()
   end
   sink:EnableMouse(db.sinkEnabled and true or false)  -- Enable mouse when sink is shown (for drag and right-click)
+  if db.sinkEnabled then
+    EnsureSinkVisible(db)
+  end
 
   ApplyHides(db)
   ApplyLandingButtons(db)

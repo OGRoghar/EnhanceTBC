@@ -21,7 +21,11 @@ local dataObject
 local function EnsureDB()
   if not ETBC.db or not ETBC.db.profile then return nil end
   ETBC.db.profile.minimapIcon = ETBC.db.profile.minimapIcon or { hide = false }
-  return ETBC.db.profile.minimapIcon
+  local db = ETBC.db.profile.minimapIcon
+  if db.hide == nil then db.hide = false end
+  if db.minimapPos == nil then db.minimapPos = 220 end
+  if db.radius == nil then db.radius = 80 end
+  return db
 end
 
 local function EnsureDataObject()
@@ -101,6 +105,10 @@ function ETBC:InitMinimapIcon()
   else
     LDBIcon:Show("EnhanceTBC")
   end
+
+  if LDBIcon.Refresh then
+    LDBIcon:Refresh("EnhanceTBC", db)
+  end
 end
 
 function ETBC:ToggleMinimapIcon(show)
@@ -121,5 +129,9 @@ function ETBC:ToggleMinimapIcon(show)
     LDBIcon:Hide("EnhanceTBC")
   else
     LDBIcon:Show("EnhanceTBC")
+  end
+
+  if LDBIcon.Refresh then
+    LDBIcon:Refresh("EnhanceTBC", db)
   end
 end
