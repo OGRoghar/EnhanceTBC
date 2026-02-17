@@ -820,12 +820,18 @@ local function PositionBlizzardMinimapButtons(db)
   if trackingButton then
     trackingButton:SetParent(mm)
     trackingButton:SetScale(trackingScale)
+    if trackingButton.SetFrameLevel then
+      trackingButton:SetFrameLevel(3)
+    end
     trackingButton:ClearAllPoints()
     trackingButton:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", trackingX, trackingY)
     HookMinimapPosition(trackingButton, "BOTTOMLEFT", trackingX, trackingY, trackingScale)
 
     local trackingIcon = trackingButton.icon or trackingButton.Icon or _G.MiniMapTrackingIcon
     if trackingIcon then
+      if trackingIcon.SetParent then
+        trackingIcon:SetParent(trackingButton)
+      end
       trackingIcon:ClearAllPoints()
       trackingIcon:SetPoint("CENTER", trackingButton, "CENTER", 0, 0)
       if trackingIcon.SetSize then
@@ -833,6 +839,9 @@ local function PositionBlizzardMinimapButtons(db)
       end
       if trackingIcon.SetDrawLayer then
         trackingIcon:SetDrawLayer("BACKGROUND", 0)
+      end
+      if trackingIcon.SetAlpha then
+        trackingIcon:SetAlpha(1)
       end
       if trackingIcon.SetAlpha then
         trackingIcon:SetAlpha(1)
@@ -890,6 +899,12 @@ local function PositionBlizzardMinimapButtons(db)
   if lfgFrame then
     ApplyMinimapAnchor(lfgFrame, queuePoint, queueX, queueY, queueScale)
     HookMinimapPosition(lfgFrame, queuePoint, queueX, queueY, queueScale)
+    if lfgFrame.SetSize then
+      lfgFrame:SetSize(32, 32)
+    end
+    if lfgFrame.SetFrameLevel then
+      lfgFrame:SetFrameLevel(8)
+    end
     if not lfgFrame._etbcSetPointHooked then
       lfgFrame._etbcSetPointHooked = true
       hooksecurefunc(lfgFrame, "SetPoint", function(self)
@@ -904,6 +919,12 @@ local function PositionBlizzardMinimapButtons(db)
       if lfgIcon.SetParent then lfgIcon:SetParent(lfgFrame) end
       lfgIcon:ClearAllPoints()
       lfgIcon:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
+      if lfgIcon.SetSize and lfgFrame.GetSize then
+        local w, h = lfgFrame:GetSize()
+        if w and h and w > 0 and h > 0 then
+          lfgIcon:SetSize(w, h)
+        end
+      end
     end
 
     local lfgBorder = _G.LFGMinimapFrameBorder
@@ -911,6 +932,12 @@ local function PositionBlizzardMinimapButtons(db)
       if lfgBorder.SetParent then lfgBorder:SetParent(lfgFrame) end
       lfgBorder:ClearAllPoints()
       lfgBorder:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
+      if lfgBorder.SetSize and lfgFrame.GetSize then
+        local w, h = lfgFrame:GetSize()
+        if w and h and w > 0 and h > 0 then
+          lfgBorder:SetSize(w, h)
+        end
+      end
     end
   end
   
@@ -930,10 +957,10 @@ local function PositionBlizzardMinimapButtons(db)
   if zoomIn and zoomOut then
     -- Keep them but make them less visible
     zoomIn:ClearAllPoints()
-    zoomIn:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -20)
+    zoomIn:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -58)
     
     zoomOut:ClearAllPoints()
-    zoomOut:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -40)
+    zoomOut:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -78)
   end
 
   local clockButton = _G.TimeManagerClockButton
