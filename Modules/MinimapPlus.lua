@@ -832,7 +832,7 @@ local function PositionBlizzardMinimapButtons(db)
         trackingIcon:SetSize(14, 14)
       end
       if trackingIcon.SetDrawLayer then
-        trackingIcon:SetDrawLayer("BORDER", 0)
+        trackingIcon:SetDrawLayer("BACKGROUND", 0)
       end
       if trackingIcon.SetAlpha then
         trackingIcon:SetAlpha(1)
@@ -850,7 +850,7 @@ local function PositionBlizzardMinimapButtons(db)
       if border.SetParent then
         border:SetParent(trackingButton)
       end
-      border:SetFrameLevel(trackingButton:GetFrameLevel() + 5)
+      border:SetFrameLevel(trackingButton:GetFrameLevel() + 10)
     end
     if border and border.Show then
       border:Show()
@@ -884,6 +884,34 @@ local function PositionBlizzardMinimapButtons(db)
       end)
     end
     if queueButton.Show then queueButton:Show() end
+  end
+
+  local lfgFrame = _G.LFGMinimapFrame
+  if lfgFrame then
+    ApplyMinimapAnchor(lfgFrame, queuePoint, queueX, queueY, queueScale)
+    HookMinimapPosition(lfgFrame, queuePoint, queueX, queueY, queueScale)
+    if not lfgFrame._etbcSetPointHooked then
+      lfgFrame._etbcSetPointHooked = true
+      hooksecurefunc(lfgFrame, "SetPoint", function(self)
+        if self._etbcAnchoring then return end
+        ApplyMinimapAnchor(self, queuePoint, queueX, queueY, queueScale)
+      end)
+    end
+    if lfgFrame.Show then lfgFrame:Show() end
+
+    local lfgIcon = _G.LFGMinimapFrameIcon or _G.LFGMinimapFrameIconTexture
+    if lfgIcon and lfgIcon.SetPoint then
+      if lfgIcon.SetParent then lfgIcon:SetParent(lfgFrame) end
+      lfgIcon:ClearAllPoints()
+      lfgIcon:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
+    end
+
+    local lfgBorder = _G.LFGMinimapFrameBorder
+    if lfgBorder and lfgBorder.SetPoint then
+      if lfgBorder.SetParent then lfgBorder:SetParent(lfgFrame) end
+      lfgBorder:ClearAllPoints()
+      lfgBorder:SetPoint("CENTER", lfgFrame, "CENTER", 0, 0)
+    end
   end
   
   -- Instance difficulty - top left corner (like Leatrix Plus)
