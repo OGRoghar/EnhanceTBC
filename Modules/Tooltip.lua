@@ -192,6 +192,8 @@ end
 local function OnTooltipSetItem(tooltip)
   local db = GetDB()
   if not db or not db.enabled or not db.showItemId then return end
+
+  ApplyStyleToTooltip(tooltip)
   
   local _, itemLink = tooltip:GetItem()
   local itemID = ExtractItemID(itemLink)
@@ -204,6 +206,8 @@ end
 local function OnTooltipSetSpell(tooltip)
   local db = GetDB()
   if not db or not db.enabled or not db.showSpellId then return end
+
+  ApplyStyleToTooltip(tooltip)
   
   local spellID = ExtractSpellID(tooltip)
   if spellID then
@@ -215,6 +219,8 @@ end
 local function OnTooltipSetUnit(tooltip)
   local db = GetDB()
   if not db or not db.enabled then return end
+
+  ApplyStyleToTooltip(tooltip)
   
   local _, unit = tooltip:GetUnit()
   if not unit then return end

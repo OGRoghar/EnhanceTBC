@@ -24,8 +24,6 @@ local function GetDB()
   -- Sizing
   if db.resize == nil then db.resize = true end
   if db.scale == nil then db.scale = 1.00 end
-  if db.extraWidth == nil then db.extraWidth = 0 end
-  if db.extraHeight == nil then db.extraHeight = 0 end
 
   -- Text styling
   if db.font == nil then db.font = "Friz Quadrata TT" end
@@ -238,28 +236,6 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         disabled = function() return not (db.enabled and db.resize) end,
         get = function() return db.scale end,
         set = function(_, v) db.scale = v; ETBC.ApplyBus:Notify("unitframes") end,
-      },
-
-      extraWidth = {
-        type = "range",
-        name = "Extra width",
-        desc = "Not functional due to Blizzard frame limitations. Use Frame scale instead.",
-        order = 43,
-        min = -60, max = 180, step = 1,
-        disabled = function() return true end,
-        get = function() return db.extraWidth end,
-        set = function(_, v) end, -- No-op: setting is disabled
-      },
-
-      extraHeight = {
-        type = "range",
-        name = "Extra height",
-        desc = "Not functional due to Blizzard frame limitations. Use Frame scale instead.",
-        order = 44,
-        min = -20, max = 60, step = 1,
-        disabled = function() return true end,
-        get = function() return db.extraHeight end,
-        set = function(_, v) end, -- No-op: setting is disabled
       },
 
       textHeader = { type = "header", name = "Text Style", order = 50 },

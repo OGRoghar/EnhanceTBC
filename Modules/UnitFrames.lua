@@ -34,8 +34,6 @@ local function GetDB()
 
   if db.resize == nil then db.resize = true end
   if db.scale == nil then db.scale = 1.00 end
-  if db.extraWidth == nil then db.extraWidth = 0 end
-  if db.extraHeight == nil then db.extraHeight = 0 end
 
   if db.font == nil then db.font = "Friz Quadrata TT" end
   if db.fontSize == nil then db.fontSize = 11 end
@@ -331,12 +329,6 @@ local function ApplyFrameSizing(frame)
   if frame.SetSize then
     local o = orig.sizes[frame]
     if o and o.w and o.h then
-      -- NOTE: extraWidth/extraHeight disabled - resizing the frame doesn't properly resize
-      -- the internal health bar textures in Blizzard's unit frames, causing visual issues.
-      -- Just use the scale setting instead.
-      -- local ew = tonumber(db.extraWidth) or 0
-      -- local eh = tonumber(db.extraHeight) or 0
-      -- frame:SetSize(o.w + ew, o.h + eh)
       frame:SetSize(o.w, o.h)
     end
   end
