@@ -25,10 +25,22 @@ local function FloatDirValues()
   return { UP = "Up", DOWN = "Down" }
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  ETBC.db.profile.combattext = ETBC.db.profile.combattext or {}
+  local db = ETBC.db.profile.combattext
+  db.crit = db.crit or {}
+  db.crit.color = db.crit.color or {}
+  db.blizzard = db.blizzard or {}
+  db.anchor = db.anchor or {}
+  db.overrideColor = db.overrideColor or {}
+end
+
 ETBC.SettingsRegistry:RegisterGroup("combattext", {
   name = "CombatText",
   order = 12,
   options = function()
+    EnsureDefaults()
     local db = ETBC.db.profile.combattext
 
     return {
@@ -73,18 +85,10 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
         },
       },
 
-      onlyInCombat = {
-        type = "toggle",
-        name = "Only In Combat",
-        order = 6,
-        get = function() return db.onlyInCombat end,
-        set = function(_, v) db.onlyInCombat = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
-      },
-
       tracking = {
         type = "group",
         name = "Tracking",
-        order = 10,
+        order = 6,
         inline = true,
         args = {
           trackOutgoing = {

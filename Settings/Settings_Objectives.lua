@@ -35,10 +35,16 @@ local function GetDB()
   return db
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
+end
+
 ETBC.SettingsRegistry:RegisterGroup("objectives", {
   name = "Objectives",
   order = 42,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {

@@ -78,6 +78,9 @@ local function NotifyAffected()
   ETBC.ApplyBus:Notify("auras")
   ETBC.ApplyBus:Notify("actiontracker")
   ETBC.ApplyBus:Notify("combattext")
+  ETBC.ApplyBus:Notify("gcdbar")
+  ETBC.ApplyBus:Notify("mouse")
+  ETBC.ApplyBus:Notify("objectives")
 end
 
 local function Apply()

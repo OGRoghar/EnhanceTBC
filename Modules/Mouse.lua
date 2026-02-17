@@ -30,10 +30,12 @@ local function EnsureDriver()
   driver = CreateFrame("Frame", "EnhanceTBC_MouseDriver", UIParent)
 end
 
-local function InCombat()
-  if InCombatLockdown and InCombatLockdown() then return true end
-  if UnitAffectingCombat then return not not UnitAffectingCombat("player") end
-  return false
+local function VisibilityAllowed()
+  local vis = ETBC.Modules and ETBC.Modules.Visibility
+  if vis and vis.Allowed then
+    return vis:Allowed("mouse")
+  end
+  return true
 end
 
 local function MediaCursorPath(fileName)
@@ -108,7 +110,6 @@ local function GetDB()
   if db.trail.spacing == nil then db.trail.spacing = 16 end
   if db.trail.life == nil then db.trail.life = 0.25 end
   if db.trail.maxActive == nil then db.trail.maxActive = 30 end
-  if db.trail.onlyInCombat == nil then db.trail.onlyInCombat = false end
   if db.trail.onlyWhenMoving == nil then db.trail.onlyWhenMoving = true end
 
   if db.hideWhenIdle == nil then db.hideWhenIdle = false end
@@ -156,7 +157,8 @@ end
 local function Spawn2DTrailAt(x, y, db)
   local tdb = db.trail
   if not tdb.enabled then return end
-  if tdb.onlyInCombat and not InCombat() then return end
+  local vis = ETBC.Modules and ETBC.Modules.Visibility
+  if vis and vis.Allowed and not vis:Allowed("mouse") then return end
 
   local maxActive = tonumber(tdb.maxActive) or 30
   if #trailActive >= maxActive then
@@ -306,7 +308,7 @@ local function Apply()
   end
 
   local db = GetDB()
-  if not (gEnabled and db.enabled) then
+  if not (gEnabled and db.enabled and VisibilityAllowed()) then
     ClearAll()
     DisableUpdates()
     return

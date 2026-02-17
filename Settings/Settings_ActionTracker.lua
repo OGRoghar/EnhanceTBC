@@ -21,18 +21,22 @@ local function FontValues()
   return out
 end
 
-local function PointValues()
-  return {
-    TOPLEFT="TOPLEFT", TOP="TOP", TOPRIGHT="TOPRIGHT",
-    LEFT="LEFT", CENTER="CENTER", RIGHT="RIGHT",
-    BOTTOMLEFT="BOTTOMLEFT", BOTTOM="BOTTOM", BOTTOMRIGHT="BOTTOMRIGHT"
-  }
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  ETBC.db.profile.actiontracker = ETBC.db.profile.actiontracker or {}
+  local db = ETBC.db.profile.actiontracker
+  db.anchor = db.anchor or {}
+  db.border = db.border or {}
+  db.border.color = db.border.color or {}
+  db.nameText = db.nameText or {}
+  db.nameText.color = db.nameText.color or {}
 end
 
 ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
   name = "ActionTracker",
   order = 9,
   options = function()
+    EnsureDefaults()
     local db = ETBC.db.profile.actiontracker
 
     return {
@@ -82,17 +86,10 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
             get = function() return db.onlyPlayer end,
             set = function(_, v) db.onlyPlayer = v and true or false; ETBC.ApplyBus:Notify("actiontracker") end,
           },
-          onlyInCombat = {
-            type = "toggle",
-            name = "Only In Combat",
-            order = 4,
-            get = function() return db.onlyInCombat end,
-            set = function(_, v) db.onlyInCombat = v and true or false; ETBC.ApplyBus:Notify("actiontracker") end,
-          },
           maxEntries = {
             type = "range",
             name = "Max Entries",
-            order = 5,
+            order = 4,
             min = 1, max = 20, step = 1,
             get = function() return db.maxEntries end,
             set = function(_, v) db.maxEntries = v; ETBC.ApplyBus:Notify("actiontracker") end,
@@ -100,7 +97,7 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
           lifetime = {
             type = "range",
             name = "Entry Lifetime (sec)",
-            order = 6,
+            order = 5,
             min = 2, max = 30, step = 1,
             get = function() return db.lifetime end,
             set = function(_, v) db.lifetime = v; ETBC.ApplyBus:Notify("actiontracker") end,
@@ -157,51 +154,10 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
         },
       },
 
-      anchor = {
-        type = "group",
-        name = "Anchor",
-        order = 30,
-        inline = true,
-        args = {
-          point = {
-            type = "select",
-            name = "Point",
-            order = 1,
-            values = PointValues,
-            get = function() return db.anchor.point end,
-            set = function(_, v) db.anchor.point = v; ETBC.ApplyBus:Notify("actiontracker") end,
-          },
-          relPoint = {
-            type = "select",
-            name = "Relative Point",
-            order = 2,
-            values = PointValues,
-            get = function() return db.anchor.relPoint end,
-            set = function(_, v) db.anchor.relPoint = v; ETBC.ApplyBus:Notify("actiontracker") end,
-          },
-          x = {
-            type = "range",
-            name = "X Offset",
-            order = 3,
-            min = -800, max = 800, step = 1,
-            get = function() return db.anchor.x end,
-            set = function(_, v) db.anchor.x = v; ETBC.ApplyBus:Notify("actiontracker") end,
-          },
-          y = {
-            type = "range",
-            name = "Y Offset",
-            order = 4,
-            min = -800, max = 800, step = 1,
-            get = function() return db.anchor.y end,
-            set = function(_, v) db.anchor.y = v; ETBC.ApplyBus:Notify("actiontracker") end,
-          },
-        },
-      },
-
       visuals = {
         type = "group",
         name = "Visuals",
-        order = 40,
+        order = 30,
         inline = true,
         args = {
           showCooldownSpiral = {

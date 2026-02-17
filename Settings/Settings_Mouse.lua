@@ -33,7 +33,6 @@ local function EnsureDB()
   if db.trail.spacing == nil then db.trail.spacing = 16 end
   if db.trail.life == nil then db.trail.life = 0.25 end
   if db.trail.maxActive == nil then db.trail.maxActive = 30 end
-  if db.trail.onlyInCombat == nil then db.trail.onlyInCombat = false end
   if db.trail.onlyWhenMoving == nil then db.trail.onlyWhenMoving = true end
 
   if db.hideWhenIdle == nil then db.hideWhenIdle = false end
@@ -43,6 +42,10 @@ local function EnsureDB()
 end
 
 local function DB() return EnsureDB() end
+
+local function EnsureDefaults()
+  EnsureDB()
+end
 
 local function ApplyMouse()
   if ETBC.Modules and ETBC.Modules.Mouse and ETBC.Modules.Mouse.Apply then
@@ -90,6 +93,7 @@ ETBC.SettingsRegistry:RegisterGroup("mouse", {
   icon = "Interface\\Icons\\INV_Misc_EngGizmos_17",
   category = "Utility",
   options = function()
+    EnsureDefaults()
     return {
       header = { type = "header", name = "CursorTrail", order = 0 },
 
@@ -290,20 +294,10 @@ ETBC.SettingsRegistry:RegisterGroup("mouse", {
         set = function(_, v) DB().trail.maxActive = v; ApplyMouse() end,
       },
 
-      trailOnlyInCombat = {
-        type = "toggle",
-        name = "Trail only in combat",
-        order = 40,
-        width = "full",
-        disabled = function() return not (DB().enabled and DB().trail.enabled) end,
-        get = function() return DB().trail.onlyInCombat end,
-        set = function(_, v) DB().trail.onlyInCombat = v and true or false; ApplyMouse() end,
-      },
-
       trailOnlyWhenMoving = {
         type = "toggle",
         name = "Trail only when moving",
-        order = 41,
+        order = 40,
         width = "full",
         disabled = function() return not (DB().enabled and DB().trail.enabled) end,
         get = function() return DB().trail.onlyWhenMoving end,

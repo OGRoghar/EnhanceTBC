@@ -29,10 +29,16 @@ local function GetDB()
   return db
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
+end
+
 ETBC.SettingsRegistry:RegisterGroup("mover", {
   name = "Mover",
   order = 60,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {

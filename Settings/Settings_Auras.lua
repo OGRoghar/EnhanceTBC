@@ -29,10 +29,22 @@ local function PointValues()
   }
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  ETBC.db.profile.auras = ETBC.db.profile.auras or {}
+  local db = ETBC.db.profile.auras
+  db.buffs = db.buffs or {}
+  db.debuffs = db.debuffs or {}
+  db.border = db.border or {}
+  db.durationText = db.durationText or {}
+  db.countText = db.countText or {}
+end
+
 ETBC.SettingsRegistry:RegisterGroup("auras", {
   name = "Auras",
   order = 8,
   options = function()
+    EnsureDefaults()
     local db = ETBC.db.profile.auras
 
     return {
@@ -51,32 +63,6 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
         order = 2,
         get = function() return db.preview end,
         set = function(_, v) db.preview = v and true or false; ETBC.ApplyBus:Notify("auras") end,
-      },
-
-      mover = {
-        type = "group",
-        name = "Move Handles",
-        order = 5,
-        inline = true,
-        args = {
-          showMoveHandles = {
-            type = "toggle",
-            name = "Show Move Handles (Buffs/Debuffs)",
-            desc = "Shows draggable boxes you can drag to reposition Buffs and Debuffs without typing X/Y. Turn OFF to hide them.",
-            order = 1,
-            get = function() return db.showMoveHandles end,
-            set = function(_, v) db.showMoveHandles = v and true or false; ETBC.ApplyBus:Notify("auras") end,
-          },
-          moveSnapToGrid = {
-            type = "toggle",
-            name = "Snap to Mover Grid",
-            desc = "Snaps drag to your mover grid size (default 8).",
-            order = 2,
-            get = function() return db.moveSnapToGrid end,
-            set = function(_, v) db.moveSnapToGrid = v and true or false; ETBC.ApplyBus:Notify("auras") end,
-            disabled = function() return not db.showMoveHandles end,
-          },
-        },
       },
 
       common = {
@@ -99,6 +85,15 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
             order = 2,
             get = function() return db.useBlizzardTooltips end,
             set = function(_, v) db.useBlizzardTooltips = v and true or false; ETBC.ApplyBus:Notify("auras") end,
+          },
+          trimIcons = {
+            type = "toggle",
+            name = "Trim Icon Texture",
+            desc = "Crops icon edges for a cleaner square look.",
+            order = 3,
+            width = "full",
+            get = function() return db.trimIcons end,
+            set = function(_, v) db.trimIcons = v and true or false; ETBC.ApplyBus:Notify("auras") end,
           },
         },
       },
@@ -140,6 +135,85 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
             order = 1,
             get = function() return db.showCooldownSpiral end,
             set = function(_, v) db.showCooldownSpiral = v and true or false; ETBC.ApplyBus:Notify("auras") end,
+          },
+        },
+      },
+
+      text = {
+        type = "group",
+        name = "Text",
+        order = 35,
+        inline = true,
+        args = {
+          showDurationText = {
+            type = "toggle",
+            name = "Show Duration Text",
+            order = 1,
+            width = "full",
+            get = function() return db.showDurationText end,
+            set = function(_, v) db.showDurationText = v and true or false; ETBC.ApplyBus:Notify("auras") end,
+          },
+          durationFont = {
+            type = "select",
+            name = "Duration Font",
+            order = 2,
+            values = FontValues,
+            get = function() return db.durationText.font end,
+            set = function(_, v) db.durationText.font = v; ETBC.ApplyBus:Notify("auras") end,
+            disabled = function() return not db.showDurationText end,
+          },
+          durationSize = {
+            type = "range",
+            name = "Duration Size",
+            order = 3,
+            min = 8, max = 24, step = 1,
+            get = function() return db.durationText.size end,
+            set = function(_, v) db.durationText.size = v; ETBC.ApplyBus:Notify("auras") end,
+            disabled = function() return not db.showDurationText end,
+          },
+          durationOutline = {
+            type = "select",
+            name = "Duration Outline",
+            order = 4,
+            values = OutlineValues,
+            get = function() return db.durationText.outline end,
+            set = function(_, v) db.durationText.outline = v; ETBC.ApplyBus:Notify("auras") end,
+            disabled = function() return not db.showDurationText end,
+          },
+          showCountText = {
+            type = "toggle",
+            name = "Show Count Text",
+            order = 5,
+            width = "full",
+            get = function() return db.showCountText end,
+            set = function(_, v) db.showCountText = v and true or false; ETBC.ApplyBus:Notify("auras") end,
+          },
+          countFont = {
+            type = "select",
+            name = "Count Font",
+            order = 6,
+            values = FontValues,
+            get = function() return db.countText.font end,
+            set = function(_, v) db.countText.font = v; ETBC.ApplyBus:Notify("auras") end,
+            disabled = function() return not db.showCountText end,
+          },
+          countSize = {
+            type = "range",
+            name = "Count Size",
+            order = 7,
+            min = 8, max = 24, step = 1,
+            get = function() return db.countText.size end,
+            set = function(_, v) db.countText.size = v; ETBC.ApplyBus:Notify("auras") end,
+            disabled = function() return not db.showCountText end,
+          },
+          countOutline = {
+            type = "select",
+            name = "Count Outline",
+            order = 8,
+            values = OutlineValues,
+            get = function() return db.countText.outline end,
+            set = function(_, v) db.countText.outline = v; ETBC.ApplyBus:Notify("auras") end,
+            disabled = function() return not db.showCountText end,
           },
         },
       },

@@ -1,10 +1,16 @@
 -- Settings/Settings_General.lua
 local ADDON_NAME, ETBC = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  ETBC.db.profile.general = ETBC.db.profile.general or {}
+  ETBC.db.profile.general.ui = ETBC.db.profile.general.ui or {}
+end
 ETBC.SettingsRegistry:RegisterGroup("general", {
   name = "General",
   order = 1,
   options = function()
+    EnsureDefaults()
     return {
       infoHeader = {
         type = "header",

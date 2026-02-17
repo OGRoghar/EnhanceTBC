@@ -13,6 +13,11 @@ local function GetDB()
   return db
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
+end
+
 local function Apply()
   if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
     ETBC.ApplyBus:Notify("friends")
@@ -23,6 +28,7 @@ ETBC.SettingsRegistry:RegisterGroup("friends", {
   name = "Friends",
   order = 35,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {

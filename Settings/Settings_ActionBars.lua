@@ -35,6 +35,11 @@ local function GetDB()
   return db
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
+end
+
 local function LSM_Fonts()
   if ETBC.LSM and ETBC.LSM.HashTable then
     return ETBC.LSM:HashTable("font")
@@ -51,6 +56,7 @@ ETBC.SettingsRegistry:RegisterGroup("actionbars", {
   name = "Action Bars",
   order = 16,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {

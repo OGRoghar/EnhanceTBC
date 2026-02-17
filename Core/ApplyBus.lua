@@ -44,3 +44,12 @@ function ETBC.ApplyBus:NotifyAll()
     self:Notify(key)
   end
 end
+
+function ETBC.ApplyBus:Keys()
+  local out = {}
+  for key in pairs(listeners) do
+    out[#out + 1] = key
+  end
+  table.sort(out)
+  return out
+end

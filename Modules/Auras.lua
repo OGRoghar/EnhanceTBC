@@ -14,8 +14,6 @@ local debuffAnchor
 local buffContainer
 local debuffContainer
 
-local buffHandle
-local debuffHandle
 
 local pool = {}
 local activeBuffs = {}
@@ -47,26 +45,25 @@ local function OutlineFlag(outline)
   return ""
 end
 
+local function ApplyFont(fs, info, fallbackSize)
+  if not fs then return end
+  local size = fallbackSize or 12
+  local font = STANDARD_TEXT_FONT
+  local outline = ""
+
+  if info then
+    size = info.size or size
+    font = SafeFont(info.font)
+    outline = OutlineFlag(info.outline)
+  end
+
+  fs:SetFont(font, size, outline)
+end
+
 local function EnsureDriver()
   if driver then return end
   driver = CreateFrame("Frame", "EnhanceTBC_AurasDriver", UIParent)
   driver:Hide()
-end
-
-local function GetGridSize()
-  local p = ETBC.db and ETBC.db.profile
-  if p and p.mover and type(p.mover.gridSize) == "number" and p.mover.gridSize > 0 then
-    return p.mover.gridSize
-  end
-  return 8
-end
-
-local function Snap(n, grid)
-  if not grid or grid <= 0 then return n end
-  if n >= 0 then
-    return math.floor((n / grid) + 0.5) * grid
-  end
-  return math.ceil((n / grid) - 0.5) * grid
 end
 
 local function SetShownCompat(frame, shown)
@@ -103,81 +100,45 @@ local function EnsureFrames()
     debuffContainer:SetSize(1, 1)
   end
 
-  local function MakeHandle(title)
-    local f = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-    f:SetFrameStrata("DIALOG")
-    f:SetSize(220, 44)
-    f:SetClampedToScreen(true)
-    f:EnableMouse(true)
-    f:SetMovable(true)
-    f:RegisterForDrag("LeftButton")
+end
 
-    if f.SetBackdrop then
-      f:SetBackdrop({
-        bgFile = "Interface/Buttons/WHITE8x8",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        edgeSize = 14,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 },
-      })
-      f:SetBackdropColor(0.03, 0.08, 0.03, 0.55)
-      f:SetBackdropBorderColor(0.2, 1.0, 0.2, 1.0)
-    end
+local function RegisterMover(db)
+  if not (ETBC.Mover and ETBC.Mover.Register) then return end
+  if not (buffAnchor and debuffAnchor) then return end
 
-    f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.text:SetPoint("CENTER", f, "CENTER", 0, 0)
-    f.text:SetText(title)
+  local buffs = db and db.buffs and db.buffs.anchor or {}
+  local debuffs = db and db.debuffs and db.debuffs.anchor or {}
 
-    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    f.hint:SetPoint("TOP", f, "BOTTOM", 0, -2)
-    f.hint:SetText("Drag to move")
+  ETBC.Mover:Register("AurasBuffs", buffAnchor, {
+    name = "Auras: Buffs",
+    default = {
+      point = buffs.point or "TOPRIGHT",
+      rel = "UIParent",
+      relPoint = buffs.relPoint or "TOPRIGHT",
+      x = buffs.x or -240,
+      y = buffs.y or -190,
+    },
+  })
 
-    f:SetScript("OnDragStart", function(self)
-      if not self.StartMoving then return end
-      self:StartMoving()
-    end)
+  ETBC.Mover:Register("AurasDebuffs", debuffAnchor, {
+    name = "Auras: Debuffs",
+    default = {
+      point = debuffs.point or "TOPRIGHT",
+      rel = "UIParent",
+      relPoint = debuffs.relPoint or "TOPRIGHT",
+      x = debuffs.x or -240,
+      y = debuffs.y or -260,
+    },
+  })
+end
 
-    f:SetScript("OnDragStop", function(self)
-      if self.StopMovingOrSizing then
-        self:StopMovingOrSizing()
-      end
-
-      local db = ETBC.db.profile.auras
-      local grid = GetGridSize()
-
-      local point, _, relPoint, x, y = self:GetPoint(1)
-      x, y = x or 0, y or 0
-
-      if db.moveSnapToGrid then
-        x = Snap(x, grid)
-        y = Snap(y, grid)
-      end
-
-      -- Save into the correct anchorDB (set by f.anchorDB)
-      local a = self.anchorDB
-      if not a then return end
-
-      a.point = point or a.point
-      a.relPoint = relPoint or a.relPoint
-      a.x = x
-      a.y = y
-
-      -- Re-anchor the handle to the snapped position
-      self:ClearAllPoints()
-      self:SetPoint(a.point, UIParent, a.relPoint, a.x, a.y)
-
-      ETBC.ApplyBus:Notify("auras")
-    end)
-
-    f:Hide()
-    return f
+local function VisibilityAllowed(db)
+  if db and db.preview then return true end
+  local vis = ETBC.Modules and ETBC.Modules.Visibility
+  if vis and vis.Allowed then
+    return vis:Allowed("auras")
   end
-
-  if not buffHandle then
-    buffHandle = MakeHandle("Auras: Buffs")
-  end
-  if not debuffHandle then
-    debuffHandle = MakeHandle("Auras: Debuffs")
-  end
+  return true
 end
 
 local function ReleaseIcon(icon)
@@ -203,7 +164,7 @@ local function AcquireIcon()
 
   icon.icon = icon:CreateTexture(nil, "BORDER")
   icon.icon:SetAllPoints(icon)
-  icon.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  icon.icon:SetTexCoord(0, 1, 0, 1)
 
   icon.cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
   icon.cooldown:SetAllPoints(icon)
@@ -214,6 +175,11 @@ local function AcquireIcon()
   icon.timeText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
   icon.timeText:SetText("")
   icon.timeText:Hide()
+
+  icon.countText = icon:CreateFontString(nil, "OVERLAY")
+  icon.countText:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -2, -2)
+  icon.countText:SetText("")
+  icon.countText:Hide()
 
   icon.border = CreateFrame("Frame", nil, icon, BackdropTemplateMixin and "BackdropTemplate" or nil)
   icon.border:ClearAllPoints()
@@ -308,6 +274,14 @@ end
 local function ApplyVisuals(icon, common, layout, data)
   icon:SetSize(layout.iconSize, layout.iconSize)
   icon.icon:SetTexture(data.texture or "Interface/Icons/INV_Misc_QuestionMark")
+  if common.trimIcons then
+    icon.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  else
+    icon.icon:SetTexCoord(0, 1, 0, 1)
+  end
+
+  ApplyFont(icon.timeText, common.durationText, 12)
+  ApplyFont(icon.countText, common.countText, 12)
 
   if common.showCooldownSpiral and data.duration and data.duration > 0 and data.expiration and data.expiration > 0 then
     icon.cooldown:Show()
@@ -336,6 +310,32 @@ local function ApplyVisuals(icon, common, layout, data)
 
   icon.timeText:SetText("")
   icon.timeText:Hide()
+end
+
+local function UpdateIconDuration(icon, data, common, now)
+  if not icon or not data or not common.showDurationText then
+    if icon and icon.timeText then
+      icon.timeText:SetText("")
+      icon.timeText:Hide()
+    end
+    return
+  end
+
+  if not data.duration or data.duration <= 0 or not data.expiration or data.expiration <= 0 then
+    icon.timeText:SetText("")
+    icon.timeText:Hide()
+    return
+  end
+
+  local remaining = math.max(0, data.expiration - now)
+  if remaining <= 0 then
+    icon.timeText:SetText("")
+    icon.timeText:Hide()
+    return
+  end
+
+  icon.timeText:SetText(FormatTime(remaining))
+  icon.timeText:Show()
 end
 
 local function CollectAuras(kind, common)
@@ -456,17 +456,15 @@ local function Render(kind, container, activeList, common, layout)
 
     ApplyVisuals(icon, common, layout, data)
 
-    if not icon.countText then
-      icon.countText = icon:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-      icon.countText:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -2, -2)
-    end
-    if data.count and data.count > 1 then
+    if common.showCountText and data.count and data.count > 1 then
       icon.countText:SetText(data.count)
       icon.countText:Show()
     else
       icon.countText:SetText("")
       icon.countText:Hide()
     end
+
+    UpdateIconDuration(icon, data, common, GetTime())
 
     icon:Show()
     activeList[#activeList+1] = icon
@@ -480,30 +478,6 @@ local function PositionAnchor(frame, a)
   frame:SetPoint(a.point, UIParent, a.relPoint, a.x, a.y)
 end
 
-local function UpdateMoveHandles(db)
-  local show = db.showMoveHandles and true or false
-
-  if not show then
-    if buffHandle then buffHandle:Hide() end
-    if debuffHandle then debuffHandle:Hide() end
-    return
-  end
-
-  -- Bind which anchor DB each handle controls
-  buffHandle.anchorDB = db.buffs.anchor
-  debuffHandle.anchorDB = db.debuffs.anchor
-
-  -- Position handles at the anchors
-  buffHandle:ClearAllPoints()
-  buffHandle:SetPoint(db.buffs.anchor.point, UIParent, db.buffs.anchor.relPoint, db.buffs.anchor.x, db.buffs.anchor.y)
-
-  debuffHandle:ClearAllPoints()
-  debuffHandle:SetPoint(db.debuffs.anchor.point, UIParent, db.debuffs.anchor.relPoint, db.debuffs.anchor.x, db.debuffs.anchor.y)
-
-  SetShownCompat(buffHandle, db.buffs.enabled)
-  SetShownCompat(debuffHandle, db.debuffs.enabled)
-end
-
 local function Apply()
   EnsureFrames()
 
@@ -511,21 +485,29 @@ local function Apply()
   local db = p.auras
 
   local enabled = p.general.enabled and db.enabled
-  if not enabled then
+  if not enabled or not VisibilityAllowed(db) then
     driver:UnregisterAllEvents()
     driver:SetScript("OnUpdate", nil)
     ClearActive(activeBuffs)
     ClearActive(activeDebuffs)
     buffContainer:Hide()
     debuffContainer:Hide()
-    if buffHandle then buffHandle:Hide() end
-    if debuffHandle then debuffHandle:Hide() end
+    SetShownCompat(buffAnchor, false)
+    SetShownCompat(debuffAnchor, false)
     driver:Hide()
     return
   end
 
-  PositionAnchor(buffAnchor, db.buffs.anchor)
-  PositionAnchor(debuffAnchor, db.debuffs.anchor)
+  SetShownCompat(buffAnchor, true)
+  SetShownCompat(debuffAnchor, true)
+  RegisterMover(db)
+  if ETBC.Mover and ETBC.Mover.Apply then
+    ETBC.Mover:Apply("AurasBuffs")
+    ETBC.Mover:Apply("AurasDebuffs")
+  else
+    PositionAnchor(buffAnchor, db.buffs.anchor)
+    PositionAnchor(debuffAnchor, db.debuffs.anchor)
+  end
 
   buffContainer:ClearAllPoints()
   buffContainer:SetPoint("TOPLEFT", buffAnchor, "TOPLEFT", 0, 0)
@@ -535,8 +517,6 @@ local function Apply()
 
   SetShownCompat(buffContainer, db.buffs.enabled)
   SetShownCompat(debuffContainer, db.debuffs.enabled)
-
-  UpdateMoveHandles(db)
 
   driver:UnregisterAllEvents()
   driver:RegisterEvent("UNIT_AURA")
@@ -554,10 +534,31 @@ local function Apply()
     else
       ClearActive(activeDebuffs)
     end
-    UpdateMoveHandles(db)
   end)
 
-  driver:SetScript("OnUpdate", nil)
+  if db.showDurationText then
+    driver:SetScript("OnUpdate", function(_, elapsed)
+      updateTicker = updateTicker + elapsed
+      if updateTicker < UPDATE_INTERVAL then return end
+      updateTicker = 0
+
+      local now = GetTime()
+      for i = 1, #activeBuffs do
+        local icon = activeBuffs[i]
+        if icon and icon.data then
+          UpdateIconDuration(icon, icon.data, db, now)
+        end
+      end
+      for i = 1, #activeDebuffs do
+        local icon = activeDebuffs[i]
+        if icon and icon.data then
+          UpdateIconDuration(icon, icon.data, db, now)
+        end
+      end
+    end)
+  else
+    driver:SetScript("OnUpdate", nil)
+  end
 
   driver:Show()
 
@@ -573,8 +574,8 @@ local function Apply()
     ClearActive(activeDebuffs)
   end
 
-  UpdateMoveHandles(db)
 end
 
 ETBC.ApplyBus:Register("auras", Apply)
 ETBC.ApplyBus:Register("general", Apply)
+ETBC.ApplyBus:Register("ui", Apply)

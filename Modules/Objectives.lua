@@ -11,6 +11,7 @@ ETBC.Modules.Objectives = mod
 local driver
 local hooked = false
 local cachedDB  -- Module-level cache for DB, updated by Apply()
+local moverRegistered = false
 
 local function GetDB()
   ETBC.db.profile.objectives = ETBC.db.profile.objectives or {}
@@ -42,6 +43,39 @@ end
 local function EnsureDriver()
   if driver then return end
   driver = CreateFrame("Frame", "EnhanceTBC_ObjectivesDriver", UIParent)
+end
+
+local function VisibilityAllowed(db)
+  local vis = ETBC.Modules and ETBC.Modules.Visibility
+  if vis and vis.Allowed then
+    return vis:Allowed("objectives")
+  end
+  return true
+end
+
+local function RegisterMover(frame)
+  if moverRegistered then return end
+  if not (ETBC.Mover and ETBC.Mover.Register) then return end
+  if not frame or not frame.GetPoint then return end
+
+  local point, rel, relPoint, x, y = frame:GetPoint(1)
+  local relName = "UIParent"
+  if rel and rel.GetName and rel:GetName() then
+    relName = rel:GetName()
+  end
+
+  ETBC.Mover:Register("Objectives", frame, {
+    name = "Objectives",
+    default = {
+      point = point or "TOPRIGHT",
+      rel = relName,
+      relPoint = relPoint or "TOPRIGHT",
+      x = x or -60,
+      y = y or -220,
+    },
+  })
+
+  moverRegistered = true
 end
 
 local function IsInDungeonOrRaid()
@@ -273,17 +307,23 @@ local function Apply()
   local db = GetDB()
   cachedDB = db  -- Update module-level cache so closures use latest settings
   local generalEnabled = ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  local allowed = VisibilityAllowed(db)
 
   local frame, kind = FindTracker()
   if not frame then return end
 
-  if not (generalEnabled and db.enabled) then
+  if not (generalEnabled and db.enabled and allowed) then
     -- Soft reset
     frame:SetAlpha(1)
     frame:Show()
     StopFade(frame)
     if frame._etbcBG then frame._etbcBG:Hide() end
     return
+  end
+
+  RegisterMover(frame)
+  if ETBC.Mover and ETBC.Mover.Apply then
+    ETBC.Mover:Apply("Objectives")
   end
 
   HookTracker(frame, kind)

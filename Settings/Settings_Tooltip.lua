@@ -1,6 +1,5 @@
 -- Settings/Settings_Tooltip.lua
 local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.tooltip = ETBC.db.profile.tooltip or {}
   local db = ETBC.db.profile.tooltip
@@ -9,6 +8,8 @@ local function GetDB()
   if db.classColorNames == nil then db.classColorNames = true end
   if db.showGuild == nil then db.showGuild = true end
   if db.showTarget == nil then db.showTarget = true end
+  if db.showReactionText == nil then db.showReactionText = true end
+  if db.showUnitHealthText == nil then db.showUnitHealthText = true end
   if db.showItemId == nil then db.showItemId = true end
   if db.showSpellId == nil then db.showSpellId = true end
   if db.showNpcId == nil then db.showNpcId = true end
@@ -39,6 +40,11 @@ local function GetDB()
   return db
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
+end
+
 local function AnchorValues()
   return {
     DEFAULT = "Default",
@@ -56,6 +62,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
   name = "Tooltip",
   order = 3,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {
@@ -88,28 +95,38 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
             get = function() return db.showTarget end,
             set = function(_, v) db.showTarget = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
           },
+          showReactionText = {
+            type = "toggle", name = "Show Reaction Text", order = 4,
+            get = function() return db.showReactionText end,
+            set = function(_, v) db.showReactionText = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
+          },
+          showUnitHealthText = {
+            type = "toggle", name = "Show Unit Health Text", order = 5,
+            get = function() return db.showUnitHealthText end,
+            set = function(_, v) db.showUnitHealthText = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
+          },
           showItemId = {
-            type = "toggle", name = "Show Item ID", order = 4,
+            type = "toggle", name = "Show Item ID", order = 6,
             get = function() return db.showItemId end,
             set = function(_, v) db.showItemId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
           },
           showSpellId = {
-            type = "toggle", name = "Show Spell ID", order = 5,
+            type = "toggle", name = "Show Spell ID", order = 7,
             get = function() return db.showSpellId end,
             set = function(_, v) db.showSpellId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
           },
           showNpcId = {
-            type = "toggle", name = "Show NPC ID", order = 6,
+            type = "toggle", name = "Show NPC ID", order = 8,
             get = function() return db.showNpcId end,
             set = function(_, v) db.showNpcId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
           },
           showQuestId = {
-            type = "toggle", name = "Show Quest ID", order = 7,
+            type = "toggle", name = "Show Quest ID", order = 9,
             get = function() return db.showQuestId end,
             set = function(_, v) db.showQuestId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
           },
           idColor = {
-            type = "color", name = "ID Text Color", order = 8,
+            type = "color", name = "ID Text Color", order = 10,
             hasAlpha = false,
             get = function()
               local c = db.idColor

@@ -119,6 +119,11 @@ local function GetDB()
   return db
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
+end
+
 local INSTANCE_LABELS = {
   world = "Open World",
   party = "Dungeon (5-man)",
@@ -132,6 +137,7 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
   name = "Visibility",
   order = 70,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {

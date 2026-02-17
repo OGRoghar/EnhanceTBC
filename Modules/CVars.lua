@@ -151,6 +151,10 @@ local CATEGORY_DEFAULTS = {
 
     { cvar = "nameplateMotion", type = "string", value = "0", perChar = true }, -- Stack
     { cvar = "nameplateMinAlpha", type = "number", value = 0.6, perChar = true },
+    { cvar = "nameplateMaxDistance", type = "number", value = 41, perChar = true },
+    { cvar = "nameplateSelectedScale", type = "number", value = 1.15, perChar = true },
+    { cvar = "nameplateNotSelectedAlpha", type = "number", value = 1.0, perChar = true },
+    { cvar = "nameplateOverlapV", type = "number", value = 0.25, perChar = true },
   },
 
   castbars = {
@@ -425,44 +429,96 @@ function mod:BuildOptions()
         onChange = RefreshNameplates,
       }),
 
-      spacer40 = { type = "description", name = " ", order = 48 },
+      nameplateMaxDistance = MakeRange({
+        name = "Nameplate Max Distance",
+        desc = "Maximum distance that nameplates can be seen (client dependent).",
+        cvar = "nameplateMaxDistance",
+        min = 10,
+        max = 60,
+        step = 1,
+        default = 41,
+        perChar = true,
+        order = 48,
+        onChange = RefreshNameplates,
+      }),
+
+      nameplateSelectedScale = MakeRange({
+        name = "Selected Nameplate Scale",
+        desc = "Scale multiplier for your current target's nameplate.",
+        cvar = "nameplateSelectedScale",
+        min = 1.0,
+        max = 1.5,
+        step = 0.05,
+        default = 1.15,
+        perChar = true,
+        order = 49,
+        onChange = RefreshNameplates,
+      }),
+
+      nameplateNotSelectedAlpha = MakeRange({
+        name = "Non-Selected Nameplate Alpha",
+        desc = "Alpha applied to non-targeted nameplates.",
+        cvar = "nameplateNotSelectedAlpha",
+        min = 0.2,
+        max = 1.0,
+        step = 0.05,
+        default = 1.0,
+        perChar = true,
+        order = 50,
+        onChange = RefreshNameplates,
+      }),
+
+      nameplateOverlapV = MakeRange({
+        name = "Nameplate Vertical Overlap",
+        desc = "Vertical overlap for stacked nameplates.",
+        cvar = "nameplateOverlapV",
+        min = 0.2,
+        max = 1.6,
+        step = 0.05,
+        default = 0.25,
+        perChar = true,
+        order = 51,
+        onChange = RefreshNameplates,
+      }),
+
+      spacer40 = { type = "description", name = " ", order = 52 },
 
       -- Castbars
-      castbarHeader = { type = "header", name = "Castbars", order = 50 },
-      castbarReset = MakeResetButton({ name = "Reset Castbars", desc = "Reset castbar CVars to defaults.", categoryKey = "castbars", order = 51 }),
+      castbarHeader = { type = "header", name = "Castbars", order = 60 },
+      castbarReset = MakeResetButton({ name = "Reset Castbars", desc = "Reset castbar CVars to defaults.", categoryKey = "castbars", order = 61 }),
 
       showNameplateCastbar = MakeToggle({
         name = "Show Nameplate Castbars",
         desc = "Shows castbars on nameplates (client dependent).",
         cvar = "nameplateShowCastbar",
         perChar = true,
-        order = 52,
+        order = 62,
         onChange = RefreshNameplates,
       }),
 
-      spacer50 = { type = "description", name = " ", order = 53 },
+      spacer50 = { type = "description", name = " ", order = 63 },
 
       -- World Map
-      mapHeader = { type = "header", name = "World Map", order = 60 },
-      mapReset = MakeResetButton({ name = "Reset World Map", desc = "Reset map CVars to defaults.", categoryKey = "worldmap", order = 61 }),
+      mapHeader = { type = "header", name = "World Map", order = 70 },
+      mapReset = MakeResetButton({ name = "Reset World Map", desc = "Reset map CVars to defaults.", categoryKey = "worldmap", order = 71 }),
 
-      mapFade = MakeToggle({ name = "Map Fade While Moving", desc = "Fades the world map while moving.", cvar = "mapFade", perChar = true, order = 62, onChange = RefreshWorldMap }),
-      mapOpacity = MakeRange({ name = "Map Opacity", desc = "World map opacity.", cvar = "mapOpacity", min = 0, max = 1, step = 0.05, default = 1.0, perChar = true, order = 63, onChange = RefreshWorldMap }),
+      mapFade = MakeToggle({ name = "Map Fade While Moving", desc = "Fades the world map while moving.", cvar = "mapFade", perChar = true, order = 72, onChange = RefreshWorldMap }),
+      mapOpacity = MakeRange({ name = "Map Opacity", desc = "World map opacity.", cvar = "mapOpacity", min = 0, max = 1, step = 0.05, default = 1.0, perChar = true, order = 73, onChange = RefreshWorldMap }),
 
-      spacer60 = { type = "description", name = " ", order = 64 },
+      spacer60 = { type = "description", name = " ", order = 74 },
 
       -- Colors
-      colorHeader = { type = "header", name = "Colors", order = 70 },
-      colorReset = MakeResetButton({ name = "Reset Colors", desc = "Reset color-related CVars to defaults.", categoryKey = "colors", order = 71 }),
+      colorHeader = { type = "header", name = "Colors", order = 80 },
+      colorReset = MakeResetButton({ name = "Reset Colors", desc = "Reset color-related CVars to defaults.", categoryKey = "colors", order = 81 }),
 
-      threatWarning = MakeToggle({ name = "Threat Warning", desc = "Enable threat warning visuals.", cvar = "threatWarning", perChar = true, order = 72 }),
+      threatWarning = MakeToggle({ name = "Threat Warning", desc = "Enable threat warning visuals.", cvar = "threatWarning", perChar = true, order = 82 }),
 
       showClassColorInNameplate = MakeToggle({
         name = "Class Colors on Nameplates",
         desc = "Use class colors for nameplate health bars (client dependent).",
         cvar = "ShowClassColorInNameplate",
         perChar = true,
-        order = 73,
+        order = 83,
         onChange = RefreshNameplates,
       }),
 
@@ -471,7 +527,7 @@ function mod:BuildOptions()
         desc = "Use class colors for friendly nameplate health bars (client dependent).",
         cvar = "ShowClassColorInFriendlyNameplate",
         perChar = true,
-        order = 74,
+        order = 84,
         onChange = RefreshNameplates,
       }),
     },
