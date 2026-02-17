@@ -361,9 +361,31 @@ local function SnapshotFrame(frame)
   collected[frame] = info
 end
 
+local function SafeSetPoint(frame, ...)
+  if not frame then return end
+  local fn = frame._etbcOrigSetPoint or frame.SetPoint
+  if not fn then return end
+  frame._etbcAllowSetPoint = true
+  fn(frame, ...)
+  frame._etbcAllowSetPoint = nil
+end
+
+local function IsLibDBIconButton(frame)
+  if not frame or not frame.GetName then return false end
+  local ok, name = pcall(function() return frame:GetName() end)
+  return ok and type(name) == "string" and name:find("^LibDBIcon")
+end
+
 local function RestoreFrame(frame)
   local info = collected[frame]
   if not info then return end
+
+  if frame._etbcOrigSetPoint then
+    frame.SetPoint = frame._etbcOrigSetPoint
+    frame._etbcOrigSetPoint = nil
+  end
+  frame._etbcInSink = nil
+  frame._etbcAllowSetPoint = nil
 
   frame:ClearAllPoints()
   if info.points and #info.points > 0 then
@@ -435,7 +457,7 @@ local function LayoutSink(db)
       local x = pad + col * (size + pad)
       local y = startY + dir * (row * (size + pad))
 
-      b:SetPoint("TOPLEFT", sink, "TOPLEFT", x, y)
+      SafeSetPoint(b, "TOPLEFT", sink, "TOPLEFT", x, y)
       b:SetSize(size, size)
 
       -- Keep them clickable
@@ -482,6 +504,17 @@ local function ReparentToSink(frame)
     -- keep existing; don't overwrite
   end
 
+  if IsLibDBIconButton(frame) then
+    if not frame._etbcOrigSetPoint and frame.SetPoint then
+      frame._etbcOrigSetPoint = frame.SetPoint
+      frame.SetPoint = function(self, ...)
+        if self._etbcInSink and not self._etbcAllowSetPoint then return end
+        return self._etbcOrigSetPoint(self, ...)
+      end
+    end
+  end
+
+  frame._etbcInSink = true
   frame:SetParent(sink)
   frame:ClearAllPoints()
   frame:SetScale(1.0)
