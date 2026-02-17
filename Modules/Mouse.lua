@@ -40,6 +40,13 @@ local function MediaCursorPath(fileName)
   return "Interface\\AddOns\\EnhanceTBC\\Media\\Cursor\\" .. tostring(fileName or "")
 end
 
+local function ResolveTexture(fileName, customPath)
+  if customPath and customPath ~= "" then
+    return customPath
+  end
+  return MediaCursorPath(fileName)
+end
+
 local function ApplyBlend(tex, mode)
   if not tex or not tex.SetBlendMode then return end
   mode = tostring(mode or "ADD"):upper()
@@ -84,6 +91,7 @@ local function GetDB()
 
   if db.cursorEnabled == nil then db.cursorEnabled = true end
   if db.cursorTexture == nil then db.cursorTexture = "Glow.tga" end
+  if db.cursorCustomTexture == nil then db.cursorCustomTexture = "" end
   if db.cursorSize == nil then db.cursorSize = 32 end
   if db.cursorAlpha == nil then db.cursorAlpha = 0.9 end
   if db.cursorBlend == nil then db.cursorBlend = "ADD" end
@@ -92,6 +100,7 @@ local function GetDB()
   db.trail = db.trail or {}
   if db.trail.enabled == nil then db.trail.enabled = true end
   if db.trail.texture == nil then db.trail.texture = "Ring Soft 2.tga" end
+  if db.trail.customTexture == nil then db.trail.customTexture = "" end
   if db.trail.size == nil then db.trail.size = 24 end
   if db.trail.alpha == nil then db.trail.alpha = 0.5 end
   if db.trail.blend == nil then db.trail.blend = "ADD" end
@@ -163,7 +172,7 @@ local function Spawn2DTrailAt(x, y, db)
   f:ClearAllPoints()
   f:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
 
-  f._tex:SetTexture(MediaCursorPath(tdb.texture))
+  f._tex:SetTexture(ResolveTexture(tdb.texture, tdb.customTexture))
   ApplyBlend(f._tex, tdb.blend)
 
   local c = tdb.color or { 0.2, 1.0, 0.2 }
@@ -309,7 +318,7 @@ local function Apply()
   if db.cursorEnabled then
     local size = tonumber(db.cursorSize) or 32
     cursorFrame:SetSize(size, size)
-    cursorTex:SetTexture(MediaCursorPath(db.cursorTexture))
+    cursorTex:SetTexture(ResolveTexture(db.cursorTexture, db.cursorCustomTexture))
 
     local c = db.cursorColor or { 0.2, 1.0, 0.2 }
     cursorTex:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1)

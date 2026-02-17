@@ -16,6 +16,7 @@ local function EnsureDB()
 
   if db.cursorEnabled == nil then db.cursorEnabled = true end
   if db.cursorTexture == nil then db.cursorTexture = "Glow.tga" end
+  if db.cursorCustomTexture == nil then db.cursorCustomTexture = "" end
   if db.cursorSize == nil then db.cursorSize = 32 end
   if db.cursorAlpha == nil then db.cursorAlpha = 0.9 end
   if db.cursorBlend == nil then db.cursorBlend = "ADD" end
@@ -24,6 +25,7 @@ local function EnsureDB()
   db.trail = db.trail or {}
   if db.trail.enabled == nil then db.trail.enabled = true end
   if db.trail.texture == nil then db.trail.texture = "Ring Soft 2.tga" end
+  if db.trail.customTexture == nil then db.trail.customTexture = "" end
   if db.trail.size == nil then db.trail.size = 24 end
   if db.trail.alpha == nil then db.trail.alpha = 0.5 end
   if db.trail.blend == nil then db.trail.blend = "ADD" end
@@ -122,6 +124,17 @@ ETBC.SettingsRegistry:RegisterGroup("mouse", {
         set = function(_, v) DB().cursorTexture = v; ApplyMouse() end,
       },
 
+      cursorCustomTexture = {
+        type = "input",
+        name = "Cursor custom texture path",
+        desc = "Optional. Full texture path overrides the selected texture.",
+        order = 12.5,
+        width = "full",
+        disabled = function() return not (DB().enabled and DB().cursorEnabled) end,
+        get = function() return DB().cursorCustomTexture end,
+        set = function(_, v) DB().cursorCustomTexture = v; ApplyMouse() end,
+      },
+
       cursorSize = {
         type = "range",
         name = "Cursor size",
@@ -188,6 +201,17 @@ ETBC.SettingsRegistry:RegisterGroup("mouse", {
         disabled = function() return not (DB().enabled and DB().trail.enabled) end,
         get = function() return DB().trail.texture end,
         set = function(_, v) DB().trail.texture = v; ApplyMouse() end,
+      },
+
+      trailCustomTexture = {
+        type = "input",
+        name = "Trail custom texture path",
+        desc = "Optional. Full texture path overrides the selected texture.",
+        order = 32.5,
+        width = "full",
+        disabled = function() return not (DB().enabled and DB().trail.enabled) end,
+        get = function() return DB().trail.customTexture end,
+        set = function(_, v) DB().trail.customTexture = v; ApplyMouse() end,
       },
 
       trailSize = {

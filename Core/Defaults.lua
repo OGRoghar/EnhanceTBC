@@ -12,15 +12,32 @@ ETBC.defaults = {
 
     mouse = {
       enabled = true,
-      autoloot = false,
-      autorepair = false,
-      focusOnAltClick = true,
-      cursor = {
-        highlight = true,
-        highlightSize = 18,
-        highlightAlpha = 0.35,
-        highlightColor = { r = 0.2, g = 1.0, b = 0.2, a = 1.0 },
+
+      cursorEnabled = true,
+      cursorTexture = "Glow.tga",
+      cursorCustomTexture = "",
+      cursorSize = 32,
+      cursorAlpha = 0.9,
+      cursorBlend = "ADD",
+      cursorColor = { 0.2, 1.0, 0.2 },
+
+      trail = {
+        enabled = true,
+        texture = "Ring Soft 2.tga",
+        customTexture = "",
+        size = 24,
+        alpha = 0.5,
+        blend = "ADD",
+        color = { 0.2, 1.0, 0.2 },
+        spacing = 16,
+        life = 0.25,
+        maxActive = 30,
+        onlyInCombat = false,
+        onlyWhenMoving = true,
       },
+
+      hideWhenIdle = false,
+      idleDelay = 1.0,
     },
 	
 	    minimapPlus = {
