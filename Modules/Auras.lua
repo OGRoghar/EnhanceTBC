@@ -207,6 +207,7 @@ local function AcquireIcon()
 
   icon.cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
   icon.cooldown:SetAllPoints(icon)
+  icon.cooldown.noCooldownCount = true
 
   icon.timeText = icon:CreateFontString(nil, "OVERLAY")
   icon.timeText:SetPoint("BOTTOM", icon, "BOTTOM", 0, 1)
@@ -333,16 +334,8 @@ local function ApplyVisuals(icon, common, layout, data)
     icon.border:Hide()
   end
 
-  local font = SafeFont(common.durationText.font)
-  local outline = OutlineFlag(common.durationText.outline)
-  icon.timeText:SetFont(font, common.durationText.size or 12, outline)
-
-  if common.showDurationText and data.duration and data.duration > 0 and data.expiration and data.expiration > 0 then
-    icon.timeText:Show()
-  else
-    icon.timeText:SetText("")
-    icon.timeText:Hide()
-  end
+  icon.timeText:SetText("")
+  icon.timeText:Hide()
 end
 
 local function CollectAuras(kind, common)
@@ -564,36 +557,7 @@ local function Apply()
     UpdateMoveHandles(db)
   end)
 
-  driver:SetScript("OnUpdate", function(_, elapsed)
-    updateTicker = updateTicker + elapsed
-    if updateTicker < UPDATE_INTERVAL then return end
-    updateTicker = 0
-
-    if not db.showDurationText then return end
-    local now = GetTime()
-
-    for i = 1, #activeBuffs do
-      local icon = activeBuffs[i]
-      local d = icon.data
-      if d and d.expiration and d.expiration > 0 then
-        local rem = math.max(0, math.floor(d.expiration - now + 0.5))
-        icon.timeText:SetText(FormatTime(rem))
-      else
-        icon.timeText:SetText("")
-      end
-    end
-
-    for i = 1, #activeDebuffs do
-      local icon = activeDebuffs[i]
-      local d = icon.data
-      if d and d.expiration and d.expiration > 0 then
-        local rem = math.max(0, math.floor(d.expiration - now + 0.5))
-        icon.timeText:SetText(FormatTime(rem))
-      else
-        icon.timeText:SetText("")
-      end
-    end
-  end)
+  driver:SetScript("OnUpdate", nil)
 
   driver:Show()
 

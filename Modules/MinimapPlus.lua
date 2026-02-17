@@ -325,7 +325,7 @@ local function LooksLikeMinimapButton(child, db)
       return false
     end
   end
-  if n == "QueueStatusMinimapButton" and not db.includeQueue then return false end
+  if (n == "QueueStatusMinimapButton" or n == "MiniMapLFGFrame") and not db.includeQueue then return false end
   if (n:find("MiniMapTracking") or n == "MiniMapTrackingButton") and not db.includeTracking then return false end
   if n == "GameTimeFrame" and not db.includeCalendar then return false end
   if n == "TimeManagerClockButton" and not db.includeClock then return false end
@@ -439,7 +439,8 @@ local function LayoutSink(db)
       b:SetSize(size, size)
 
       -- Keep them clickable
-      b:SetFrameStrata("MEDIUM")
+      if b.EnableMouse then b:EnableMouse(true) end
+      b:SetFrameStrata(sink:GetFrameStrata())
       b:SetFrameLevel(sink:GetFrameLevel() + 50)
       b:Show()
     end
@@ -807,6 +808,12 @@ local function PositionBlizzardMinimapButtons(db)
       if trackingIcon.SetDrawLayer then
         trackingIcon:SetDrawLayer("ARTWORK", 0)
       end
+      if trackingIcon.SetAlpha then
+        trackingIcon:SetAlpha(1)
+      end
+      if trackingIcon.Show then
+        trackingIcon:Show()
+      end
     end
 
     local border = _G.MiniMapTrackingButtonBorder or trackingButton.Border or trackingButton.border
@@ -819,14 +826,19 @@ local function PositionBlizzardMinimapButtons(db)
       end
       border:SetFrameLevel(trackingButton:GetFrameLevel() + 5)
     end
+    if border and border.Show then
+      border:Show()
+    end
   end
   
   -- Mail button - top left corner
   local mailButton = _G.MiniMapMailFrame
   if mailButton then
+    mailButton:SetParent(mm)
     mailButton:SetScale(0.75)
     mailButton:ClearAllPoints()
     mailButton:SetPoint("TOPLEFT", mm, "TOPLEFT", -19, 10)
+    if mailButton.Show then mailButton:Show() end
   end
   
   -- LFG/Queue/Battlefield button - bottom left (TBC Anniversary standard)
@@ -845,6 +857,7 @@ local function PositionBlizzardMinimapButtons(db)
         ApplyMinimapAnchor(self, "BOTTOMLEFT", qx, qy, qs)
       end)
     end
+    if queueButton.Show then queueButton:Show() end
   end
   
   -- Instance difficulty - top left corner (like Leatrix Plus)
@@ -867,6 +880,16 @@ local function PositionBlizzardMinimapButtons(db)
     
     zoomOut:ClearAllPoints()
     zoomOut:SetPoint("TOPRIGHT", mm, "TOPRIGHT", 2, -40)
+  end
+
+  if not isSquare then
+    local zone = _G.MinimapZoneTextButton or _G.MinimapZoneText
+    if zone then
+      if _G.MinimapBackdrop and zone:GetParent() ~= _G.MinimapBackdrop then
+        zone:SetParent(_G.MinimapBackdrop)
+      end
+      if zone.Show then zone:Show() end
+    end
   end
 end
 
@@ -1014,7 +1037,6 @@ local function ApplyHides(db)
 
     -- Hide Blizzard minimap top bar/toggles
     HideFrame(_G.MinimapCluster and _G.MinimapCluster.BorderTop)
-    HideFrame(_G.MinimapBackdrop)
     HideFrame(_G.MinimapToggleButton)
     HideFrame(_G.MinimapToggleButton and _G.MinimapToggleButton.Icon)
   end
@@ -1140,8 +1162,6 @@ local function MenuInit(self, level)
 
   if level == 1 then
     info.isTitle = true
-    info.notCheckable = true
-    info.text = "EnhanceTBC Minimap"
     UIDropDownMenu_AddButton(info, level)
     
     info = UIDropDownMenu_CreateInfo()
@@ -1354,7 +1374,7 @@ function mod:Apply()
   else
     sink:Hide()
   end
-  sink:EnableMouse(db.sinkEnabled and true or false)  -- Enable mouse when sink is shown (for drag and right-click)
+  sink:EnableMouse(false)
   if db.sinkEnabled then
     EnsureSinkVisible(db)
   end
