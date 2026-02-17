@@ -218,12 +218,21 @@ local function IsBlacklisted(child)
   if n then
     -- Exclude EnhanceTBC minimap button from sink
     if n:find("EnhanceTBC") or n:find("ETBC") then return true end
+
+    -- Exclude Questie frames; allow only explicit minimap buttons
+    if n:find("Questie") then
+      local isQuestieButton = n:find("LibDBIcon") or n:find("MinimapButton") or n:find("MiniMapButton")
+      if not isQuestieButton then return true end
+    end
     
     if n:find("LibDBIcon") then
       -- We DO want to sink LibDBIcon buttons, so don't blacklist.
       return false
     end
     if n:find("MinimapBackdrop") or n:find("MinimapBorder") then return true end
+    if n:find("MinimapToggleButton") or n:find("MiniMapTrackingButton") then return true end
+    if n:find("MinimapClusterBorderTop") or n:find("MinimapCluster") then return true end
+    if n:find("Minimap%.xml") then return true end
     if n:find("MiniMapTracking") then return true end
     if n:find("MiniMapMail") then return true end
     if n:find("GameTimeFrame") then return true end
@@ -254,6 +263,10 @@ local function LooksLikeMinimapButton(child, db)
   if t ~= "Button" and t ~= "Frame" then return false end
 
   local n = child.GetName and child.GetName(child) or ""
+  if n == "" then
+    -- Avoid scooping unnamed Blizzard objective pins or other map overlays.
+    return false
+  end
   if n ~= "" and n:find("^LibDBIcon") then
     return true
   end
@@ -298,7 +311,7 @@ local function LooksLikeMinimapButton(child, db)
   end
 
   if n ~= "" and n:find("Questie") then
-    local isQuestieButton = n:find("LibDBIcon") or n:find("MinimapButton") or n:find("MiniMapButton") or t == "Button"
+    local isQuestieButton = n:find("LibDBIcon") or n:find("MinimapButton") or n:find("MiniMapButton")
     if not isQuestieButton then
       return false
     end
