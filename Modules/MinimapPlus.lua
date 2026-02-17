@@ -198,7 +198,7 @@ end
 local function IsBlacklisted(child)
   if not child or child == Minimap or child == MinimapCluster then return true end
 
-  local n = child.GetName and child:GetName() or nil
+  local n = child.GetName and child.GetName(child) or nil
 
   -- Always ignore these core minimap widgets
   if child == MinimapZoomIn or child == MinimapZoomOut then return true end
@@ -253,7 +253,7 @@ local function LooksLikeMinimapButton(child, db)
   local t = child:GetObjectType()
   if t ~= "Button" and t ~= "Frame" then return false end
 
-  local n = child.GetName and child:GetName() or ""
+  local n = child.GetName and child.GetName(child) or ""
   if n ~= "" and n:find("^LibDBIcon") then
     return true
   end
@@ -476,6 +476,13 @@ local function ScanMinimapButtons(force)
   if not db.sinkEnabled then return end
   if not Minimap then return end
 
+  local function SafeGetName(obj)
+    if not obj or not obj.GetName then return "" end
+    local ok, name = pcall(function() return obj:GetName() end)
+    if ok and type(name) == "string" then return name end
+    return ""
+  end
+
   local now = GetTime()
   if not force and (now - lastScan) < (db.scanInterval or 2.0) then return end
   lastScan = now
@@ -543,7 +550,7 @@ local function ScanMinimapButtons(force)
     local kids3 = { UIParent:GetChildren() }
     for i = 1, #kids3 do
       local child = kids3[i]
-      local n = child and child.GetName and child:GetName() or ""
+      local n = SafeGetName(child)
       if n ~= "" and n:find("^LibDBIcon") and IsAnchoredToMinimap(child) then
         ReparentToSink(child)
         orderedButtons[#orderedButtons + 1] = child
@@ -552,12 +559,6 @@ local function ScanMinimapButtons(force)
   end
 
   -- Sort by name to reduce shuffling (stable-ish)
-  local function SafeGetName(obj)
-    if not obj or not obj.GetName then return "" end
-    local ok, name = pcall(function() return obj:GetName() end)
-    if ok and type(name) == "string" then return name end
-    return ""
-  end
   table.sort(orderedButtons, function(a, b)
     local an = SafeGetName(a)
     local bn = SafeGetName(b)
