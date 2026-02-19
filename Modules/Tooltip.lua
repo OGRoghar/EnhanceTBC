@@ -676,6 +676,11 @@ function mod.Apply(_)
     local function OnTooltipSet(tip)
       ApplyStyleToTooltip(tip)
     end
+    local function OnTooltipReset(t)
+      if t._etbcAccentLine then t._etbcAccentLine:Hide() end
+      t._etbcLineKeys = nil
+      t._etbcAnchorSig = nil
+    end
 
     local tips = {
       GameTooltip, ItemRefTooltip, ShoppingTooltip1,
@@ -684,11 +689,11 @@ function mod.Apply(_)
     for _, tip in pairs(tips) do
       if tip and tip.HookScript then
         tip:HookScript("OnShow", OnTooltipSet)
-        tip:HookScript("OnTooltipCleared", function(t)
-          if t._etbcAccentLine then t._etbcAccentLine:Hide() end
-          t._etbcLineKeys = nil
-          t._etbcAnchorSig = nil
-        end)
+        if tip.HasScript and tip:HasScript("OnTooltipCleared") then
+          tip:HookScript("OnTooltipCleared", OnTooltipReset)
+        else
+          tip:HookScript("OnHide", OnTooltipReset)
+        end
       end
     end
 

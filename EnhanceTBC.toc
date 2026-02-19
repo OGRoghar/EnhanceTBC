@@ -83,13 +83,11 @@ Settings\Settings_MinimapPlus.lua
 Settings\Settings_Castbar.lua
 Settings\Settings_UnitFrames.lua
 Settings\Settings_Unit_Nameplates.lua
-Settings\Settings_Player_Nameplates.lua
 Settings\Settings_ActionBars.lua
 Settings\Settings_Tooltip.lua
 Settings\Settings_Sound.lua
 Settings\Settings_Friends.lua
 Settings\Settings_ChatIM.lua
-Settings\Settings_GCDBar.lua
 Settings\Settings_SwingTimer.lua
 Settings\Settings_Auras.lua
 Settings\Settings_CombatText.lua
@@ -110,7 +108,6 @@ Modules\UI.lua
 Modules\Castbar.lua
 Modules\UnitFrames.lua
 Modules\Unit_NamePlates.lua
-Modules\Player_Nameplates.lua
 Modules\ActionBars.lua
 Modules\MinimapPlus.lua
 Modules\Auras.lua
@@ -118,7 +115,6 @@ Modules\ActionTracker.lua
 Modules\CombatText.lua
 Modules\FriendsListDecor.lua
 Modules\ChatIM.lua
-Modules\GCDBar.lua
 Modules\SwingTimer.lua
 Modules\Mailbox.lua
 Modules\Sound.lua
