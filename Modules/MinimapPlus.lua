@@ -814,6 +814,9 @@ end
 function mod.CaptureSinkButton(btn)
   if not btn or state.sinkManaged[btn] then return end
   if InCombatLockdown and InCombatLockdown() then return end
+  if type(btn) ~= "table" then return end
+  if type(btn.ClearAllPoints) ~= "function" then return end
+  if type(btn.SetPoint) ~= "function" then return end
 
   local info = {
     parent = btn.GetParent and btn:GetParent() or UIParent,
@@ -874,7 +877,11 @@ function mod.LayoutSinkButtons()
   if not state.sinkFrame then return end
   local buttons = {}
   for btn in pairs(state.sinkManaged) do
-    if btn then buttons[#buttons + 1] = btn end
+    if btn and type(btn.ClearAllPoints) == "function" and type(btn.SetPoint) == "function" then
+      buttons[#buttons + 1] = btn
+    else
+      state.sinkManaged[btn] = nil
+    end
   end
 
   table.sort(buttons, function(a, b)
@@ -919,8 +926,10 @@ function mod.LayoutSinkButtons()
     local startX = math.floor((width - rowWidth) / 2 + 0.5)
     local x = startX + (indexInRow * (btnSize + spacing))
     local y = -startY - (row * (btnSize + spacing))
-    btn:ClearAllPoints()
-    btn:SetPoint("TOPLEFT", state.sinkFrame, "TOPLEFT", x, y)
+    if btn and btn.ClearAllPoints and btn.SetPoint then
+      btn:ClearAllPoints()
+      btn:SetPoint("TOPLEFT", state.sinkFrame, "TOPLEFT", x, y)
+    end
   end
 
   if state.sinkFrame.emptyText then
