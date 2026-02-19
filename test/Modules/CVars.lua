@@ -115,6 +115,20 @@ local function ShouldHideOptionForCVar(name)
   return not CVarExists(name)
 end
 
+local function IsAddonLoaded(addonName)
+  if C_AddOns and C_AddOns.IsAddOnLoaded then
+    return not not C_AddOns.IsAddOnLoaded(addonName)
+  end
+  if IsAddOnLoaded then
+    return not not IsAddOnLoaded(addonName)
+  end
+  return false
+end
+
+local function IsPlaterLoaded()
+  return IsAddonLoaded("Plater")
+end
+
 -- -----------------------------
 -- Safe CVar wrappers
 -- -----------------------------
@@ -176,6 +190,22 @@ end
 
 local function RefreshTooltips()
   -- Tooltip CVars usually apply on next show; nothing required.
+end
+
+local function EnforcePlaterNameplateCVars()
+  if not IsPlaterLoaded() then return end
+
+  if CVarExists("nameplateShowFriends") then
+    CVarBoolSet("nameplateShowFriends", false, true)
+  end
+  if CVarExists("nameplateShowFriendlyNPCs") then
+    CVarBoolSet("nameplateShowFriendlyNPCs", false, true)
+  end
+  if CVarExists("nameplateShowFriendlyMinions") then
+    CVarBoolSet("nameplateShowFriendlyMinions", false, true)
+  end
+
+  RefreshNameplates()
 end
 
 -- -----------------------------
@@ -281,6 +311,9 @@ local function MakeToggle(args)
     order = args.order,
     disabled = IsDisabled,
     hidden = function()
+      if type(args.hidden) == "function" then
+        return args.hidden()
+      end
       if args.hideIfMissing == false then return false end
       return ShouldHideOptionForCVar(args.cvar)
     end,
@@ -549,6 +582,10 @@ function mod.BuildOptions(_)
         perChar = true,
         order = 43,
         onChange = RefreshNameplates,
+        hideIfMissing = false,
+        hidden = function()
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriends")
+        end,
       }),
       nameplateShowFriendlyNPCs = MakeToggle({
         name = "Show Friendly NPC Nameplates",
@@ -557,6 +594,10 @@ function mod.BuildOptions(_)
         perChar = true,
         order = 44,
         onChange = RefreshNameplates,
+        hideIfMissing = false,
+        hidden = function()
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyNPCs")
+        end,
       }),
       nameplateShowFriendlyMinions = MakeToggle({
         name = "Show Friendly Minion Nameplates",
@@ -565,6 +606,10 @@ function mod.BuildOptions(_)
         perChar = true,
         order = 45,
         onChange = RefreshNameplates,
+        hideIfMissing = false,
+        hidden = function()
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyMinions")
+        end,
       }),
 
       nameplateMotion = MakeSelect({
@@ -739,6 +784,8 @@ function mod.Init(_)
   local db = GetDB()
   local frame = EnsureRuntimeFrame()
   frame:UnregisterAllEvents()
+
+  EnforcePlaterNameplateCVars()
 
   if db.enabled and db.fastAutoLoot then
     frame:RegisterEvent("LOOT_OPENED")
