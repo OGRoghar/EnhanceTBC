@@ -758,7 +758,7 @@ end
 
 function mod.IsBlacklisted(btn, name)
   if not btn then return true end
-  if name and (
+  if type(name) == "string" and (
     name:find("^EnhanceTBC_")
     or name:find("^LibDBIcon10_EnhanceTBC")
   ) then
@@ -807,7 +807,7 @@ function mod:LooksLikeMinimapButton(btn)
   if not btn.IsVisible or not btn:IsVisible() then return false end
   if btn.GetObjectType and btn:GetObjectType() ~= "Button" and not name then return false end
   if btn.IsProtected and btn:IsProtected() then return false end
-  if name and name:find("^LibDBIcon10_") then return true end
+  if type(name) == "string" and name:find("^LibDBIcon10_") then return true end
   return false
 end
 

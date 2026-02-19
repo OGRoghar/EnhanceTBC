@@ -32,9 +32,9 @@ local function SafeFont(face)
   face = face or "Friz Quadrata TT"
   if LSM and LSM.Fetch then
     local f = LSM:Fetch("font", face, true)
-    return f or STANDARD_TEXT_FONT
+    return f or STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
   end
-  return STANDARD_TEXT_FONT
+  return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 end
 
 local function OutlineFlag(outline)
@@ -174,12 +174,13 @@ local function AcquireIcon()
 
   icon.timeText = icon:CreateFontString(nil, "OVERLAY")
   icon.timeText:SetPoint("BOTTOM", icon, "BOTTOM", 0, 1)
-  icon.timeText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
+  icon.timeText:SetFont(SafeFont("Friz Quadrata TT"), 12, "OUTLINE")
   icon.timeText:SetText("")
   icon.timeText:Hide()
 
   icon.countText = icon:CreateFontString(nil, "OVERLAY")
   icon.countText:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -2, -2)
+  icon.countText:SetFont(SafeFont("Friz Quadrata TT"), 12, "OUTLINE")
   icon.countText:SetText("")
   icon.countText:Hide()
 

@@ -65,7 +65,8 @@ end
 
 local function IsActionButtonOwner(owner)
   if not owner or not owner.GetName then return false end
-  local n = owner:GetName() or ""
+  local n = owner:GetName()
+  if type(n) ~= "string" then return false end
   if n:find("^ActionButton") then return true end
   if n:find("^MultiBar") then return true end
   if n:find("^BonusActionButton") then return true end
@@ -76,7 +77,8 @@ end
 
 local function IsAuraOwner(owner)
   if not owner or not owner.GetName then return false end
-  local n = owner:GetName() or ""
+  local n = owner:GetName()
+  if type(n) ~= "string" then return false end
   if n:find("^BuffButton") then return true end
   if n:find("^DebuffButton") then return true end
   if n:find("^TempEnchant") then return true end
