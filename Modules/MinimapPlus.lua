@@ -810,13 +810,8 @@ function mod:LooksLikeMinimapButton(btn)
     return false
   end
   local objectType = btn.GetObjectType and btn:GetObjectType() or nil
-  if objectType == "Button" or objectType == "CheckButton" then return true end
+  if objectType ~= "Button" and objectType ~= "CheckButton" then return false end
   if type(name) == "string" and name:find("^LibDBIcon10_") then return true end
-  local parent = btn.GetParent and btn:GetParent() or nil
-  if parent == Minimap then return true end
-  if MinimapCluster and MinimapCluster.MinimapContainer and parent == MinimapCluster.MinimapContainer then
-    return true
-  end
   return false
 end
 
@@ -983,6 +978,29 @@ function mod:ScanForAddonButtons()
   if not (db.enabled and db.sink_addons and state.sinkFrame) then return end
   if InCombatLockdown and InCombatLockdown() then return end
 
+  -- Only keep LibDBIcon buttons managed by the sink.
+  for btn, info in pairs(state.sinkManaged) do
+    local name = btn and btn.GetName and btn:GetName() or nil
+    if not (type(name) == "string" and name:find("^LibDBIcon10_")) then
+      if btn and info then
+        if btn.SetParent and info.parent then btn:SetParent(info.parent) end
+        if btn.ClearAllPoints then btn:ClearAllPoints() end
+        if info.points and btn.SetPoint then
+          for i = 1, #info.points do
+            local p = info.points[i]
+            btn:SetPoint(p[1], p[2], p[3], p[4], p[5])
+          end
+        end
+        if btn.SetSize and info.width and info.height then btn:SetSize(info.width, info.height) end
+        if btn.SetScale and info.scale then btn:SetScale(info.scale) end
+        if btn.SetFrameStrata and info.strata then btn:SetFrameStrata(info.strata) end
+        if btn.SetFrameLevel and info.level then btn:SetFrameLevel(info.level) end
+        if btn.Show then btn:Show() end
+      end
+      state.sinkManaged[btn] = nil
+    end
+  end
+
 
   if not mod._sinkDebug then
     mod._sinkDebug = { candidates = 0, captured = 0, rejected = 0, reasons = {}, capturedNames = {} }
@@ -1023,25 +1041,6 @@ function mod:ScanForAddonButtons()
       debugCounts.reasons[reason] = (debugCounts.reasons[reason] or 0) + 1
       return false
     end
-  end
-
-  local visited = {}
-  local function ScanChildren(parent, depth)
-    if not parent or not parent.GetChildren then return end
-    depth = tonumber(depth) or 0
-    if depth > 3 then return end
-    if visited[parent] then return end
-    visited[parent] = true
-
-    for _, child in ipairs({ parent:GetChildren() }) do
-      TryCapture(child)
-      ScanChildren(child, depth + 1)
-    end
-  end
-
-  ScanChildren(Minimap, 0)
-  if MinimapCluster and MinimapCluster.MinimapContainer then
-    ScanChildren(MinimapCluster.MinimapContainer, 0)
   end
 
   if LDBIcon and LDBIcon.objects and LDBIcon.GetMinimapButton then
