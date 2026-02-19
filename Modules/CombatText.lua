@@ -129,6 +129,15 @@ local function EnsureFrames()
   end
 end
 
+local function VisibilityAllowed(db)
+  if db and db.preview then return true end
+  local vis = ETBC.Modules and ETBC.Modules.Visibility
+  if vis and vis.Allowed then
+    return vis:Allowed("combattext")
+  end
+  return true
+end
+
 local function AcquireFS()
   local fs = table.remove(pool)
   if fs then
@@ -319,7 +328,7 @@ end
 
 function mod.OnUpdate(_, elapsed)
   local db = ETBC.db and ETBC.db.profile and ETBC.db.profile.combattext
-  if not db or not (ETBC.db.profile.general.enabled and db.enabled) then
+  if not db or not (ETBC.db.profile.general.enabled and db.enabled) or not VisibilityAllowed(db) then
     driver:SetScript("OnUpdate", nil)
     updateRunning = false
     return
@@ -399,7 +408,6 @@ local function HandleCLEU(db)
   if not db.trackOutgoing then isOut = false end
   if not db.trackIncoming then isIn = false end
   if not (isOut or isIn) then return end
-  if db.onlyInCombat and not UnitAffectingCombat("player") then return end
 
   local direction = isIn and "IN" or "OUT"
 
@@ -516,12 +524,13 @@ local function Apply()
   local p = ETBC.db.profile
   local db = p.combattext
   local enabled = p.general.enabled and db.enabled
+  local visible = VisibilityAllowed(db)
 
   driver:UnregisterAllEvents()
   driver:SetScript("OnEvent", nil)
 
   -- Suppress Blizzard combat text to prevent duplicates
-  if enabled and db.blizzard and db.blizzard.disableBlizzardFCT then
+  if enabled and visible and db.blizzard and db.blizzard.disableBlizzardFCT then
     DisableBlizzardFCT(db)
   else
     if db.blizzard and db.blizzard.restoreOnDisable then
@@ -531,7 +540,7 @@ local function Apply()
     end
   end
 
-  if not enabled then
+  if not enabled or not visible then
     batchExpires = 0
     wipe(batch)
     ClearAll()
@@ -579,3 +588,4 @@ end
 
 ETBC.ApplyBus:Register("combattext", Apply)
 ETBC.ApplyBus:Register("general", Apply)
+ETBC.ApplyBus:Register("ui", Apply)

@@ -700,7 +700,6 @@ local function ClearPreviewModes()
   DisablePreview("auras")
   DisablePreview("actiontracker")
   DisablePreview("gcdbar")
-  DisablePreview("swingtimer")
   DisablePreview("combattext")
 end
 

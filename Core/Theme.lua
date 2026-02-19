@@ -15,6 +15,8 @@ local T = ETBC.Theme
 local LibStub = LibStub
 local LSM = LibStub("LibSharedMedia-3.0", true)
 
+T.cache = T.cache or {}
+
 -- Defaults are created in EnhanceTBC.lua (recommended),
 -- but we also harden here so options don't error.
 local function EnsureThemeDB()
@@ -58,17 +60,44 @@ function T:GetStatusbarList()
 end
 
 function T:FetchFont(key)
-    local db = EnsureThemeDB()
     if not LSM then return STANDARD_TEXT_FONT end
-    local name = key or (db and db.font) or "Friz Quadrata TT"
-    return LSM:Fetch("font", name, true) or STANDARD_TEXT_FONT
+    if key then
+        return LSM:Fetch("font", key, true) or STANDARD_TEXT_FONT
+    end
+    if not self.cache.font then
+        self:RefreshCache()
+    end
+    return self.cache.font or STANDARD_TEXT_FONT
 end
 
 function T:FetchStatusbar(key)
-    local db = EnsureThemeDB()
     if not LSM then return "Interface\\TargetingFrame\\UI-StatusBar" end
-    local name = key or (db and db.statusbar) or "Blizzard"
-    return LSM:Fetch("statusbar", name, true) or "Interface\\TargetingFrame\\UI-StatusBar"
+    if key then
+        return LSM:Fetch("statusbar", key, true) or "Interface\\TargetingFrame\\UI-StatusBar"
+    end
+    if not self.cache.statusbar then
+        self:RefreshCache()
+    end
+    return self.cache.statusbar or "Interface\\TargetingFrame\\UI-StatusBar"
+end
+
+function T:RefreshCache()
+    local db = EnsureThemeDB()
+    if not LSM then
+        self.cache.font = STANDARD_TEXT_FONT
+        self.cache.statusbar = "Interface\\TargetingFrame\\UI-StatusBar"
+        return self.cache
+    end
+
+    local fontName = (db and db.font) or "Friz Quadrata TT"
+    local statusbarName = (db and db.statusbar) or "Blizzard"
+
+    self.cache.fontName = fontName
+    self.cache.statusbarName = statusbarName
+    self.cache.font = LSM:Fetch("font", fontName, true) or STANDARD_TEXT_FONT
+    self.cache.statusbar = LSM:Fetch("statusbar", statusbarName, true) or "Interface\\TargetingFrame\\UI-StatusBar"
+
+    return self.cache
 end
 
 -- ---------------------------------------------------------
@@ -136,4 +165,39 @@ function T:SetColor(name, r, g, b, a)
         c.b = clamp(b, 0, 1)
         c.a = clamp(a or 1, 0, 1)
     end
+end
+
+-- ---------------------------------------------------------
+-- UI palette selection
+-- ---------------------------------------------------------
+local DEFAULT_PALETTES = {
+    WarcraftGreen = {
+        bg = { 0.05, 0.07, 0.05, 0.95 },
+        panel = { 0.10, 0.13, 0.10, 0.92 },
+        border = { 0.15, 0.30, 0.15, 1.00 },
+        text = { 0.90, 0.95, 0.90, 1.00 },
+        accent = { 0.20, 1.00, 0.20, 1.00 },
+        accent2 = { 0.12, 0.55, 0.12, 1.00 },
+    },
+    BlackSteel = {
+        bg = { 0.05, 0.05, 0.06, 0.96 },
+        panel = { 0.10, 0.10, 0.12, 0.92 },
+        border = { 0.30, 0.30, 0.35, 1.00 },
+        text = { 0.92, 0.92, 0.95, 1.00 },
+        accent = { 0.20, 1.00, 0.20, 1.00 },
+        accent2 = { 0.35, 0.75, 0.35, 1.00 },
+    },
+}
+
+T.Palettes = T.Palettes or {}
+for name, pal in pairs(DEFAULT_PALETTES) do
+    if not T.Palettes[name] then
+        T.Palettes[name] = pal
+    end
+end
+
+function T:Get()
+    local p = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.ui
+    local key = (p and p.theme) or "WarcraftGreen"
+    return T.Palettes[key] or T.Palettes.WarcraftGreen
 end

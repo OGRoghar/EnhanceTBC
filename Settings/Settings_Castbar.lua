@@ -2,7 +2,6 @@
 -- EnhanceTBC - Castbar+ settings
 
 local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local function GetDB()
   ETBC.db.profile.castbar = ETBC.db.profile.castbar or {}
   local db = ETBC.db.profile.castbar
@@ -30,6 +29,9 @@ local function GetDB()
   if db.timeFormat == nil then db.timeFormat = "REMAIN" end -- REMAIN / ELAPSED
   if db.decimals == nil then db.decimals = 1 end
 
+  if db.skin == nil then db.skin = true end
+  if db.showChannelTicks == nil then db.showChannelTicks = false end
+
   -- Colors
   if db.castColor == nil then db.castColor = { 0.25, 0.80, 0.25 } end
   if db.channelColor == nil then db.channelColor = { 0.25, 0.55, 1.00 } end
@@ -39,6 +41,7 @@ local function GetDB()
 
   -- Latency (player only)
   if db.showLatency == nil then db.showLatency = true end
+  if db.latencyMode == nil then db.latencyMode = "CAST" end -- CAST / NET
   if db.latencyAlpha == nil then db.latencyAlpha = 0.45 end
   if db.latencyColor == nil then db.latencyColor = { 1.0, 0.15, 0.15 } end
 
@@ -47,6 +50,11 @@ local function GetDB()
   if db.fadeOutTime == nil then db.fadeOutTime = 0.20 end
 
   return db
+end
+
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
 end
 
 local function LSM_Fonts()
@@ -65,6 +73,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
   name = "Castbar+",
   order = 18,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {
@@ -143,10 +152,21 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         set = function(_, v) db.scale = v; ETBC.ApplyBus:Notify("castbar") end,
       },
 
+      skin = {
+        type = "toggle",
+        name = "Use Castbar Skin",
+        desc = "Applies the EnhanceTBC castbar skin (backdrop, icon border, hidden spark/flash).",
+        order = 24,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.skin end,
+        set = function(_, v) db.skin = v and true or false; ETBC.ApplyBus:Notify("castbar") end,
+      },
+
       xOffset = {
         type = "range",
         name = "X offset",
-        order = 24,
+        order = 25,
         min = -200, max = 200, step = 1,
         disabled = function() return not db.enabled end,
         get = function() return db.xOffset end,
@@ -156,7 +176,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       yOffset = {
         type = "range",
         name = "Y offset",
-        order = 25,
+        order = 26,
         min = -200, max = 200, step = 1,
         disabled = function() return not db.enabled end,
         get = function() return db.yOffset end,
@@ -223,7 +243,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         order = 36,
         disabled = function() return not (db.enabled and db.showTime) end,
         values = function()
-          return { REMAIN = "Remaining", ELAPSED = "Elapsed" }
+          return { REMAIN = "Remaining", ELAPSED = "Elapsed", BOTH = "Elapsed/Total" }
         end,
         get = function() return db.timeFormat end,
         set = function(_, v) db.timeFormat = v; ETBC.ApplyBus:Notify("castbar") end,
@@ -300,10 +320,22 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         set = function(_, v) db.showLatency = v and true or false; ETBC.ApplyBus:Notify("castbar") end,
       },
 
+      latencyMode = {
+        type = "select",
+        name = "Latency source",
+        order = 52,
+        disabled = function() return not (db.enabled and db.showLatency) end,
+        values = function()
+          return { CAST = "Cast events", NET = "Network stats" }
+        end,
+        get = function() return db.latencyMode end,
+        set = function(_, v) db.latencyMode = v; ETBC.ApplyBus:Notify("castbar") end,
+      },
+
       latencyAlpha = {
         type = "range",
         name = "Latency alpha",
-        order = 52,
+        order = 53,
         min = 0.0, max = 1.0, step = 0.01,
         disabled = function() return not (db.enabled and db.showLatency) end,
         get = function() return db.latencyAlpha end,
@@ -313,10 +345,22 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       latencyColor = {
         type = "color",
         name = "Latency color",
-        order = 53,
+        order = 54,
         disabled = function() return not (db.enabled and db.showLatency) end,
         get = function() local c=db.latencyColor; return c[1],c[2],c[3] end,
         set = function(_, r,g,b) db.latencyColor={r,g,b}; ETBC.ApplyBus:Notify("castbar") end,
+      },
+
+      channelHeader = { type = "header", name = "Channeling", order = 55 },
+
+      showChannelTicks = {
+        type = "toggle",
+        name = "Show channel tick markers",
+        order = 56,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.showChannelTicks end,
+        set = function(_, v) db.showChannelTicks = v and true or false; ETBC.ApplyBus:Notify("castbar") end,
       },
 
       fadeHeader = { type = "header", name = "Fade Out", order = 60 },

@@ -12,14 +12,6 @@ local function GetDB()
   local db = ETBC.db.profile.gcdbar
 
   if db.enabled == nil then db.enabled = true end
-  if db.locked == nil then db.locked = true end
-
-  db.anchor = db.anchor or {}
-  if db.anchor.point == nil then db.anchor.point = "CENTER" end
-  if db.anchor.relPoint == nil then db.anchor.relPoint = "CENTER" end
-  if db.anchor.x == nil then db.anchor.x = 0 end
-  if db.anchor.y == nil then db.anchor.y = 0 end
-
   if db.width == nil then db.width = 220 end
   if db.height == nil then db.height = 12 end
 
@@ -35,9 +27,6 @@ local function GetDB()
   if db.colorMode == nil then db.colorMode = "CLASS" end -- CLASS / CUSTOM
   db.customColor = db.customColor or { r = 0.20, g = 1.00, b = 0.20, a = 1 }
 
-  if db.onlyInCombat == nil then db.onlyInCombat = false end
-  if db.hideOutOfCombat == nil then db.hideOutOfCombat = false end
-
   if db.fadeOut == nil then db.fadeOut = true end
   if db.fadeDelay == nil then db.fadeDelay = 0.15 end
   if db.fadeDuration == nil then db.fadeDuration = 0.25 end
@@ -45,6 +34,11 @@ local function GetDB()
   if db.preview == nil then db.preview = false end
 
   return db
+end
+
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
 end
 
 local function GetTextures()
@@ -61,6 +55,7 @@ ETBC.SettingsRegistry:RegisterGroup("gcdbar", {
   name = "GCD Bar",
   order = 60,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     return {
@@ -72,21 +67,11 @@ ETBC.SettingsRegistry:RegisterGroup("gcdbar", {
         set = function(_, v) db.enabled = v and true or false; ETBC.ApplyBus:Notify("gcdbar") end,
       },
 
-      locked = {
-        type = "toggle",
-        name = "Locked",
-        desc = "Unlock to drag the bar.",
-        order = 2,
-        get = function() return db.locked end,
-        set = function(_, v) db.locked = v and true or false; ETBC.ApplyBus:Notify("gcdbar") end,
-        disabled = function() return not db.enabled end,
-      },
-
       preview = {
         type = "toggle",
         name = "Preview (show bar)",
         desc = "For positioning and styling. Does not require combat.",
-        order = 3,
+        order = 2,
         get = function() return db.preview end,
         set = function(_, v) db.preview = v and true or false; ETBC.ApplyBus:Notify("gcdbar") end,
         disabled = function() return not db.enabled end,
@@ -195,33 +180,10 @@ ETBC.SettingsRegistry:RegisterGroup("gcdbar", {
         },
       },
 
-      visibility = {
-        type = "group",
-        name = "Visibility",
-        order = 30,
-        inline = true,
-        args = {
-          onlyInCombat = {
-            type = "toggle",
-            name = "Only in combat",
-            order = 1,
-            get = function() return db.onlyInCombat end,
-            set = function(_, v) db.onlyInCombat = v and true or false; ETBC.ApplyBus:Notify("gcdbar") end,
-          },
-          hideOutOfCombat = {
-            type = "toggle",
-            name = "Hide out of combat (even if GCD happens)",
-            order = 2,
-            get = function() return db.hideOutOfCombat end,
-            set = function(_, v) db.hideOutOfCombat = v and true or false; ETBC.ApplyBus:Notify("gcdbar") end,
-          },
-        },
-      },
-
       fade = {
         type = "group",
         name = "Fade",
-        order = 40,
+        order = 30,
         inline = true,
         args = {
           fadeOut = {

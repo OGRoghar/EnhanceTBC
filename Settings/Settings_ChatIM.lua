@@ -33,10 +33,16 @@ local function GetDB()
   return db
 end
 
+local function EnsureDefaults()
+  if not ETBC.db or not ETBC.db.profile then return end
+  GetDB()
+end
+
 ETBC.SettingsRegistry:RegisterGroup("chatim", {
   name = "ChatIM",
   order = 25,
   options = function()
+    EnsureDefaults()
     local db = GetDB()
 
     local tsValues = {

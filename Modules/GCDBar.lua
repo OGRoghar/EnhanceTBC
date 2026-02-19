@@ -11,6 +11,7 @@ ETBC.Modules.GCDBar = mod
 
 local driver
 local barFrame, bar, bg, spark
+local anchorFrame
 
 -- Active window
 local gcdStart = 0
@@ -35,13 +36,6 @@ local function GetDB()
   local db = ETBC.db.profile.gcdbar
 
   if db.enabled == nil then db.enabled = true end
-  if db.locked == nil then db.locked = true end
-
-  db.anchor = db.anchor or {}
-  if db.anchor.point == nil then db.anchor.point = "CENTER" end
-  if db.anchor.relPoint == nil then db.anchor.relPoint = "CENTER" end
-  if db.anchor.x == nil then db.anchor.x = 0 end
-  if db.anchor.y == nil then db.anchor.y = 0 end
 
   if db.width == nil then db.width = 220 end
   if db.height == nil then db.height = 12 end
@@ -57,9 +51,6 @@ local function GetDB()
 
   if db.colorMode == nil then db.colorMode = "CLASS" end
   db.customColor = db.customColor or { r = 0.20, g = 1.00, b = 0.20, a = 1 }
-
-  if db.onlyInCombat == nil then db.onlyInCombat = false end
-  if db.hideOutOfCombat == nil then db.hideOutOfCombat = false end
 
   if db.fadeOut == nil then db.fadeOut = true end
   if db.fadeDelay == nil then db.fadeDelay = 0.15 end
@@ -84,19 +75,6 @@ local function GetTexturePath(textureKey)
   return "Interface\\TargetingFrame\\UI-StatusBar"
 end
 
-local function SetShownCompat(frame, shown)
-  if not frame then return end
-  if frame.SetShown then
-    frame:SetShown(shown and true or false)
-    return
-  end
-  if shown then
-    if frame.Show then frame:Show() end
-  else
-    if frame.Hide then frame:Hide() end
-  end
-end
-
 local function GetClassColor()
   local _, class = UnitClass("player")
   if class and CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class] then
@@ -108,6 +86,15 @@ local function GetClassColor()
     return c.r, c.g, c.b
   end
   return 0.20, 1.00, 0.20
+end
+
+local function VisibilityAllowed(db)
+  if db and db.preview then return true end
+  local vis = ETBC.Modules and ETBC.Modules.Visibility
+  if vis and vis.Allowed then
+    return vis:Allowed("gcdbar")
+  end
+  return true
 end
 
 local function ApplyBackdrop(frame, show)
@@ -129,9 +116,13 @@ end
 local function EnsureFrame()
   if barFrame then return end
 
+  anchorFrame = CreateFrame("Frame", "EnhanceTBC_GCDBarAnchor", UIParent)
+  anchorFrame:SetSize(220, 12)
+
   barFrame = CreateFrame("Frame", "EnhanceTBC_GCDBarFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   barFrame:SetFrameStrata("MEDIUM")
   barFrame:SetClampedToScreen(true)
+  barFrame:SetPoint("CENTER", anchorFrame, "CENTER", 0, 0)
 
   bg = barFrame:CreateTexture(nil, "BACKGROUND")
   bg:SetAllPoints(true)
@@ -150,51 +141,23 @@ local function EnsureFrame()
   spark:SetHeight(36)
   spark:Hide()
 
-  barFrame:EnableMouse(true)
-  barFrame:SetMovable(true)
-  barFrame:RegisterForDrag("LeftButton")
-
-  barFrame:SetScript("OnDragStart", function(self)
-    local db = GetDB()
-    if db.locked then return end
-    if not self.StartMoving then return end
-    self:StartMoving()
-  end)
-
-  barFrame:SetScript("OnDragStop", function(self)
-    if self.StopMovingOrSizing then
-      self:StopMovingOrSizing()
-    end
-    local db = GetDB()
-    local point, _, relPoint, x, y = self:GetPoint(1)
-    db.anchor.point = point or "CENTER"
-    db.anchor.relPoint = relPoint or "CENTER"
-    db.anchor.x = x or 0
-    db.anchor.y = y or 0
-  end)
-
-  local hint = barFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  hint:SetPoint("CENTER", barFrame, "CENTER", 0, 0)
-  hint:SetText("Drag")
-  hint:Hide()
-  barFrame._hint = hint
-
   barFrame:Hide()
+end
+
+local function RegisterMover()
+  if not (ETBC.Mover and ETBC.Mover.Register) then return end
+  if not anchorFrame then return end
+  ETBC.Mover:Register("GCDBar", anchorFrame, {
+    name = "GCD Bar",
+    default = { point = "CENTER", rel = "UIParent", relPoint = "CENTER", x = 0, y = 0 },
+  })
 end
 
 local function UpdateLayout(db)
   EnsureFrame()
 
   barFrame:SetSize(db.width, db.height)
-
-  barFrame:ClearAllPoints()
-  barFrame:SetPoint(
-    db.anchor.point or "CENTER",
-    UIParent,
-    db.anchor.relPoint or "CENTER",
-    db.anchor.x or 0,
-    db.anchor.y or 0
-  )
+  anchorFrame:SetSize(db.width, db.height)
 
   ApplyBackdrop(barFrame, db.border)
 
@@ -205,7 +168,6 @@ local function UpdateLayout(db)
   bar:SetReverseFill(db.reverseFill and true or false)
 
   if db.spark then spark:Show() else spark:Hide() end
-  if barFrame._hint then SetShownCompat(barFrame._hint, not db.locked) end
 
   local r, g, b = 0.20, 1.00, 0.20
   if db.colorMode == "CLASS" then
@@ -234,8 +196,7 @@ end
 
 local function ShouldBeVisible(db, active)
   if db.preview then return true end
-  if db.onlyInCombat and not PlayerInCombat() then return false end
-  if db.hideOutOfCombat and not PlayerInCombat() then return false end
+  if not VisibilityAllowed(db) then return false end
   return active
 end
 
@@ -335,6 +296,13 @@ end
 local function Apply()
   EnsureDriver()
   EnsureFrame()
+  RegisterMover()
+  if ETBC.Mover and ETBC.Mover.Apply then
+    ETBC.Mover:Apply("GCDBar")
+  else
+    anchorFrame:ClearAllPoints()
+    anchorFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  end
 
   local db = GetDB()
   local enabled = ETBC.db.profile.general.enabled and db.enabled
@@ -402,3 +370,4 @@ end
 
 ETBC.ApplyBus:Register("gcdbar", Apply)
 ETBC.ApplyBus:Register("general", Apply)
+ETBC.ApplyBus:Register("ui", Apply)

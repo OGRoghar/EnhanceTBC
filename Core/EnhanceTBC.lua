@@ -37,6 +37,64 @@ function ETBC:OpenConfig()
 end
 
 -- ---------------------------------------------------------
+-- Refresh helpers
+-- ---------------------------------------------------------
+local function GetModuleEnabledState(key)
+  if not ETBC.db or not ETBC.db.profile then return nil end
+  local mod = ETBC.db.profile[key]
+  if type(mod) == "table" and mod.enabled ~= nil then
+    return mod.enabled and true or false
+  end
+  return nil
+end
+
+function ETBC:RefreshAll(reason)
+  if not self.db or not self.db.profile then return end
+
+  if self.Theme and self.Theme.RefreshCache then
+    self.Theme:RefreshCache()
+  end
+
+  if self.InitMinimapIcon then
+    self:InitMinimapIcon()
+  end
+
+  local keys = (self.ApplyBus and self.ApplyBus.Keys and self.ApplyBus:Keys()) or {}
+  self._moduleEnabledSnapshot = self._moduleEnabledSnapshot or {}
+
+  for i = 1, #keys do
+    local key = keys[i]
+    local enabled = GetModuleEnabledState(key)
+    local shouldNotify = true
+
+    if enabled ~= nil then
+      local prev = self._moduleEnabledSnapshot[key]
+      if enabled == false and prev == false then
+        shouldNotify = false
+      end
+      self._moduleEnabledSnapshot[key] = enabled
+    end
+
+    if shouldNotify and self.ApplyBus and self.ApplyBus.Notify then
+      self.ApplyBus:Notify(key)
+    end
+  end
+
+end
+
+function ETBC:OnProfileChanged()
+  self:RefreshAll("profile-changed")
+end
+
+function ETBC:OnProfileCopied()
+  self:RefreshAll("profile-copied")
+end
+
+function ETBC:OnProfileReset()
+  self:RefreshAll("profile-reset")
+end
+
+-- ---------------------------------------------------------
 -- Slash
 -- ---------------------------------------------------------
 function ETBC:SlashCommand(input)
@@ -52,9 +110,7 @@ function ETBC:SlashCommand(input)
     if self.db and self.db.ResetProfile then
       self.db:ResetProfile()
     end
-    if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAll then
-      ETBC.ApplyBus:NotifyAll()
-    end
+    self:RefreshAll("profile-reset")
     self:Print("Profile reset.")
     return
   end
@@ -121,6 +177,12 @@ end
 function ETBC:OnInitialize()
   self.db = AceDB:New("EnhanceTBCDB", ETBC.defaults, true)
 
+  if self.db and self.db.RegisterCallback then
+    self.db:RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
+    self.db:RegisterCallback(self, "OnProfileCopied", "OnProfileCopied")
+    self.db:RegisterCallback(self, "OnProfileReset", "OnProfileReset")
+  end
+
   -- Build the root options AFTER DB exists
   local options = ETBC:BuildOptions()
   if type(options) ~= "table" then
@@ -159,10 +221,9 @@ function ETBC:OnInitialize()
   if self.Debug then
     self:Debug("Initialized")
   end
+
 end
 
 function ETBC:OnEnable()
-  if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAll then
-    ETBC.ApplyBus:NotifyAll()
-  end
+  self:RefreshAll("enable")
 end

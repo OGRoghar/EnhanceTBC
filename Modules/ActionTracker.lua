@@ -15,6 +15,8 @@ local pool = {}
 local activeIcons = {}
 local entries = {}
 
+local DEFAULT_ANCHOR = { point = "CENTER", rel = "UIParent", relPoint = "CENTER", x = 0, y = -220 }
+
 local updateTicker = 0
 local UPDATE_INTERVAL = 0.10
 
@@ -47,6 +49,24 @@ local function EnsureFrames()
     container = CreateFrame("Frame", "EnhanceTBC_ActionTrackerContainer", UIParent)
     container:SetSize(1, 1)
   end
+end
+
+local function RegisterMover()
+  if not (ETBC.Mover and ETBC.Mover.Register) then return end
+  if not anchor then return end
+  ETBC.Mover:Register("ActionTracker", anchor, {
+    name = "Action Tracker",
+    default = DEFAULT_ANCHOR,
+  })
+end
+
+local function VisibilityAllowed(db)
+  if db and db.preview then return true end
+  local vis = ETBC.Modules and ETBC.Modules.Visibility
+  if vis and vis.Allowed then
+    return vis:Allowed("actiontracker")
+  end
+  return true
 end
 
 local function ReleaseIcon(icon)
@@ -279,9 +299,14 @@ local function BuildPreview(db)
   Rebuild(db)
 end
 
-local function Position(db)
-  anchor:ClearAllPoints()
-  anchor:SetPoint(db.anchor.point, UIParent, db.anchor.relPoint, db.anchor.x, db.anchor.y)
+local function Position()
+  RegisterMover()
+  if ETBC.Mover and ETBC.Mover.Apply then
+    ETBC.Mover:Apply("ActionTracker")
+  else
+    anchor:ClearAllPoints()
+    anchor:SetPoint(DEFAULT_ANCHOR.point, UIParent, DEFAULT_ANCHOR.relPoint, DEFAULT_ANCHOR.x, DEFAULT_ANCHOR.y)
+  end
 
   container:ClearAllPoints()
   container:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
@@ -294,7 +319,7 @@ local function Apply()
   local db = p.actiontracker
   local enabled = p.general.enabled and db.enabled
 
-  if not enabled then
+  if not enabled or not VisibilityAllowed(db) then
     driver:UnregisterAllEvents()
     driver:SetScript("OnUpdate", nil)
     ClearActive()
@@ -304,7 +329,7 @@ local function Apply()
     return
   end
 
-  Position(db)
+  Position()
   container:Show()
 
   driver:UnregisterAllEvents()
@@ -323,8 +348,6 @@ local function Apply()
     end
 
     if db.preview then return end
-    if db.onlyInCombat and not UnitAffectingCombat("player") then return end
-
     local _, subEvent, _, srcGUID, _, _, _, _, _, _, _, spellID = CombatLogGetCurrentEventInfo()
     if not subEvent then return end
 
@@ -357,3 +380,4 @@ end
 
 ETBC.ApplyBus:Register("actiontracker", Apply)
 ETBC.ApplyBus:Register("general", Apply)
+ETBC.ApplyBus:Register("ui", Apply)
