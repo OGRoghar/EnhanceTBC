@@ -825,7 +825,6 @@ function mod.CaptureSinkButton(btn)
   end
   if not btn or state.sinkManaged[btn] then return end
   if InCombatLockdown and InCombatLockdown() then return end
-  if type(btn) ~= "table" then return end
   if type(btn.ClearAllPoints) ~= "function" then return end
   if type(btn.SetPoint) ~= "function" then return end
 
@@ -964,16 +963,23 @@ function mod:ScanForAddonButtons()
     return false
   end
 
-  local function ScanChildren(parent)
+  local visited = {}
+  local function ScanChildren(parent, depth)
     if not parent or not parent.GetChildren then return end
+    depth = tonumber(depth) or 0
+    if depth > 3 then return end
+    if visited[parent] then return end
+    visited[parent] = true
+
     for _, child in ipairs({ parent:GetChildren() }) do
       TryCapture(child)
+      ScanChildren(child, depth + 1)
     end
   end
 
-  ScanChildren(Minimap)
+  ScanChildren(Minimap, 0)
   if MinimapCluster and MinimapCluster.MinimapContainer then
-    ScanChildren(MinimapCluster.MinimapContainer)
+    ScanChildren(MinimapCluster.MinimapContainer, 0)
   end
 
   if LDBIcon and LDBIcon.objects and LDBIcon.GetMinimapButton then
@@ -986,7 +992,7 @@ function mod:ScanForAddonButtons()
   end
 
   for name, obj in pairs(_G) do
-    if type(name) == "string" and name:find("^LibDBIcon10_") and type(obj) == "table" then
+    if type(name) == "string" and name:find("^LibDBIcon10_") then
       TryCapture(obj)
     end
   end
