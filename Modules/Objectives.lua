@@ -222,7 +222,9 @@ end
 local function ApplyCombatVisibility(frame, db)
   if not frame then return end
 
-  local inCombat = (InCombatLockdown and InCombatLockdown()) or (UnitAffectingCombat and UnitAffectingCombat("player"))
+  local inCombat = (InCombatLockdown and InCombatLockdown())
+    or (UnitAffectingCombat and (not not UnitAffectingCombat("player")))
+    or false
 
   if not inCombat then
     if frame:GetAlpha() ~= 1 then StartFade(frame, 1) end

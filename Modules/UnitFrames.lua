@@ -10,6 +10,7 @@ ETBC.Modules.UnitFrames = mod
 local driver
 local pendingApply = false
 local hooked = false
+local bucketsRegistered = false
 
 local orig = {
   sizes = {},     -- [frame] = { scale=, w=, h= }
@@ -484,6 +485,40 @@ local function QueueApply()
   RefreshAll()
 end
 
+local function HandleHealthBucket(units)
+  local db = GetDB()
+  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  if not (generalEnabled and db.enabled) then return end
+  if type(units) ~= "table" then return end
+
+  for unit in pairs(units) do
+    if db.healthTextMode and db.healthTextMode ~= "NONE" then
+      UpdateHealthTextForUnit(unit)
+    end
+    if db.classColorHealth then
+      local bars = mod._unitBars and mod._unitBars[unit]
+      if bars then
+        for _, bar in ipairs(bars) do
+          ApplyClassColor(bar, unit)
+        end
+      end
+    end
+  end
+end
+
+local function HandlePowerBucket(units)
+  local db = GetDB()
+  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  if not (generalEnabled and db.enabled) then return end
+  if type(units) ~= "table" then return end
+
+  if db.powerTextMode and db.powerTextMode ~= "NONE" then
+    for unit in pairs(units) do
+      UpdatePowerTextForUnit(unit)
+    end
+  end
+end
+
 local function EnsureHooks()
   if hooked then return end
   hooked = true
@@ -494,11 +529,22 @@ local function EnsureHooks()
   driver:RegisterEvent("PLAYER_TARGET_CHANGED")
   driver:RegisterEvent("PLAYER_FOCUS_CHANGED")
   driver:RegisterEvent("GROUP_ROSTER_UPDATE")
-  driver:RegisterEvent("UNIT_HEALTH")
-  driver:RegisterEvent("UNIT_MAXHEALTH")
-  driver:RegisterEvent("UNIT_POWER_UPDATE")
-  driver:RegisterEvent("UNIT_MAXPOWER")
-  driver:RegisterEvent("UNIT_DISPLAYPOWER")
+
+  if not bucketsRegistered and ETBC and ETBC.RegisterBucketEvent then
+    ETBC:RegisterBucketEvent("UNIT_HEALTH", 0.08, HandleHealthBucket)
+    ETBC:RegisterBucketEvent("UNIT_MAXHEALTH", 0.08, HandleHealthBucket)
+    ETBC:RegisterBucketEvent("UNIT_POWER_UPDATE", 0.08, HandlePowerBucket)
+    ETBC:RegisterBucketEvent("UNIT_MAXPOWER", 0.08, HandlePowerBucket)
+    ETBC:RegisterBucketEvent("UNIT_DISPLAYPOWER", 0.08, HandlePowerBucket)
+    bucketsRegistered = true
+  else
+    driver:RegisterEvent("UNIT_HEALTH")
+    driver:RegisterEvent("UNIT_MAXHEALTH")
+    driver:RegisterEvent("UNIT_POWER_UPDATE")
+    driver:RegisterEvent("UNIT_MAXPOWER")
+    driver:RegisterEvent("UNIT_DISPLAYPOWER")
+  end
+
   driver:RegisterEvent("PLAYER_REGEN_ENABLED")
 
   driver:SetScript("OnEvent", function(_, event, arg1)

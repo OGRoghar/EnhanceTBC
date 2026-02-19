@@ -65,7 +65,7 @@ local function SetCVarSafe(name, value)
   if type(value) == "boolean" then
     value = value and "1" or "0"
   end
-  SetCVar(name, tostring(value))
+  pcall(SetCVar, name, tostring(value))
 end
 
 local function ApplyCVars(db)

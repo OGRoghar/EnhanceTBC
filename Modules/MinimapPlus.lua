@@ -58,6 +58,30 @@ local function ApplyBackdrop(frame)
   frame:SetBackdropBorderColor(0.04, 0.04, 0.04)
 end
 
+local C = C_Container
+
+local function GetBagNumSlots(bag)
+  if C and C.GetContainerNumSlots then
+    return C.GetContainerNumSlots(bag) or 0
+  end
+  if GetContainerNumSlots then
+    return GetContainerNumSlots(bag) or 0
+  end
+  return 0
+end
+
+local function GetBagNumFreeSlots(bag)
+  if C and C.GetContainerNumFreeSlots then
+    local free = C.GetContainerNumFreeSlots(bag)
+    return tonumber(free) or 0
+  end
+  if GetContainerNumFreeSlots then
+    local free = select(1, GetContainerNumFreeSlots(bag))
+    return tonumber(free) or 0
+  end
+  return 0
+end
+
 local function EnsureEventFrame()
   if state.eventFrame then return end
   state.eventFrame = CreateFrame("Frame", "EnhanceTBC_MinimapEventFrame")
@@ -447,17 +471,9 @@ function mod.CreateIconsFrame(_)
     local empty_slots = 0
     local total_slots = 0
 
-    if C_Container and C_Container.GetContainerNumFreeSlots then
-      for i = 0, NUM_BAG_SLOTS do
-        empty_slots = empty_slots + C_Container.GetContainerNumFreeSlots(i)
-        total_slots = total_slots + C_Container.GetContainerNumSlots(i)
-      end
-    else
-      for i = 0, NUM_BAG_SLOTS do
-        local free, _ = GetContainerNumFreeSlots(i)
-        empty_slots = empty_slots + (free or 0)
-        total_slots = total_slots + (GetContainerNumSlots(i) or 0)
-      end
+    for i = 0, NUM_BAG_SLOTS do
+      empty_slots = empty_slots + GetBagNumFreeSlots(i)
+      total_slots = total_slots + GetBagNumSlots(i)
     end
 
     if total_slots > 0 then

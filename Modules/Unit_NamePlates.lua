@@ -55,6 +55,14 @@ local function GetDB()
   return db
 end
 
+local function InInstance()
+  if not IsInInstance then
+    return false, "none"
+  end
+  local inInst, instType = IsInInstance()
+  return not not inInst, instType
+end
+
 local function ApplyFont(fs, size)
   if not fs or not fs.SetFont then return end
   if ETBC.Theme and ETBC.Theme.ApplyFontString then
@@ -1575,7 +1583,7 @@ local function SetNameplatePadding()
     C_NamePlate.SetNamePlateEnemySize(enemy_nameplate_width, enemy_nameplate_height)
   end
 
-  local is_in_instance, instance_type = IsInInstance()
+  local is_in_instance, instance_type = InInstance()
 
   if is_in_instance and instance_type ~= "pvp" and instance_type ~= "arena" then
     if C_NamePlate and C_NamePlate.SetNamePlateFriendlySize then

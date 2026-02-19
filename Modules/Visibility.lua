@@ -13,8 +13,11 @@ local function EnsureDriver()
 end
 
 local function InInstance()
+  if not IsInInstance then
+    return false, "none"
+  end
   local inInst, instType = IsInInstance()
-  return inInst, instType
+  return not not inInst, instType
 end
 
 local function IsInParty()

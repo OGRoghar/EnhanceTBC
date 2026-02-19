@@ -69,9 +69,9 @@ end
 
 local function _SetCVar(name, value, perChar)
   if perChar and SetCVarPerCharacter then
-    SetCVarPerCharacter(name, value)
+    pcall(SetCVarPerCharacter, name, value)
   else
-    SetCVar(name, value)
+    pcall(SetCVar, name, value)
   end
 end
 
