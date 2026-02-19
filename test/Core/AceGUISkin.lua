@@ -192,12 +192,14 @@ local SKINNERS = {
   ColorPicker = SkinColorPicker,
 }
 
+local wrappedCtorByType = {}
+
 local function HookWidgetType(typeName)
   local ctor = AceGUI.WidgetRegistry and AceGUI.WidgetRegistry[typeName]
-  if not ctor or ctor.__etbcSkinCtorHooked then return end
+  if not ctor then return end
+  if wrappedCtorByType[typeName] == ctor then return end
 
-  ctor.__etbcSkinCtorHooked = true
-  AceGUI.WidgetRegistry[typeName] = function(...)
+  local wrapped = function(...)
     local widget = ctor(...)
     local skinner = SKINNERS[typeName]
     if skinner and widget then
@@ -214,6 +216,8 @@ local function HookWidgetType(typeName)
     end
     return widget
   end
+  wrappedCtorByType[typeName] = wrapped
+  AceGUI.WidgetRegistry[typeName] = wrapped
 end
 
 function Skin:Install()

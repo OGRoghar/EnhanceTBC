@@ -551,9 +551,9 @@ function ETBC:OnInitialize()
   end
 
   if self.db and self.db.RegisterCallback then
-    self.db:RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
-    self.db:RegisterCallback(self, "OnProfileCopied", "OnProfileCopied")
-    self.db:RegisterCallback(self, "OnProfileReset", "OnProfileReset")
+    self.db:RegisterCallback("OnProfileChanged", function() self:OnProfileChanged() end)
+    self.db:RegisterCallback("OnProfileCopied", function() self:OnProfileCopied() end)
+    self.db:RegisterCallback("OnProfileReset", function() self:OnProfileReset() end)
   end
 
   -- Build the root options AFTER DB exists
