@@ -9,3 +9,6 @@ Cache/
 # Test coverage files
 luacov.*.out
 *.rock
+
+# Local workspace copy / nested repo
+Part 2/
