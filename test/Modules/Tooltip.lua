@@ -159,17 +159,29 @@ local function ApplyStyleToTooltip(tip)
   end
 end
 
-local function ApplyTooltipNineSlice(tip, hide)
+local function ApplyTooltipNineSlice(tip, use_skin, skin)
   if not tip or not tip.NineSlice then return end
-  if hide then
+  if use_skin then
+    local bg = (skin and skin.bg) or { r = 0.03, g = 0.06, b = 0.03, a = 0.92 }
+    local br = (skin and skin.border) or { r = 0.20, g = 1.00, b = 0.20, a = 0.95 }
+
     tip.NineSlice:Show()
     for _, region in pairs({ tip.NineSlice:GetRegions() }) do
-      if region and region.SetAlpha then
-        region:SetAlpha(0)
+      if region == tip.NineSlice.Center then
+        if region.SetVertexColor then
+          region:SetVertexColor(bg.r or 0, bg.g or 0, bg.b or 0, bg.a or 1)
+        end
+        if region.SetAlpha then
+          region:SetAlpha(bg.a or 1)
+        end
+      elseif region then
+        if region.SetVertexColor then
+          region:SetVertexColor(br.r or 1, br.g or 1, br.b or 1, br.a or 1)
+        end
+        if region.SetAlpha then
+          region:SetAlpha(br.a or 1)
+        end
       end
-    end
-    if tip.NineSlice.Center and tip.NineSlice.Center.SetAlpha then
-      tip.NineSlice.Center:SetAlpha(1)
     end
   else
     for _, region in pairs({ tip.NineSlice:GetRegions() }) do
@@ -802,7 +814,7 @@ function mod.Apply(_)
     if tip then
       ApplyTooltipBackdrop(tip)
       ApplyTooltipBorder(tip)
-      ApplyTooltipNineSlice(tip, db.skin and db.skin.enabled)
+      ApplyTooltipNineSlice(tip, db.skin and db.skin.enabled, db.skin)
     end
   end
 
