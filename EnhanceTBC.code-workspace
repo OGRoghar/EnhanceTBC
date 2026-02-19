@@ -9,5 +9,6 @@
 			"stanzilla.vscode-wow-toc",
 			"github.codespaces"
 		]
-	}
+	},
+	"settings": {}
 }
