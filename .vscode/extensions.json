@@ -8,6 +8,8 @@
         "rebornix.lua",
         "automattic.lua",
         "mfussenegger.nexus",
-        "emilmiroglu.luapad"
+        "emilmiroglu.luapad",
+        "stanzilla.vscode-wow-toc",
+        "github.codespaces"
     ]
 }

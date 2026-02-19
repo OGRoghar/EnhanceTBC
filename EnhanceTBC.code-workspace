@@ -3,5 +3,11 @@
 		{
 			"path": "."
 		}
-	]
+	],
+	"extensions": {
+		"recommendations": [
+			"stanzilla.vscode-wow-toc",
+			"github.codespaces"
+		]
+	}
 }
