@@ -6,6 +6,7 @@ ignore:
   - .vscode
   - *.code-workspace
   - spec
+  - test
   - tools
   - *.md
   - *.rockspec
