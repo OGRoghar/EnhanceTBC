@@ -2,7 +2,7 @@
 ## Title: EnhanceTBC
 ## Notes: QoL suite for TBC Anniversary (Ace3)
 ## Author: Roghar
-## Version: 1.2.5
+## Version: 1.2.6
 ## SavedVariables: EnhanceTBCDB
 ## OptionalDeps: Ace3
 ## X-Category: Interface Enhancements
@@ -62,6 +62,7 @@ Core\Defaults.lua
 Core\Print.lua
 Core\Compat.lua
 Core\Theme.lua
+Core\AceGUISkin.lua
 Core\ApplyBus.lua
 Core\SettingsRegistry.lua
 Core\Mover.lua
@@ -73,6 +74,9 @@ Core\MinimapButton.lua
 # ==========================================================
 # UI
 # ==========================================================
+UI\Widgets\PreviewPanel.lua
+UI\Widgets\SectionCard.lua
+UI\Widgets\SearchHeader.lua
 UI\ConfigWindow.lua
 
 # ==========================================================

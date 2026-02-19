@@ -1,6 +1,6 @@
 -- Settings/Settings_ActionTracker.lua
 local _, ETBC = ...
-local LSM = ETBC.media
+local LSM = ETBC.LSM
 
 local function OutlineValues()
   return {
@@ -14,7 +14,7 @@ end
 local function FontValues()
   local out = {}
   if LSM and LSM.HashTable then
-    out = LSM:HashTable(ETBC.LSM_FONTS) or {}
+    out = LSM:HashTable("font") or {}
   end
   out["Friz Quadrata TT"] = out["Friz Quadrata TT"] or "Friz Quadrata TT"
   return out

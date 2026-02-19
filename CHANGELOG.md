@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.2.6 - 2026-02-19
+- Fixed:
+	- AceGUI skin constructor hook safety to avoid runtime errors when widget constructors are plain functions.
+	- Profile callback registration signature in core init path.
+	- ApplyBus flush queue safety when nested/batched notifications occur, preventing nil key indexing.
+- Changed:
+	- Config window visual polish updates: header composition, logo layering, module header card, tree styling, and search header UX.
+	- Preview panel behavior now uses module-specific preview content for castbar/cooldowns/swingtimer.
+	- Preview toggle wiring now targets only valid preview-capable module keys.
+	- Tree label rendering no longer reuses stale recycled button text (fixes incorrect category/module labels).
+- Media/LSM:
+	- Corrected LSM font mapping usage in Auras, ActionTracker, and CombatText settings/modules (`ETBC.LSM` + `"font"`).
+- Sync:
+	- Copied `test` mirror files to main addon paths; no content deltas remained after sync.
+
 ## v1.2.5 - 2026-02-19
 - Release:
 	- Excluded workspace files (`*.code-workspace`) from packaged release artifacts.

@@ -531,11 +531,8 @@ local function EnsureHooks()
   driver:RegisterEvent("GROUP_ROSTER_UPDATE")
 
   if not bucketsRegistered and ETBC and ETBC.RegisterBucketEvent then
-    ETBC:RegisterBucketEvent("UNIT_HEALTH", 0.08, HandleHealthBucket)
-    ETBC:RegisterBucketEvent("UNIT_MAXHEALTH", 0.08, HandleHealthBucket)
-    ETBC:RegisterBucketEvent("UNIT_POWER_UPDATE", 0.08, HandlePowerBucket)
-    ETBC:RegisterBucketEvent("UNIT_MAXPOWER", 0.08, HandlePowerBucket)
-    ETBC:RegisterBucketEvent("UNIT_DISPLAYPOWER", 0.08, HandlePowerBucket)
+    ETBC:RegisterBucketEvent({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, 0.08, HandleHealthBucket)
+    ETBC:RegisterBucketEvent({ "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER" }, 0.08, HandlePowerBucket)
     bucketsRegistered = true
   else
     driver:RegisterEvent("UNIT_HEALTH")

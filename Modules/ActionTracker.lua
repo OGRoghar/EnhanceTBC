@@ -4,7 +4,7 @@ ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.ActionTracker = mod
 
-local LSM = ETBC.media
+local LSM = ETBC.LSM
 
 local driver
 local anchor
@@ -22,7 +22,7 @@ local UPDATE_INTERVAL = 0.10
 local function SafeFont(face)
   face = face or "Friz Quadrata TT"
   if LSM and LSM.Fetch then
-    local f = LSM:Fetch(ETBC.LSM_FONTS, face, true)
+    local f = LSM:Fetch("font", face, true)
     return f or STANDARD_TEXT_FONT
   end
   return STANDARD_TEXT_FONT

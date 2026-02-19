@@ -149,7 +149,8 @@ local function ApplyBackdropAlt(frame)
 end
 
 local function ApplySkinBackdropColors(bar, skin, db)
-  if not (bar and skin and skin.backdrop and skin.backdrop.SetBackdropColor and skin.backdrop.SetBackdropBorderColor) then return end
+  if not (bar and skin and skin.backdrop) then return end
+  if not (skin.backdrop.SetBackdropColor and skin.backdrop.SetBackdropBorderColor) then return end
   local sr, sg, sb = 0.25, 0.62, 1.0
   if bar.GetStatusBarColor then
     local r, g, b = bar:GetStatusBarColor()

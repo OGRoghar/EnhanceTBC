@@ -757,7 +757,7 @@ function mod.EnsureSinkFrame()
   ApplySinkAnchor()
 end
 
-function mod:IsBlacklisted(btn, name)
+function mod.IsBlacklisted(_self, btn, name)
   if not btn then return true end
   if type(name) == "string" and (
     name:find("^EnhanceTBC_")
@@ -815,7 +815,7 @@ function mod:LooksLikeMinimapButton(btn)
   return false
 end
 
-function mod:CaptureSinkButton(btn)
+function mod.CaptureSinkButton(_self, btn)
   if type(btn) == "table" and not btn.GetObjectType and btn.button then
     btn = btn.button
   end
@@ -968,7 +968,10 @@ function mod.LayoutSinkButtons()
   if state.sinkFrame.emptyText then
     state.sinkFrame.emptyText:SetShown(count == 0)
     if count == 0 and DEFAULT_CHAT_FRAME then
-      DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99EnhanceTBC|r No minimap buttons could be moved to the sink. Some buttons are protected by Blizzard or other addons and cannot be moved.")
+      DEFAULT_CHAT_FRAME:AddMessage(
+        "|cff33ff99EnhanceTBC|r No minimap buttons could be moved to the sink. "
+          .. "Some buttons are protected by Blizzard or other addons and cannot be moved."
+      )
     end
   end
 end
