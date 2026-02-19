@@ -1,15 +1,21 @@
 -- Modules/Vendor.lua
--- Lightweight: auto-sell junk + auto-repair (live, no reload)
+-- Auto-repair + auto-sell with TBC Anniversary compatible bag API handling.
+
 local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Vendor = mod
 
 local driver
+local sellTicker
+local sellQueue = {}
+local sellIndex = 1
+local sellTotal = 0
+local sellCount = 0
+local sellSkippedHigh = 0
+local sellDB
+local merchantOpen = false
 
--- -------------------------------------------------------
--- Container API Compat (Classic/TBC-safe)
--- -------------------------------------------------------
 local C = C_Container
 
 local function GetBagNumSlots(bag)
@@ -39,12 +45,25 @@ local function GetBagItemCount(bag, slot)
     return 1
   end
   if GetContainerItemInfo then
-    -- Classic-style returns multiple values; 2nd is count on many builds
     local _, count = GetContainerItemInfo(bag, slot)
     if count then return count end
-    return 1
   end
   return 1
+end
+
+local function GetBagItemLocked(bag, slot)
+  if C and C.GetContainerItemInfo then
+    local info = C.GetContainerItemInfo(bag, slot)
+    if info and info.isLocked ~= nil then
+      return info.isLocked and true or false
+    end
+    return false
+  end
+  if GetContainerItemInfo then
+    local _, _, locked = GetContainerItemInfo(bag, slot)
+    return locked and true or false
+  end
+  return false
 end
 
 local function UseBagItem(bag, slot)
@@ -56,23 +75,47 @@ local function UseBagItem(bag, slot)
   end
 end
 
--- -------------------------------------------------------
--- DB
--- -------------------------------------------------------
+local function GetItemIDFromLink(link)
+  if not link then return nil end
+  local id = link:match("item:(%d+)")
+  if id then return tonumber(id) end
+  return nil
+end
+
 local function GetDB()
   ETBC.db.profile.vendor = ETBC.db.profile.vendor or {}
   local db = ETBC.db.profile.vendor
+
   if db.enabled == nil then db.enabled = true end
-  if db.autoSellJunk == nil then db.autoSellJunk = true end
+  if db.bypassWithShift == nil then db.bypassWithShift = true end
+
   if db.autoRepair == nil then db.autoRepair = true end
   if db.useGuildRepair == nil then db.useGuildRepair = true end
+  if db.repairThreshold == nil then db.repairThreshold = 0 end
+
+  if db.autoSellJunk == nil then db.autoSellJunk = true end
+  if db.maxQualityToSell == nil then db.maxQualityToSell = 0 end
+  if db.confirmHighValue == nil then db.confirmHighValue = true end
+  if db.confirmMinValue == nil then db.confirmMinValue = 200000 end
+  if db.skipLocked == nil then db.skipLocked = true end
   if db.printSummary == nil then db.printSummary = true end
+
+  db.throttle = db.throttle or {}
+  if db.throttle.enabled == nil then db.throttle.enabled = true end
+  if db.throttle.interval == nil then db.throttle.interval = 0.03 end
+  if db.throttle.maxPerTick == nil then db.throttle.maxPerTick = 6 end
+
+  db.whitelist = db.whitelist or {}
+  if db.whitelist.enabled == nil then db.whitelist.enabled = false end
+  db.whitelist.items = db.whitelist.items or {}
+
+  db.blacklist = db.blacklist or {}
+  if db.blacklist.enabled == nil then db.blacklist.enabled = true end
+  db.blacklist.items = db.blacklist.items or {}
+
   return db
 end
 
--- -------------------------------------------------------
--- Helpers
--- -------------------------------------------------------
 local function Print(msg)
   if ETBC and ETBC.Print then
     ETBC:Print(msg)
@@ -88,19 +131,34 @@ local function MoneyToString(copper)
   local s = math.floor((copper % 10000) / 100)
   local c = copper % 100
   local parts = {}
-  if g > 0 then parts[#parts+1] = g .. "g" end
-  if s > 0 or g > 0 then parts[#parts+1] = s .. "s" end
-  parts[#parts+1] = c .. "c"
+  if g > 0 then parts[#parts + 1] = g .. "g" end
+  if s > 0 or g > 0 then parts[#parts + 1] = s .. "s" end
+  parts[#parts + 1] = c .. "c"
   return table.concat(parts, " ")
 end
 
 local function CanMerchant()
+  if merchantOpen then return true end
   return MerchantFrame and MerchantFrame:IsShown()
 end
 
--- -------------------------------------------------------
--- Core features
--- -------------------------------------------------------
+local function ShouldBypass(db)
+  return db.bypassWithShift and IsShiftKeyDown and IsShiftKeyDown()
+end
+
+local function CancelSellTicker()
+  if sellTicker and sellTicker.Cancel then
+    sellTicker:Cancel()
+  end
+  sellTicker = nil
+  wipe(sellQueue)
+  sellIndex = 1
+  sellTotal = 0
+  sellCount = 0
+  sellSkippedHigh = 0
+  sellDB = nil
+end
+
 local function AutoRepair(db)
   if not db.autoRepair then return end
   if not CanMerchant() then return end
@@ -108,13 +166,12 @@ local function AutoRepair(db)
 
   local cost = GetRepairAllCost()
   if not cost or cost <= 0 then return end
+  if cost < (db.repairThreshold or 0) then return end
 
   local usedGuild = false
   if db.useGuildRepair and CanGuildBankRepair and CanGuildBankRepair() then
     local withdraw = GetGuildBankWithdrawMoney and GetGuildBankWithdrawMoney() or 0
     local gMoney = GetGuildBankMoney and GetGuildBankMoney() or 0
-
-    -- withdraw can be -1 for unlimited in some versions
     local canUse = (withdraw == -1) or (withdraw >= cost)
     if canUse and gMoney >= cost then
       RepairAllItems(true)
@@ -126,6 +183,8 @@ local function AutoRepair(db)
     local playerMoney = GetMoney and GetMoney() or 0
     if playerMoney >= cost then
       RepairAllItems(false)
+    else
+      return
     end
   end
 
@@ -134,30 +193,54 @@ local function AutoRepair(db)
   end
 end
 
-local function AutoSellJunk(db)
-  if not db.autoSellJunk then return end
-  if not CanMerchant() then return end
+local function ShouldSellItem(db, itemID, quality, vendorPrice, locked)
+  if not quality or quality > (db.maxQualityToSell or 0) then
+    return false
+  end
+  if not vendorPrice or vendorPrice <= 0 then
+    return false
+  end
+  if db.skipLocked and locked then
+    return false
+  end
 
+  if db.blacklist and db.blacklist.enabled and itemID and db.blacklist.items and db.blacklist.items[itemID] then
+    return false
+  end
+
+  if db.whitelist and db.whitelist.enabled then
+    if not (itemID and db.whitelist.items and db.whitelist.items[itemID]) then
+      return false
+    end
+  end
+
+  return true
+end
+
+local function BuildSellQueue(db)
+  local queue = {}
   local total = 0
   local sold = 0
-
-  -- Bags: 0 = backpack, 1-4 = equipped bags (NUM_BAG_SLOTS is 4 in classic)
+  local skippedHigh = 0
   local maxBag = (NUM_BAG_SLOTS ~= nil and NUM_BAG_SLOTS) or 4
 
   for bag = 0, maxBag do
     local slots = GetBagNumSlots(bag)
-    if slots and slots > 0 then
-      for slot = 1, slots do
-        local link = GetBagItemLink(bag, slot)
-        if link then
-          local name, _, quality, _, _, _, _, _, _, _, vendorPrice = GetItemInfo(link)
-          if name and quality == 0 and vendorPrice and vendorPrice > 0 then
-            local count = GetBagItemCount(bag, slot) or 1
-            local value = vendorPrice * count
+    for slot = 1, slots do
+      local link = GetBagItemLink(bag, slot)
+      if link then
+        local itemID = GetItemIDFromLink(link)
+        local _, _, quality, _, _, _, _, _, _, _, vendorPrice = GetItemInfo(link)
+        local locked = GetBagItemLocked(bag, slot)
 
-            -- Sell it
-            UseBagItem(bag, slot)
+        if ShouldSellItem(db, itemID, quality, vendorPrice, locked) then
+          local count = GetBagItemCount(bag, slot) or 1
+          local value = (vendorPrice or 0) * count
 
+          if db.confirmHighValue and value >= (db.confirmMinValue or 200000) then
+            skippedHigh = skippedHigh + 1
+          else
+            queue[#queue + 1] = { bag = bag, slot = slot }
             total = total + value
             sold = sold + 1
           end
@@ -166,56 +249,155 @@ local function AutoSellJunk(db)
     end
   end
 
-  if db.printSummary and sold > 0 then
-    Print("Sold " .. sold .. " junk item(s) for " .. MoneyToString(total))
+  return queue, total, sold, skippedHigh
+end
+
+local function FinishSellSummary()
+  if not sellDB or not sellDB.printSummary then return end
+  if sellCount > 0 then
+    Print("Sold " .. sellCount .. " item(s) for " .. MoneyToString(sellTotal))
+  end
+  if sellSkippedHigh > 0 then
+    Print("Skipped " .. sellSkippedHigh .. " high-value item(s) due to confirmation threshold.")
   end
 end
 
--- -------------------------------------------------------
--- Events
--- -------------------------------------------------------
+local function SellOne(entry)
+  if not entry then return end
+  UseBagItem(entry.bag, entry.slot)
+end
+
+local function PumpSellQueue()
+  if not CanMerchant() then
+    CancelSellTicker()
+    return
+  end
+  if sellIndex > #sellQueue then
+    FinishSellSummary()
+    CancelSellTicker()
+    return
+  end
+
+  local maxPerTick = math.max(1, math.floor((sellDB and sellDB.throttle and sellDB.throttle.maxPerTick) or 6))
+  for _ = 1, maxPerTick do
+    local entry = sellQueue[sellIndex]
+    if not entry then break end
+    SellOne(entry)
+    sellIndex = sellIndex + 1
+  end
+end
+
+local function StartSellQueue(db, queue, total, sold, skippedHigh)
+  CancelSellTicker()
+
+  sellDB = db
+  sellQueue = queue
+  sellIndex = 1
+  sellTotal = total or 0
+  sellCount = sold or 0
+  sellSkippedHigh = skippedHigh or 0
+
+  if #sellQueue == 0 then
+    FinishSellSummary()
+    CancelSellTicker()
+    return
+  end
+
+  local throttle = db.throttle and db.throttle.enabled and C_Timer and C_Timer.NewTicker
+  if throttle then
+    local interval = math.max(0.01, tonumber(db.throttle.interval) or 0.03)
+    sellTicker = C_Timer.NewTicker(interval, PumpSellQueue)
+    PumpSellQueue()
+  else
+    while sellIndex <= #sellQueue do
+      SellOne(sellQueue[sellIndex])
+      sellIndex = sellIndex + 1
+    end
+    FinishSellSummary()
+    CancelSellTicker()
+  end
+end
+
+local function AutoSellJunk(db)
+  if not db.autoSellJunk then return end
+  if not CanMerchant() then return end
+
+  local queue, total, sold, skippedHigh = BuildSellQueue(db)
+  StartSellQueue(db, queue, total, sold, skippedHigh)
+end
+
+local function OnMerchantShow()
+  merchantOpen = true
+  local db = GetDB()
+  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  if not (generalEnabled and db.enabled) then return end
+  if ShouldBypass(db) then return end
+
+  AutoRepair(db)
+  AutoSellJunk(db)
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0.05, function()
+      if not merchantOpen then return end
+      local db2 = GetDB()
+      local gen2 = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+      if not (gen2 and db2.enabled) then return end
+      if ShouldBypass(db2) then return end
+      AutoRepair(db2)
+      AutoSellJunk(db2)
+    end)
+  end
+end
+
+local function OnMerchantClosed()
+  merchantOpen = false
+  CancelSellTicker()
+end
+
 local function EnsureDriver()
   if driver then return end
   driver = CreateFrame("Frame", "EnhanceTBC_VendorDriver", UIParent)
   driver:Hide()
 end
 
-local function OnMerchantShow()
-  local db = GetDB()
-  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
-  if not (generalEnabled and db.enabled) then return end
-
-  -- Order matters: repair first (doesn't affect bags), then sell.
-  AutoRepair(db)
-  AutoSellJunk(db)
-end
-
 local function Apply()
   EnsureDriver()
-
   local db = GetDB()
+
   local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
   local enabled = generalEnabled and db.enabled
 
   driver:UnregisterAllEvents()
   driver:SetScript("OnEvent", nil)
+  merchantOpen = false
+  CancelSellTicker()
 
-  if enabled then
-    driver:RegisterEvent("MERCHANT_SHOW")
-    driver:SetScript("OnEvent", function(_, event)
-      if event == "MERCHANT_SHOW" then
-        OnMerchantShow()
-      end
-    end)
-    driver:Show()
-  else
+  if not enabled then
     driver:Hide()
+    return
   end
+
+  driver:RegisterEvent("MERCHANT_SHOW")
+  driver:RegisterEvent("MERCHANT_CLOSED")
+  driver:SetScript("OnEvent", function(_, event)
+    if event == "MERCHANT_SHOW" then
+      OnMerchantShow()
+    elseif event == "MERCHANT_CLOSED" then
+      OnMerchantClosed()
+    end
+  end)
+  driver:Show()
 end
 
--- -------------------------------------------------------
--- Register with ApplyBus
--- -------------------------------------------------------
+function mod:RunNow()
+  local _ = self
+  local db = GetDB()
+  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  if not (generalEnabled and db.enabled) then return end
+  if not CanMerchant() then return end
+  AutoSellJunk(db)
+end
+
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then
   ETBC.ApplyBus:Register("vendor", Apply)
   ETBC.ApplyBus:Register("general", Apply)

@@ -9,6 +9,7 @@ ETBC.Modules.ActionBars = mod
 
 local driver
 local hooked = false
+local pendingLayoutApply = false
 
 local function GetDB()
   ETBC.db.profile.actionbars = ETBC.db.profile.actionbars or {}
@@ -110,6 +111,10 @@ end
 local function LayoutBar(bar, _mode)
   local db = GetDB()
   if not bar then return end
+  if InCombatLockdown and InCombatLockdown() then
+    pendingLayoutApply = true
+    return
+  end
 
   local btns = GetAllButtonsFromBar(bar)
   if #btns == 0 then return end
@@ -220,6 +225,10 @@ local function HookEvents()
 
     if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
       ApplyAlpha()
+      if event == "PLAYER_REGEN_ENABLED" and pendingLayoutApply then
+        pendingLayoutApply = false
+        ETBC.ApplyBus:Notify("actionbars")
+      end
       return
     end
 
@@ -259,6 +268,9 @@ local function Apply()
   end
 
   -- Layout + style
+  if InCombatLockdown and InCombatLockdown() then
+    pendingLayoutApply = true
+  end
   for _, bar in ipairs(GetBars()) do
     LayoutBar(bar)
   end

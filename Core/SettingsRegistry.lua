@@ -9,8 +9,16 @@ local reg = {
   byKey = {},      -- key -> group
 }
 
+local function NormalizeOrder(v, fallback)
+  local n = tonumber(v)
+  if n == nil then
+    return fallback
+  end
+  return n
+end
+
 function ETBC.SettingsRegistry.RegisterGroup(_, key, group)
-  if type(key) ~= "string" or type(group) ~= "table" then return end
+  if type(key) ~= "string" or key == "" or type(group) ~= "table" then return end
 
   local existing = reg.byKey[key]
   if existing then
@@ -23,14 +31,17 @@ function ETBC.SettingsRegistry.RegisterGroup(_, key, group)
   end
 
   group.key = key
-  group.order = group.order or (#reg.groups + 1)
+  group.order = NormalizeOrder(group.order, #reg.groups + 1)
   group.name = group.name or key
 
   reg.byKey[key] = group
 
   local inserted = false
   for i = 1, #reg.groups do
-    if group.order < (reg.groups[i].order or i) then
+    local curr = reg.groups[i]
+    local currOrder = NormalizeOrder(curr and curr.order, i)
+    local currKey = tostring(curr and curr.key or "")
+    if group.order < currOrder or (group.order == currOrder and key < currKey) then
       table.insert(reg.groups, i, group)
       inserted = true
       break

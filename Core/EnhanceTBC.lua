@@ -23,6 +23,15 @@ _G.ETBC = ETBC
 
 local PROFILE_COMM_PREFIX = "ETBCP1"
 local PROFILE_EXPORT_VERSION = 1
+local blizPanel
+
+local function NotifyAllSettings()
+  if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAllNow then
+    ETBC.ApplyBus:NotifyAllNow()
+  elseif ETBC.ApplyBus and ETBC.ApplyBus.NotifyAll then
+    ETBC.ApplyBus:NotifyAll()
+  end
+end
 
 local function DeepCopy(src)
   if type(src) ~= "table" then return src end
@@ -35,9 +44,7 @@ end
 
 local function ReplaceTable(dst, src)
   if type(dst) ~= "table" or type(src) ~= "table" then return end
-  for k in pairs(dst) do
-    dst[k] = nil
-  end
+  wipe(dst)
   for k, v in pairs(src) do
     if type(v) == "table" then
       dst[k] = DeepCopy(v)
@@ -81,8 +88,9 @@ end
 local function PrintWrapped(self, text, lineLen)
   lineLen = tonumber(lineLen) or 220
   local str = tostring(text or "")
+  local n = #str
   local idx = 1
-  while idx <= #str do
+  while idx <= n do
     self:Print(str:sub(idx, idx + lineLen - 1))
     idx = idx + lineLen
   end
@@ -96,8 +104,49 @@ local function ApplyImportedProfile(self, payload)
     return false, "invalid payload"
   end
   ReplaceTable(self.db.profile, payload.profile)
-  self:RefreshAll("profile-import")
+  NotifyAllSettings()
   return true
+end
+
+local function RegisterBlizzardOptions(self)
+  if self._blizOptionsRegistered then return end
+
+  if AceConfigDialog and AceConfigDialog.AddToBlizOptions then
+    local ok, panel = pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, ADDON_NAME, "EnhanceTBC")
+    if ok and panel then
+      self._blizOptionsRegistered = true
+      self._blizOptionsPanel = panel
+      return
+    end
+  end
+
+  if InterfaceOptions_AddCategory and not blizPanel then
+    blizPanel = CreateFrame("Frame", "EnhanceTBC_BlizzardOptionsPanel", UIParent)
+    blizPanel.name = "EnhanceTBC"
+
+    local title = blizPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("EnhanceTBC")
+
+    local desc = blizPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    desc:SetText("Use the custom config window for full settings access.")
+
+    local btn = CreateFrame("Button", nil, blizPanel, "UIPanelButtonTemplate")
+    btn:SetSize(170, 24)
+    btn:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -14)
+    btn:SetText("Open EnhanceTBC Config")
+    btn:SetScript("OnClick", function()
+      if self and self.OpenConfig then
+        self:OpenConfig()
+      end
+    end)
+
+    InterfaceOptions_AddCategory(blizPanel)
+    self._blizOptionsPanel = blizPanel
+  end
+
+  self._blizOptionsRegistered = true
 end
 
 if not StaticPopupDialogs.ETBC_PROFILE_IMPORT_CONFIRM then
@@ -126,23 +175,34 @@ end
 -- ---------------------------------------------------------
 function ETBC:OpenConfig()
   -- Prefer our custom window if present
-  if self.UI and self.UI.ConfigWindow and self.UI.ConfigWindow.Toggle then
-    self.UI.ConfigWindow:Toggle()
-    return
+  if self.UI and self.UI.ConfigWindow then
+    if self.UI.ConfigWindow.Open then
+      local ok = pcall(self.UI.ConfigWindow.Open, self.UI.ConfigWindow)
+      if ok then return end
+    end
+    if self.UI.ConfigWindow.Toggle then
+      local ok = pcall(self.UI.ConfigWindow.Toggle, self.UI.ConfigWindow)
+      if ok then return end
+    end
   end
 
   -- Fallback to Blizzard options
   if AceConfigDialog and AceConfigDialog.Open then
-    -- This opens AceConfigDialog's own window, not embedded.
-    -- Safe fallback if our custom UI isn't loaded yet.
-    AceConfigDialog:Open(ADDON_NAME)
-    return
+    local ok = pcall(AceConfigDialog.Open, AceConfigDialog, ADDON_NAME)
+    if ok then return end
   end
 
-  -- Ultimate fallback
+  if InterfaceOptionsFrame_OpenToCategory and self._blizOptionsPanel then
+    local ok = pcall(InterfaceOptionsFrame_OpenToCategory, self._blizOptionsPanel)
+    if ok then
+      pcall(InterfaceOptionsFrame_OpenToCategory, self._blizOptionsPanel)
+      return
+    end
+  end
+
   if InterfaceOptionsFrame_OpenToCategory then
-    InterfaceOptionsFrame_OpenToCategory("EnhanceTBC")
-    InterfaceOptionsFrame_OpenToCategory("EnhanceTBC")
+    pcall(InterfaceOptionsFrame_OpenToCategory, "EnhanceTBC")
+    pcall(InterfaceOptionsFrame_OpenToCategory, "EnhanceTBC")
   end
 end
 
@@ -378,10 +438,7 @@ function ETBC:OnInitialize()
     AceConfig:RegisterOptionsTable(ADDON_NAME, options)
   end
 
-  -- Blizzard Interface Options
-  if AceConfigDialog and AceConfigDialog.AddToBlizOptions then
-    AceConfigDialog:AddToBlizOptions(ADDON_NAME, "EnhanceTBC")
-  end
+  RegisterBlizzardOptions(self)
 
   -- Slash commands
   self:RegisterChatCommand("etbc", "SlashCommand")

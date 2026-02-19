@@ -88,7 +88,7 @@ local function GetUIDB()
   if db.lastModule == nil then db.lastModule = "auras" end
   if db.search == nil then db.search = "" end
 
-  -- ✅ don’t overwrite tree status table every time (keeps expand/collapse state)
+  -- Don't overwrite tree status table every time (keeps expand/collapse state).
   db.treeStatus = db.treeStatus or {}
   db.treeStatus.treewidth = db.treewidth or 280
 
@@ -151,20 +151,25 @@ local KEY_TO_CATEGORY = {
   unitframes = "Combat",
   actionbars = "Combat",
 
-  mouse = "Utility",
   tooltip = "Utility",
   sound = "Utility",
   vendor = "Utility",
   mailbox = "Utility",
   mover = "Utility",
   cvars = "Utility",
+  cooldowns = "Utility",
+  objectives = "Utility",
+  autogossip = "Utility",
 
   chatim = "Social",
   friends = "Social",
-  friendslistdecor = "Social",
 }
 
 local CATEGORY_ORDER = { "Core", "Combat", "Utility", "Social", "Other" }
+local CATEGORY_INDEX = {}
+for i = 1, #CATEGORY_ORDER do
+  CATEGORY_INDEX[CATEGORY_ORDER[i]] = i
+end
 
 local function BuildTree(groups)
   local buckets = {}
@@ -180,7 +185,23 @@ local function BuildTree(groups)
   end
 
   local tree = {}
+  local orderedCats = {}
   for _, cat in ipairs(CATEGORY_ORDER) do
+    orderedCats[#orderedCats + 1] = cat
+  end
+
+  local extras = {}
+  for cat, items in pairs(buckets) do
+    if items and #items > 0 and not CATEGORY_INDEX[cat] then
+      extras[#extras + 1] = cat
+    end
+  end
+  table.sort(extras)
+  for i = 1, #extras do
+    orderedCats[#orderedCats + 1] = extras[i]
+  end
+
+  for _, cat in ipairs(orderedCats) do
     local items = buckets[cat]
     if items and #items > 0 then
       local node = { value = cat, text = cat, children = {} }
@@ -201,12 +222,11 @@ end
 -- ---------------------------------------------------------
 -- Option rendering helpers (AceConfig "info" compat)
 -- ---------------------------------------------------------
-local function TextMatch(hay, needle)
-  if not needle or needle == "" then return true end
+local function TextMatch(hay, needleLower)
+  if not needleLower or needleLower == "" then return true end
   if not hay then return false end
   hay = tostring(hay):lower()
-  needle = tostring(needle):lower()
-  return hay:find(needle, 1, true) ~= nil
+  return hay:find(needleLower, 1, true) ~= nil
 end
 
 local function OptionMatchesSearch(opt, q)
@@ -281,38 +301,57 @@ local function SafeValues(opt, info)
   return {}
 end
 
+local function ResolveText(value, info, optFallback)
+  if type(value) == "function" then
+    local ok, out = pcall(value, info)
+    if not ok then
+      ok, out = pcall(value, optFallback)
+    end
+    if not ok then
+      return ""
+    end
+    if out == nil then return "" end
+    return tostring(out)
+  end
+  if value == nil then return "" end
+  return tostring(value)
+end
+
 -- ---------------------------------------------------------
 -- Widget builders
 -- ---------------------------------------------------------
 local function AddHeading(container, text)
   local w = AceGUI:Create("Heading")
-  w:SetText(text or "")
+  w:SetText(ResolveText(text))
   w:SetFullWidth(true)
   container:AddChild(w)
 end
 
 local function AddDesc(container, text, fontObj)
   local w = AceGUI:Create("Label")
-  w:SetText(text or "")
+  w:SetText(ResolveText(text))
   w:SetFullWidth(true)
   if fontObj then w:SetFontObject(fontObj) end
   container:AddChild(w)
 end
 
 local function SetWidgetDescription(container, widget, text)
-  if not text or text == "" then return end
+  local resolved = ResolveText(text)
+  if resolved == "" then return end
 
   -- Some AceGUI widgets (notably Dropdown on some builds) don't implement SetDescription.
   if widget and type(widget.SetDescription) == "function" then
-    widget:SetDescription(text)
+    widget:SetDescription(resolved)
   else
-    AddDesc(container, text, GameFontHighlightSmall)
+    AddDesc(container, resolved, GameFontHighlightSmall)
   end
 end
 
 local function AddToggle(container, opt, info)
   local w = AceGUI:Create("CheckBox")
-  w:SetLabel(opt.name or opt._id or "")
+  local label = ResolveText(opt.name, info, opt)
+  if label == "" then label = tostring(opt._id or "") end
+  w:SetLabel(label)
   w:SetFullWidth(opt.width == "full")
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -330,7 +369,9 @@ end
 
 local function AddRange(container, opt, info)
   local w = AceGUI:Create("Slider")
-  w:SetLabel(opt.name or opt._id or "")
+  local label = ResolveText(opt.name, info, opt)
+  if label == "" then label = tostring(opt._id or "") end
+  w:SetLabel(label)
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -354,7 +395,9 @@ end
 
 local function AddSelect(container, opt, info)
   local w = AceGUI:Create("Dropdown")
-  w:SetLabel(opt.name or opt._id or "")
+  local label = ResolveText(opt.name, info, opt)
+  if label == "" then label = tostring(opt._id or "") end
+  w:SetLabel(label)
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -376,7 +419,9 @@ end
 
 local function AddColor(container, opt, info)
   local w = AceGUI:Create("ColorPicker")
-  w:SetLabel(opt.name or opt._id or "")
+  local label = ResolveText(opt.name, info, opt)
+  if label == "" then label = tostring(opt._id or "") end
+  w:SetLabel(label)
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -405,7 +450,9 @@ local function AddExecute(container, opt, info)
   end
 
   local w = AceGUI:Create("Button")
-  w:SetText(opt.name or opt._id or "Run")
+  local btnText = ResolveText(opt.name, info, opt)
+  if btnText == "" then btnText = tostring(opt._id or "Run") end
+  w:SetText(btnText)
   w:SetFullWidth(opt.width == "full")
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -413,7 +460,8 @@ local function AddExecute(container, opt, info)
     if IsDisabled(opt, info) then return end
 
     if opt.confirm then
-      local msg = opt.confirmText or "Are you sure?"
+      local msg = ResolveText(opt.confirmText, info, opt)
+      if msg == "" then msg = "Are you sure?" end
       StaticPopup_Show("ETBC_EXEC_CONFIRM", msg, nil, {
         exec = function() SafeExec(opt, info) end
       })
@@ -428,9 +476,12 @@ end
 -- ---------------------------------------------------------
 -- Recursive renderer
 -- ---------------------------------------------------------
-local function NormalizeArgs(argsTable)
+local function NormalizeArgs(argsTable, cache)
   local list = {}
   if type(argsTable) ~= "table" then return list end
+  if cache and cache[argsTable] then
+    return cache[argsTable]
+  end
 
   for id, opt in pairs(argsTable) do
     if type(opt) == "table" and opt.type then
@@ -448,22 +499,25 @@ local function NormalizeArgs(argsTable)
     return oa < ob
   end)
 
+  if cache then
+    cache[argsTable] = list
+  end
   return list
 end
 
-local function AnyMatchInGroup(groupOpt, q, pathStack)
+local function AnyMatchInGroup(groupOpt, q, pathStack, normalizeCache)
   if not q or q == "" then return true end
   if OptionMatchesSearch(groupOpt, q) then return true end
   if type(groupOpt.args) ~= "table" then return false end
 
-  local list = NormalizeArgs(groupOpt.args)
+  local list = NormalizeArgs(groupOpt.args, normalizeCache)
   for _, child in ipairs(list) do
     local info = MakeInfo(pathStack, child)
     if not IsHidden(child, info) then
       if child.type == "group" then
         local nextPath = { unpack(pathStack or {}) }
         nextPath[#nextPath + 1] = child._id
-        if AnyMatchInGroup(child, q, nextPath) then return true end
+        if AnyMatchInGroup(child, q, nextPath, normalizeCache) then return true end
       else
         if OptionMatchesSearch(child, q) then return true end
       end
@@ -473,8 +527,8 @@ local function AnyMatchInGroup(groupOpt, q, pathStack)
   return false
 end
 
-local function RenderArgsRecursive(container, args, q, pathStack)
-  local list = NormalizeArgs(args)
+local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache)
+  local list = NormalizeArgs(args, normalizeCache)
   for _, opt in ipairs(list) do
     local info = MakeInfo(pathStack, opt)
     if not IsHidden(opt, info) then
@@ -482,10 +536,10 @@ local function RenderArgsRecursive(container, args, q, pathStack)
         local nextPath = { unpack(pathStack or {}) }
         nextPath[#nextPath + 1] = opt._id
 
-        if AnyMatchInGroup(opt, q, nextPath) then
+        if AnyMatchInGroup(opt, q, nextPath, normalizeCache) then
           if opt.inline then
             local grp = AceGUI:Create("InlineGroup")
-            grp:SetTitle(opt.name or "")
+            grp:SetTitle(ResolveText(opt.name, info, opt))
             grp:SetFullWidth(true)
             grp:SetLayout("List")
             container:AddChild(grp)
@@ -495,15 +549,15 @@ local function RenderArgsRecursive(container, args, q, pathStack)
             end
 
             if type(opt.args) == "table" then
-              RenderArgsRecursive(grp, opt.args, q, nextPath)
+              RenderArgsRecursive(grp, opt.args, q, nextPath, normalizeCache)
             end
           else
-            AddHeading(container, opt.name or "")
+            AddHeading(container, ResolveText(opt.name, info, opt))
             if opt.desc and opt.desc ~= "" then
               AddDesc(container, opt.desc, GameFontHighlightSmall)
             end
             if type(opt.args) == "table" then
-              RenderArgsRecursive(container, opt.args, q, nextPath)
+              RenderArgsRecursive(container, opt.args, q, nextPath, normalizeCache)
             end
           end
         end
@@ -546,14 +600,18 @@ local function RenderOptions(scroll, groups, moduleKey, searchText)
     return
   end
 
-  local q = tostring(searchText or "")
+  local q = tostring(searchText or ""):lower()
+  local normalizeCache = {}
   AddHeading(scroll, g.name)
 
-  -- ✅ ensure we pass an args table
+  -- Ensure we pass an args table.
   local args = (opts.type == "group" and opts.args) or opts.args or opts
   if type(args) ~= "table" then args = {} end
 
-  RenderArgsRecursive(scroll, args, q, { moduleKey })
+  RenderArgsRecursive(scroll, args, q, { moduleKey }, normalizeCache)
+  if q ~= "" and scroll.children and #scroll.children <= 1 then
+    AddDesc(scroll, "No options match the current search.", GameFontHighlightSmall)
+  end
 
   if scroll.DoLayout then
     scroll:DoLayout()
@@ -573,6 +631,7 @@ local state = {
   rightScroll = nil,
   search = nil,
   searchTimer = nil,
+  resizeTimer = nil,
   closing = false,
 }
 
@@ -607,8 +666,8 @@ local function ApplyWindowStyle(win)
 
   -- Styled inner background aligned with content
   if not win.frame._etbcInner then
-    -- ✅ always use BackdropTemplate when available; safe in Classic-era clients
-    local inner = CreateFrame("Frame", nil, win.frame, "BackdropTemplate")
+    -- Use BackdropTemplate when available; safe in Classic-era clients.
+    local inner = CreateFrame("Frame", nil, win.frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
     inner:SetPoint("TOPLEFT", win.content, "TOPLEFT", -6, 6)
     inner:SetPoint("BOTTOMRIGHT", win.content, "BOTTOMRIGHT", 6, -6)
 
@@ -685,13 +744,18 @@ end
 local function ClearPreviewModes()
   local p = ETBC.db and ETBC.db.profile
   if not p then return end
+  local bus = ETBC.ApplyBus
+  local batched = bus and bus.BeginBatch and bus.EndBatch
+  if batched then
+    bus:BeginBatch()
+  end
 
   local function DisablePreview(key, applyKey)
     local db = p[key]
     if db and db.preview then
       db.preview = false
-      if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
-        ETBC.ApplyBus:Notify(applyKey or key)
+      if bus and bus.Notify then
+        bus:Notify(applyKey or key)
       end
     end
   end
@@ -699,10 +763,16 @@ local function ClearPreviewModes()
   DisablePreview("auras")
   DisablePreview("actiontracker")
   DisablePreview("gcdbar")
+  DisablePreview("swingtimer")
   DisablePreview("combattext")
+
+  if batched then
+    bus:EndBatch(true)
+  end
 end
 
-function ConfigWindow.Close(_)
+function ConfigWindow:Close()
+  local _ = self
   if state.closing then return end
   if not state.win then return end
   state.closing = true
@@ -713,9 +783,18 @@ function ConfigWindow.Close(_)
   if state.searchTimer and state.searchTimer.Cancel then
     state.searchTimer:Cancel()
   end
+  if state.resizeTimer and state.resizeTimer.Cancel then
+    state.resizeTimer:Cancel()
+  end
 
   local w = state.win
-  state.win, state.groups, state.tree, state.rightScroll, state.search, state.searchTimer = nil, nil, nil, nil, nil, nil
+  state.win = nil
+  state.groups = nil
+  state.tree = nil
+  state.rightScroll = nil
+  state.search = nil
+  state.searchTimer = nil
+  state.resizeTimer = nil
 
   if w and w.Release then
     w:Release()
@@ -743,6 +822,20 @@ end
 
 local function NewDebounceTimer(delay, fn)
   local timer = { _cancelled = false }
+
+  if ETBC and ETBC.ScheduleTimer and ETBC.CancelTimer then
+    local handle = ETBC:ScheduleTimer(function()
+      if timer._cancelled then return end
+      fn()
+    end, delay)
+    function timer:Cancel()
+      self._cancelled = true
+      if handle then
+        ETBC:CancelTimer(handle, true)
+      end
+    end
+    return timer
+  end
 
   if C_Timer and C_Timer.NewTimer then
     local handle = C_Timer.NewTimer(delay, function()
@@ -784,7 +877,7 @@ local function BuildWindow()
 
   local win = AceGUI:Create("Frame")
   win:SetTitle("EnhanceTBC")
-  win:SetStatusText("TBC Anniversary UI • Live settings • /etbc")
+  win:SetStatusText("TBC Anniversary UI | Live settings | /etbc")
   win:SetLayout("Fill")
   win:SetWidth(db.w or 980)
   win:SetHeight(db.h or 720)
@@ -796,9 +889,14 @@ local function BuildWindow()
 
   win.frame:EnableKeyboard(true)
   win.frame:SetPropagateKeyboardInput(true)
-  win.frame:HookScript("OnKeyDown", function(_, key)
+  win.frame:HookScript("OnKeyDown", function(frame, key)
     if key == "ESCAPE" then
+      if frame.SetPropagateKeyboardInput then
+        frame:SetPropagateKeyboardInput(false)
+      end
       ConfigWindow:Close()
+    elseif frame.SetPropagateKeyboardInput then
+      frame:SetPropagateKeyboardInput(true)
     end
   end)
 
@@ -806,26 +904,42 @@ local function BuildWindow()
     ConfigWindow:Close()
   end)
 
+  local root
+
   -- Handle window resize dynamically
+  local function QueueResizeLayout()
+    if state.resizeTimer then return end
+    state.resizeTimer = NewDebounceTimer(0.06, function()
+      state.resizeTimer = nil
+      if win and win.DoLayout then
+        win:DoLayout()
+      end
+      if root and root.DoLayout then
+        root:DoLayout()
+      end
+      if state.tree and state.tree.DoLayout then
+        state.tree:DoLayout()
+      end
+      if state.rightScroll then
+        if state.rightScroll.DoLayout then
+          state.rightScroll:DoLayout()
+        end
+        if state.rightScroll.UpdateScroll then
+          state.rightScroll:UpdateScroll()
+        end
+      end
+      ApplyWindowStyle(win)
+    end)
+  end
+
   win.frame:HookScript("OnSizeChanged", function()
-    if state.tree and state.tree.DoLayout then
-      state.tree:DoLayout()
-    end
-    if state.rightScroll then
-      if state.rightScroll.DoLayout then
-        state.rightScroll:DoLayout()
-      end
-      if state.rightScroll.UpdateScroll then
-        state.rightScroll:UpdateScroll()
-      end
-    end
-    ApplyWindowStyle(win)
+    QueueResizeLayout()
   end)
 
   state.win = win
 
   -- Root: Fill -> vertical group inside
-  local root = AceGUI:Create("SimpleGroup")
+  root = AceGUI:Create("SimpleGroup")
   root:SetFullWidth(true)
   root:SetFullHeight(true)
   root:SetLayout("List")
@@ -951,7 +1065,8 @@ local function BuildWindow()
   win.frame:HookScript("OnMouseUp", function() SaveWindow() end)
 end
 
-function ConfigWindow.Open(_)
+function ConfigWindow:Open()
+  local _ = self
   if state.win and state.win.frame then
     state.win.frame:Show()
     return

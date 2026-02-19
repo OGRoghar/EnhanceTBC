@@ -41,7 +41,11 @@ local function GetDB()
   local db = ETBC.db.profile.mover
 
   if db.enabled == nil then db.enabled = true end
-  if db.unlocked == nil then db.unlocked = false end
+  if db.moveMode == nil and db.unlocked ~= nil then
+    db.moveMode = db.unlocked and true or false
+  end
+  if db.moveMode == nil then db.moveMode = false end
+  if db.unlocked == nil then db.unlocked = db.moveMode and true or false end
 
   if db.snapToGrid == nil then db.snapToGrid = true end
   if db.gridSize == nil then db.gridSize = 8 end
@@ -385,7 +389,7 @@ local function UpdateAllHandles()
       if db.showFrameNames then h._label:SetText(key) end
     end
 
-    if db.unlocked and db.enabled and ETBC.db.profile.general.enabled then
+    if db.moveMode and db.enabled and ETBC.db.profile.general.enabled then
       -- If the frame is hidden, handle should hide too
       if frame and frame.IsShown and frame:IsShown() then
         h:Show()
@@ -479,6 +483,7 @@ end
 function M.SetUnlocked(_, v)
   local db = GetDB()
   db.unlocked = v and true or false
+  db.moveMode = db.unlocked
 
   if db.unlocked and db.showGrid then
     ShowGrid()
@@ -504,19 +509,20 @@ end
 
 function M.SetMoveMode(_, enabled)
   local db = GetDB()
-  -- Convert to boolean using Lua idiom
-  db.moveMode = not not enabled
+  local v = enabled and true or false
+  db.moveMode = v
+  db.unlocked = v
   ETBC.ApplyBus:Notify("mover")
 end
 
 function M:SetMasterMove(enabled)
-  self:SetUnlocked(enabled and true or false)
-  self:SetMoveMode(enabled and true or false)
+  local v = enabled and true or false
+  self:SetMoveMode(v)
 end
 
 function M:ToggleMasterMove()
   local db = GetDB()
-  local nextState = not (db.moveMode and db.unlocked)
+  local nextState = not db.moveMode
   self:SetMasterMove(nextState)
 end
 
@@ -609,7 +615,7 @@ local function Apply()
     driver:SetScript("OnEvent", function()
       -- Re-sync grid/handles on any of these
       local db2 = GetDB()
-      if db2.unlocked and db2.showGrid then
+      if db2.moveMode and db2.showGrid then
         ShowGrid()
       else
         HideGrid()
@@ -621,7 +627,7 @@ local function Apply()
     -- Light handle sync while unlocked (so if frames resize, handles follow)
     driver:SetScript("OnUpdate", function(_, elapsed)
       local db2 = GetDB()
-      if not (db2.unlocked and enabled) then
+      if not (db2.moveMode and enabled) then
         driver:Hide()
         return
       end
@@ -637,14 +643,14 @@ local function Apply()
       end
     end)
 
-    if db.unlocked and db.showGrid then
+    if db.moveMode and db.showGrid then
       ShowGrid()
     else
       HideGrid()
     end
     UpdateAllHandles()
 
-    if db.unlocked then driver:Show() else driver:Hide() end
+    if db.moveMode then driver:Show() else driver:Hide() end
   else
     HideGrid()
     for _, h in pairs(handles) do

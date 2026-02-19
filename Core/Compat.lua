@@ -85,6 +85,24 @@ do
 end
 
 -- ---------------------------------------------------------
+-- GetRaidTargetIndex compatibility
+-- TBC 20505 NamePlate code can call GetRaidTargetIndex with nil/invalid unit.
+-- Guarding this prevents Blizzard_NamePlates hard errors.
+-- ---------------------------------------------------------
+do
+  if type(GetRaidTargetIndex) == "function" and not _G.__etbcRaidTargetIndexShimInstalled then
+    local origGetRaidTargetIndex = GetRaidTargetIndex
+    _G.GetRaidTargetIndex = function(unit, ...)
+      if type(unit) ~= "string" or unit == "" then
+        return nil
+      end
+      return origGetRaidTargetIndex(unit, ...)
+    end
+    _G.__etbcRaidTargetIndexShimInstalled = true
+  end
+end
+
+-- ---------------------------------------------------------
 -- Helpers used across modules
 -- ---------------------------------------------------------
 function C.Clamp(v, lo, hi)

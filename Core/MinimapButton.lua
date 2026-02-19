@@ -9,6 +9,7 @@ local LDB = LibStub and LibStub("LibDataBroker-1.1", true)
 local LDBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
 if not LDB or not LDBIcon then return end
 
+local MINIMAP_NAME = "EnhanceTBC"
 local ICON_PATH = "Interface\\AddOns\\EnhanceTBC\\Media\\Images\\minimap.tga"
 
 -- Crop coords for circular minimap mask (reduces "tiny icon" look)
@@ -16,6 +17,27 @@ local ICON_COORDS = { 0.08, 0.92, 0.08, 0.92 }
 local unpackFn = _G.unpack or table.unpack
 
 local dataObject
+
+local function StyleMinimapButton(btn)
+  if not btn or not btn.icon then return end
+  if btn.icon.SetTexCoord and unpackFn then
+    btn.icon:SetTexCoord(unpackFn(ICON_COORDS))
+  end
+  if btn.icon.ClearAllPoints and btn.icon.SetPoint then
+    btn.icon:ClearAllPoints()
+    btn.icon:SetPoint("CENTER", btn, "CENTER", 0, 0)
+  end
+  if btn.icon.SetSize then
+    btn.icon:SetSize(18, 18)
+  end
+end
+
+local function RefreshIcon(db)
+  if LDBIcon.Refresh then
+    LDBIcon:Refresh(MINIMAP_NAME, db)
+  end
+  StyleMinimapButton(LDBIcon:GetMinimapButton(MINIMAP_NAME))
+end
 
 local function EnsureDB()
   if not ETBC.db or not ETBC.db.profile then return nil end
@@ -30,7 +52,7 @@ end
 local function EnsureDataObject()
   if dataObject then return end
 
-  dataObject = LDB:NewDataObject("EnhanceTBC", {
+  dataObject = LDB:NewDataObject(MINIMAP_NAME, {
     type = "data source",
     text = "EnhanceTBC",
     icon = ICON_PATH,
@@ -50,6 +72,10 @@ local function EnsureDataObject()
         if ETBC.Modules and ETBC.Modules.MinimapPlus and ETBC.Modules.MinimapPlus.ToggleSinkVisibility then
           ETBC.Modules.MinimapPlus:ToggleSinkVisibility()
         end
+      elseif button == "MiddleButton" then
+        if ETBC.ResetMinimapIconPosition then
+          ETBC:ResetMinimapIconPosition()
+        end
       end
     end,
 
@@ -60,6 +86,7 @@ local function EnsureDataObject()
       tooltip:AddLine(" ")
       tooltip:AddLine("|cffffffffLeft Click:|r Open Config")
       tooltip:AddLine("|cffffffffRight Click:|r Show/Hide Button Sink")
+      tooltip:AddLine("|cffffffffMiddle Click:|r Reset Button Position")
       tooltip:AddLine(" ")
 
       if ETBC.db and ETBC.db.profile and ETBC.db.profile.minimapPlus then
@@ -80,34 +107,15 @@ function ETBC:InitMinimapIcon()
 
   if not self._minimapRegistered then
     self._minimapRegistered = true
-    LDBIcon:Register("EnhanceTBC", dataObject, db)
-
-    local btn = LDBIcon:GetMinimapButton("EnhanceTBC")
-    if btn and btn.icon and btn.icon.SetTexCoord then
-      if unpackFn then
-        btn.icon:SetTexCoord(unpackFn(ICON_COORDS))
-      end
-    end
-    if btn and btn.icon then
-      if btn.icon.ClearAllPoints and btn.icon.SetPoint then
-        btn.icon:ClearAllPoints()
-        btn.icon:SetPoint("CENTER", btn, "CENTER", 0, 0)
-      end
-      if btn.icon.SetSize then
-        btn.icon:SetSize(18, 18)
-      end
-    end
+    LDBIcon:Register(MINIMAP_NAME, dataObject, db)
   end
 
   if db.hide then
-    LDBIcon:Hide("EnhanceTBC")
+    LDBIcon:Hide(MINIMAP_NAME)
   else
-    LDBIcon:Show("EnhanceTBC")
+    LDBIcon:Show(MINIMAP_NAME)
   end
-
-  if LDBIcon.Refresh then
-    LDBIcon:Refresh("EnhanceTBC", db)
-  end
+  RefreshIcon(db)
 end
 
 function ETBC:ToggleMinimapIcon(show)
@@ -125,12 +133,24 @@ function ETBC:ToggleMinimapIcon(show)
   end
 
   if db.hide then
-    LDBIcon:Hide("EnhanceTBC")
+    LDBIcon:Hide(MINIMAP_NAME)
   else
-    LDBIcon:Show("EnhanceTBC")
+    LDBIcon:Show(MINIMAP_NAME)
+  end
+  RefreshIcon(db)
+end
+
+function ETBC:ResetMinimapIconPosition()
+  local db = EnsureDB()
+  if not db then return end
+
+  db.minimapPos = 220
+  db.radius = 80
+
+  if not self._minimapRegistered then
+    self:InitMinimapIcon()
+    return
   end
 
-  if LDBIcon.Refresh then
-    LDBIcon:Refresh("EnhanceTBC", db)
-  end
+  RefreshIcon(db)
 end

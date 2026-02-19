@@ -9,12 +9,18 @@ ETBC.Modules.MinimapPlus = mod
 local MINIMAP_SIZE = 165
 local ROUND_MASK_TEXTURE = "Textures\\MinimapMask"
 local SQUARE_MASK_TEXTURE = "Interface\\ChatFrame\\ChatFrameBackground"
+local MINIMAP_CONTAINER_FLAG = "etbc_minimap_container"
+local RIGHT_MANAGED_FLAG = "etbc_ui_parent_right_managed_frame"
+local TRACKING_POINT_FLAG = "etbc_tracking_button"
+local LFG_POINT_FLAG = "etbc_lfg_button"
 
 local state = {
   styled = false,
   containerHooked = false,
   timeTextureHooked = false,
   questWatchHooked = false,
+  trackingPointHooked = false,
+  lfgPointHooked = false,
   toggleButtonShow = nil,
   eventFrame = nil,
   performanceFrame = nil,
@@ -86,15 +92,27 @@ local function EnsureEventFrame()
   if state.eventFrame then return end
   state.eventFrame = CreateFrame("Frame", "EnhanceTBC_MinimapEventFrame")
   state.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+  state.eventFrame:RegisterEvent("ADDON_LOADED")
   state.eventFrame:RegisterEvent("BAG_UPDATE")
   state.eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
   state.eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
   state.eventFrame:RegisterEvent("MERCHANT_CLOSED")
-  state.eventFrame:SetScript("OnEvent", function(_, event, bag)
+  state.eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if not IconsEnabled() then return end
     if not state.iconsFrame then return end
 
-    if event == "PLAYER_ENTERING_WORLD" or (event == "BAG_UPDATE" and bag and bag <= NUM_BAG_SLOTS) then
+    if event == "ADDON_LOADED" then
+      if arg1 == "Blizzard_TimeManager" then
+        mod:StyleTimeManagerClockButton()
+      elseif arg1 == "Blizzard_GroupFinder_VanillaStyle" then
+        mod:MoveMinimapLFGButton()
+      elseif arg1 == "Blizzard_BattlefieldMap" then
+        mod:StyleBattlefieldMinimap()
+      end
+      return
+    end
+
+    if event == "PLAYER_ENTERING_WORLD" or (event == "BAG_UPDATE" and arg1 and arg1 <= NUM_BAG_SLOTS) then
       state.iconsFrame:updateInventoryDisplay()
     end
 
@@ -119,15 +137,21 @@ function mod.StyleMinimap(_)
   MinimapCluster.MinimapContainer:SetPoint("BOTTOM", MinimapCluster, "BOTTOM", -1, 1.5)
 
   if not state.containerHooked then
+    local inContainerHook = false
     hooksecurefunc(MinimapCluster.MinimapContainer, "SetPoint", function(self, _, _, _, _, _, flag)
       if not GetDB().enabled then return end
-      if flag ~= "minimap_container" then
-        self:ClearAllPoints()
-        self:SetPoint("BOTTOM", MinimapCluster, "BOTTOM", -1, 1.5, "minimap_container")
-      end
+      if flag == MINIMAP_CONTAINER_FLAG then return end
+      if inContainerHook then return end
+      inContainerHook = true
+      self:ClearAllPoints()
+      self:SetPoint("BOTTOM", MinimapCluster, "BOTTOM", -1, 1.5, MINIMAP_CONTAINER_FLAG)
+      inContainerHook = false
     end)
     state.containerHooked = true
   end
+
+  MinimapCluster.MinimapContainer:ClearAllPoints()
+  MinimapCluster.MinimapContainer:SetPoint("BOTTOM", MinimapCluster, "BOTTOM", -1, 1.5, MINIMAP_CONTAINER_FLAG)
 
   local zoom = Minimap:GetZoom()
   Minimap:SetZoom(zoom == 0 and 1 or 0)
@@ -227,7 +251,21 @@ function mod.StyleMinimap(_)
   end
   if MiniMapTracking then
     MiniMapTracking:SetScale(0.8)
-    MiniMapTracking:SetPoint("TOPLEFT", 2, -45)
+    MiniMapTracking:ClearAllPoints()
+    MiniMapTracking:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 2, -45, TRACKING_POINT_FLAG)
+    if not state.trackingPointHooked then
+      local inTrackingHook = false
+      hooksecurefunc(MiniMapTracking, "SetPoint", function(self, _, _, _, _, _, flag)
+        if flag == TRACKING_POINT_FLAG then return end
+        if inTrackingHook then return end
+        inTrackingHook = true
+        self:ClearAllPoints()
+        self:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 2, -45, TRACKING_POINT_FLAG)
+        inTrackingHook = false
+      end
+      )
+      state.trackingPointHooked = true
+    end
   end
   if MiniMapBattlefieldFrame then
     MiniMapBattlefieldFrame:SetScale(0.9)
@@ -573,7 +611,20 @@ function mod.MoveMinimapLFGButton(_)
 
   LFGMinimapFrame:SetScale(0.85)
   LFGMinimapFrame:ClearAllPoints()
-  LFGMinimapFrame:SetPoint("BOTTOMLEFT", 1.5, 85)
+  LFGMinimapFrame:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", 1.5, 85, LFG_POINT_FLAG)
+
+  if not state.lfgPointHooked then
+    local inLfgHook = false
+    hooksecurefunc(LFGMinimapFrame, "SetPoint", function(self, _, _, _, _, _, flag)
+      if flag == LFG_POINT_FLAG then return end
+      if inLfgHook then return end
+      inLfgHook = true
+      self:ClearAllPoints()
+      self:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", 1.5, 85, LFG_POINT_FLAG)
+      inLfgHook = false
+    end)
+    state.lfgPointHooked = true
+  end
 end
 
 function mod.StyleBattlefieldMinimap(_)
@@ -598,12 +649,15 @@ function mod.MoveQuestWatchFrame(_)
 
   frame:SetScale(0.9)
   if not state.questWatchHooked then
+    local inRightManagedHook = false
     hooksecurefunc(frame, "SetPoint", function(self, pos_a, anchor, pos_b, _, _, flag)
       if not GetDB().enabled then return end
-      if flag ~= "ui_parent_right_managed_frame" then
-        self:ClearAllPoints()
-        self:SetPoint(pos_a, anchor, pos_b, -90, -255, "ui_parent_right_managed_frame")
-      end
+      if flag == RIGHT_MANAGED_FLAG then return end
+      if inRightManagedHook then return end
+      inRightManagedHook = true
+      self:ClearAllPoints()
+      self:SetPoint(pos_a, anchor, pos_b, -90, -255, RIGHT_MANAGED_FLAG)
+      inRightManagedHook = false
     end)
     state.questWatchHooked = true
   end

@@ -3,6 +3,78 @@ local _, ETBC = ...
 ETBC.ApplyBus = ETBC.ApplyBus or {}
 
 local listeners = {}
+local pendingKeys = {}
+local pendingOrder = {}
+local snapshot = {}
+local flushScheduled = false
+local flushing = false
+local batchDepth = 0
+
+local function LogApplyError(key, err)
+  if ETBC and ETBC.Debug then
+    ETBC:Debug("ApplyBus error (" .. tostring(key) .. "): " .. tostring(err))
+  end
+end
+
+local function DispatchKey(key)
+  local list = listeners[key]
+  if not list then return end
+
+  local n = #list
+  for i = 1, n do
+    snapshot[i] = list[i]
+  end
+
+  for i = 1, n do
+    local fn = snapshot[i]
+    snapshot[i] = nil
+    if type(fn) == "function" then
+      local ok, err = pcall(fn, key)
+      if not ok then
+        LogApplyError(key, err)
+      end
+    end
+  end
+end
+
+local function QueueKey(key)
+  if key == nil then return end
+  if pendingKeys[key] then return end
+  pendingKeys[key] = true
+  pendingOrder[#pendingOrder + 1] = key
+end
+
+local function FlushPending()
+  if flushing then return end
+  flushing = true
+
+  for i = 1, #pendingOrder do
+    local key = pendingOrder[i]
+    pendingOrder[i] = nil
+    pendingKeys[key] = nil
+    DispatchKey(key)
+  end
+
+  flushing = false
+end
+
+local function ScheduleFlush()
+  if flushScheduled or batchDepth > 0 then return end
+  flushScheduled = true
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0, function()
+      flushScheduled = false
+      if batchDepth == 0 then
+        FlushPending()
+      end
+    end)
+    return
+  end
+
+  flushScheduled = false
+  FlushPending()
+end
 
 function ETBC.ApplyBus.Register(_, key, fn)
   if not key or type(fn) ~= "function" then return end
@@ -26,21 +98,47 @@ function ETBC.ApplyBus.Unregister(_, key, fn)
 end
 
 function ETBC.ApplyBus.Notify(_, key)
-  local list = listeners[key]
-  if not list then return end
-  local snapshot = {}
-  for i = 1, #list do snapshot[i] = list[i] end
-  for i = 1, #snapshot do
-    local ok, err = pcall(snapshot[i], key)
-    if not ok then
-      if ETBC and ETBC.Debug then ETBC:Debug("ApplyBus error ("..tostring(key).."): "..tostring(err)) end
-    end
-  end
+  if not listeners[key] then return end
+  QueueKey(key)
+  ScheduleFlush()
 end
 
-function ETBC.ApplyBus:NotifyAll()
+function ETBC.ApplyBus.NotifyAll(_)
   for key in pairs(listeners) do
-    self:Notify(key)
+    QueueKey(key)
+  end
+  ScheduleFlush()
+end
+
+function ETBC.ApplyBus.NotifyNow(_, key)
+  if not listeners[key] then return end
+  QueueKey(key)
+  FlushPending()
+end
+
+function ETBC.ApplyBus.NotifyAllNow(_)
+  for key in pairs(listeners) do
+    QueueKey(key)
+  end
+  FlushPending()
+end
+
+function ETBC.ApplyBus.BeginBatch(_)
+  batchDepth = batchDepth + 1
+end
+
+function ETBC.ApplyBus.EndBatch(_, flushNow)
+  if batchDepth <= 0 then
+    batchDepth = 0
+  else
+    batchDepth = batchDepth - 1
+  end
+
+  if batchDepth > 0 then return end
+  if flushNow then
+    FlushPending()
+  else
+    ScheduleFlush()
   end
 end
 

@@ -10,7 +10,33 @@ local function SafeCall(fn)
   return false, nil, tostring(v)
 end
 
-function ETBC.BuildOptions(_)
+local function AsNumber(v, fallback)
+  local n = tonumber(v)
+  if n then return n end
+  return fallback
+end
+
+local function EnsureGroup(tbl, name, order)
+  if type(tbl) ~= "table" then
+    return {
+      type = "group",
+      name = name,
+      order = order,
+      args = {},
+    }
+  end
+
+  tbl.type = "group"
+  tbl.name = tbl.name or name
+  tbl.order = AsNumber(tbl.order, order)
+  if type(tbl.args) ~= "table" then
+    tbl.args = {}
+  end
+  return tbl
+end
+
+function ETBC:BuildOptions()
+  local _ = self
   local opts = {
     type = "group",
     name = "EnhanceTBC",
@@ -31,7 +57,7 @@ function ETBC.BuildOptions(_)
           desc = {
             type = "description",
             name = "QoL suite for TBC Anniversary.\n\nUse /etbc for the custom config window.\n"
-              .. "Use ESC → Options → AddOns for Blizzard panel.",
+              .. "Use ESC -> Options -> AddOns for Blizzard panel.",
             order = 2,
           },
         },
@@ -51,22 +77,50 @@ function ETBC.BuildOptions(_)
 
   local groups = SR:GetGroups()
   if type(groups) ~= "table" then return opts end
+  if #groups == 0 then
+    opts.args.modules.args._empty = {
+      type = "description",
+      name = "No settings groups are registered yet.",
+      order = 1,
+    }
+    return opts
+  end
+
+  table.sort(groups, function(a, b)
+    local ao = AsNumber(type(a) == "table" and a.order, 1000)
+    local bo = AsNumber(type(b) == "table" and b.order, 1000)
+    if ao ~= bo then
+      return ao < bo
+    end
+
+    local ak = tostring(type(a) == "table" and a.key or "")
+    local bk = tostring(type(b) == "table" and b.key or "")
+    if ak ~= bk then
+      return ak < bk
+    end
+
+    local an = tostring(type(a) == "table" and a.name or "")
+    local bn = tostring(type(b) == "table" and b.name or "")
+    return an < bn
+  end)
 
   local seen = {}
   for _, g in ipairs(groups) do
     if type(g) == "table" and g.key and g.name and g.options then
       local key = tostring(g.key)
       local name = tostring(g.name)
+      local order = AsNumber(g.order, 1000)
 
       if not seen[key] then
         seen[key] = true
 
-        opts.args.modules.args[key] = {
+        local baseGroup = {
           type = "group",
           name = name,
-          order = tonumber(g.order) or 1000,
+          order = order,
           args = {},
         }
+        opts.args.modules.args[key] = baseGroup
 
         -- Support two patterns:
         --  A) g.options() returns a full AceConfig group (type/name/args)
@@ -74,25 +128,17 @@ function ETBC.BuildOptions(_)
         local ok, built, err = SafeCall(g.options)
         if ok and type(built) == "table" then
           if built.type == "group" and type(built.args) == "table" then
-            -- use returned group (but keep our ordering/name if missing)
-            opts.args.modules.args[key] = built
-            opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
-            opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
-          elseif type(built.args) == "table" and built.type then
-            -- group-like (non-standard type) - normalize to valid group
-            opts.args.modules.args[key] = built
-            opts.args.modules.args[key].type = "group"
-            opts.args.modules.args[key].name = opts.args.modules.args[key].name or name
-            opts.args.modules.args[key].order = opts.args.modules.args[key].order or (tonumber(g.order) or 1000)
-            opts.args.modules.args[key].args = opts.args.modules.args[key].args or {}
+            opts.args.modules.args[key] = EnsureGroup(built, name, order)
+          elseif type(built.args) == "table" or built.type then
+            opts.args.modules.args[key] = EnsureGroup(built, name, order)
           else
             -- assume "args table"
-            opts.args.modules.args[key].args = built
+            baseGroup.args = built
           end
         else
-          opts.args.modules.args[key].args._err = {
+          baseGroup.args._err = {
             type = "description",
-            name = "Failed to build options for this module."
+            name = "Failed to build options for " .. name .. "."
               .. (err and ("\nReason: " .. err) or ""),
             order = 1,
           }
