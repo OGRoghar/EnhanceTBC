@@ -145,7 +145,7 @@ local function GetBagNumSlots(bag)
   return 0
 end
 ```
-See `Modules/Vendor.lua` and `Modules/Mailbox.lua` for complete examples.
+See `Modules/Vendor.lua` for a complete example.
 
 ### Frame and UI Constraints
 
@@ -232,7 +232,7 @@ local driver = CreateFrame("Frame", "EnhanceTBC_ModuleName", UIParent)
 ```
 
 ### Slash Commands and UI Access
-```lua
+```text
 -- Addon provides multiple entry points:
 /etbc                    -- Open config UI
 /etbc config            -- Open config UI (alias)
@@ -242,7 +242,9 @@ local driver = CreateFrame("Frame", "EnhanceTBC_ModuleName", UIParent)
 /etbc listgossip        -- List auto-gossip patterns
 /etbc addgossip <text>  -- Add auto-gossip pattern
 /enhancetbc             -- Alias for /etbc
+```
 
+```lua
 -- Opening config programmatically
 ETBC:OpenConfig()       -- Preferred method (handles custom UI fallback)
 ```
@@ -349,16 +351,25 @@ The `.toc` file defines strict load order:
 Violating this order causes nil reference errors.
 
 ### Settings Registry Pattern
-Optional but recommended for complex modules:
+Used across all Settings files to register option groups:
 ```lua
--- In Settings file, register capabilities
-ETBC.SettingsRegistry:Register("modulename", {
-  providesSomeFeature = true,
-  version = "1.0"
+-- In Settings file, register the options group
+ETBC.SettingsRegistry:RegisterGroup("modulename", {
+  name = "Module Name",
+  order = 10,
+  options = function()
+    return {
+      -- AceConfig option table
+    }
+  end
 })
 
--- Other modules can check capabilities
-if ETBC.SettingsRegistry:HasCapability("modulename", "providesSomeFeature") then
-  -- Use feature
+-- Retrieve registered group info
+local info = ETBC.SettingsRegistry:Get("modulename")
+if info then
+  -- Access group metadata
 end
+
+-- Get all registered groups
+local groups = ETBC.SettingsRegistry:GetGroups()
 ```
