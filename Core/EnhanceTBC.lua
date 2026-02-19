@@ -108,6 +108,74 @@ local function ApplyImportedProfile(self, payload)
   return true
 end
 
+local function NormalizeKey(s)
+  if type(s) ~= "string" then return "" end
+  return s:lower():gsub("[^a-z0-9]", "")
+end
+
+local function ResolveProfileKey(self, moduleKey)
+  if type(moduleKey) ~= "string" or moduleKey == "" then return nil end
+  if not (self and self.db and type(self.db.profile) == "table") then return nil end
+
+  if self.db.profile[moduleKey] ~= nil then
+    return moduleKey
+  end
+
+  local target = NormalizeKey(moduleKey)
+  if target == "" then return nil end
+
+  for key in pairs(self.db.profile) do
+    if type(key) == "string" and NormalizeKey(key) == target then
+      return key
+    end
+  end
+
+  return nil
+end
+
+function ETBC:ResetModuleProfile(moduleKey)
+  if not (self and self.db and type(self.db.profile) == "table") then
+    return false, "DB not ready"
+  end
+  if not (ETBC.defaults and type(ETBC.defaults.profile) == "table") then
+    return false, "defaults missing"
+  end
+
+  local profileKey = ResolveProfileKey(self, moduleKey)
+  if not profileKey then
+    return false, "unknown module key"
+  end
+
+  local defaults = ETBC.defaults.profile[profileKey]
+  if defaults == nil then
+    return false, "no defaults for module"
+  end
+
+  if type(defaults) == "table" then
+    self.db.profile[profileKey] = self.db.profile[profileKey] or {}
+    ReplaceTable(self.db.profile[profileKey], defaults)
+  else
+    self.db.profile[profileKey] = DeepCopy(defaults)
+  end
+
+  self:RefreshAll("module-reset:" .. tostring(moduleKey))
+  return true
+end
+
+local function PrintHelp(self)
+  self:Print("Commands:")
+  self:Print("/etbc, /etbc config - Open config")
+  self:Print("/etbc reset - Reset full profile")
+  self:Print("/etbc resetmodule <moduleKey> - Reset one module to defaults")
+  self:Print("/etbc minimap - Toggle minimap icon")
+  self:Print("/etbc moveall [on|off|toggle] - Toggle mover mode")
+  self:Print("/etbc profile export")
+  self:Print("/etbc profile import <data>")
+  self:Print("/etbc profile share <player>")
+  self:Print("/etbc listgossip")
+  self:Print("/etbc addgossip <pattern>")
+end
+
 local function RegisterBlizzardOptions(self)
   if self._blizOptionsRegistered then return end
 
@@ -271,8 +339,66 @@ function ETBC:SlashCommand(input)
   local rawInput = input or ""
   input = rawInput:lower()
 
+  local cmd, args = rawInput:match("^%s*(%S+)%s*(.-)%s*$")
+  cmd = (cmd and cmd:lower()) or ""
+  args = args or ""
+
+  local function DoExportProfile()
+    local payload = BuildProfilePayload(self)
+    local encoded, err = EncodePayload(payload)
+    if not encoded then
+      self:Print("Export failed: " .. tostring(err))
+      return
+    end
+    self:Print("Profile export start")
+    PrintWrapped(self, encoded, 220)
+    self:Print("Profile export end")
+  end
+
+  local function DoImportProfile(encoded)
+    if not encoded or encoded == "" then
+      self:Print("Usage: /etbc profile import <export-string>")
+      return
+    end
+    local payload, err = DecodePayload(encoded)
+    if not payload then
+      self:Print("Import failed: " .. tostring(err))
+      return
+    end
+    local ok, applyErr = ApplyImportedProfile(self, payload)
+    if ok then
+      self:Print("Profile imported.")
+    else
+      self:Print("Import failed: " .. tostring(applyErr))
+    end
+  end
+
+  local function DoShareProfile(target)
+    if not target or target == "" then
+      self:Print("Usage: /etbc profile share <player>")
+      return
+    end
+    local payload = BuildProfilePayload(self)
+    local encoded, err = EncodePayload(payload)
+    if not encoded then
+      self:Print("Share failed: " .. tostring(err))
+      return
+    end
+    if self.SendCommMessage then
+      self:SendCommMessage(PROFILE_COMM_PREFIX, encoded, "WHISPER", target, "BULK")
+      self:Print("Shared profile with " .. tostring(target) .. ".")
+    else
+      self:Print("Share failed: comms unavailable.")
+    end
+  end
+
   if input == "" or input == "config" or input == "options" then
     self:OpenConfig()
+    return
+  end
+
+  if input == "help" or input == "?" then
+    PrintHelp(self)
     return
   end
 
@@ -293,16 +419,54 @@ function ETBC:SlashCommand(input)
     return
   end
 
-  if input == "exportprofile" or input == "profileexport" then
-    local payload = BuildProfilePayload(self)
-    local encoded, err = EncodePayload(payload)
-    if not encoded then
-      self:Print("Export failed: " .. tostring(err))
+  if cmd == "resetmodule" then
+    local key = args:match("^(%S+)")
+    if not key or key == "" then
+      self:Print("Usage: /etbc resetmodule <moduleKey>")
       return
     end
-    self:Print("Profile export start")
-    PrintWrapped(self, encoded, 220)
-    self:Print("Profile export end")
+    local ok, err = self:ResetModuleProfile(key)
+    if ok then
+      self:Print("Reset module: " .. tostring(key))
+    else
+      self:Print("Module reset failed: " .. tostring(err))
+    end
+    return
+  end
+
+  if cmd == "profile" then
+    local action, rest = args:match("^(%S+)%s*(.-)%s*$")
+    action = (action and action:lower()) or ""
+    rest = rest or ""
+
+    if action == "" or action == "help" then
+      self:Print("Profile commands:")
+      self:Print("/etbc profile export")
+      self:Print("/etbc profile import <data>")
+      self:Print("/etbc profile share <player>")
+      return
+    end
+
+    if action == "export" then
+      DoExportProfile()
+      return
+    end
+    if action == "import" then
+      DoImportProfile(rest)
+      return
+    end
+    if action == "share" then
+      local target = rest:match("^(%S+)")
+      DoShareProfile(target)
+      return
+    end
+
+    self:Print("Unknown profile action. Use: export, import, share")
+    return
+  end
+
+  if input == "exportprofile" or input == "profileexport" then
+    DoExportProfile()
     return
   end
 
@@ -313,17 +477,7 @@ function ETBC:SlashCommand(input)
       self:Print("Usage: /etbc importprofile <export-string>")
       return
     end
-    local payload, err = DecodePayload(encoded)
-    if not payload then
-      self:Print("Import failed: " .. tostring(err))
-      return
-    end
-    local ok, applyErr = ApplyImportedProfile(self, payload)
-    if ok then
-      self:Print("Profile imported.")
-    else
-      self:Print("Import failed: " .. tostring(applyErr))
-    end
+    DoImportProfile(encoded)
     return
   end
 
@@ -333,18 +487,7 @@ function ETBC:SlashCommand(input)
       self:Print("Usage: /etbc shareprofile <player>")
       return
     end
-    local payload = BuildProfilePayload(self)
-    local encoded, err = EncodePayload(payload)
-    if not encoded then
-      self:Print("Share failed: " .. tostring(err))
-      return
-    end
-    if self.SendCommMessage then
-      self:SendCommMessage(PROFILE_COMM_PREFIX, encoded, "WHISPER", target, "BULK")
-      self:Print("Shared profile with " .. tostring(target) .. ".")
-    else
-      self:Print("Share failed: comms unavailable.")
-    end
+    DoShareProfile(target)
     return
   end
 
@@ -394,11 +537,7 @@ function ETBC:SlashCommand(input)
     return
   end
 
-  self:Print(
-    "Commands: /etbc (open), /etbc reset, /etbc minimap, /etbc moveall [on|off|toggle], "
-      .. "/etbc exportprofile, /etbc importprofile <data>, /etbc shareprofile <player>, "
-      .. "/etbc listgossip (list auto-gossip), /etbc addgossip <pattern> (add auto-gossip)"
-  )
+  PrintHelp(self)
 end
 
 -- ---------------------------------------------------------

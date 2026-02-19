@@ -370,6 +370,7 @@ ETBC.defaults = {
       enabled = true,
       throttle = 0.05,
       presets = {},
+      modulePresets = {},
       editor = {},
 
       -- global master conditions (apply to modules that opt into visibility)

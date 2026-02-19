@@ -235,7 +235,7 @@ function V:Evaluate(ruleOrPresetKey)
   end
 
   if rule.mode == "ALWAYS" then
-    return rule.invert and false or true
+    return not not (not rule.invert)
   end
 
   local ok = true

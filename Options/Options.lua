@@ -35,6 +35,44 @@ local function EnsureGroup(tbl, name, order)
   return tbl
 end
 
+local function InjectResetAction(group, key, name)
+  if type(group) ~= "table" or type(group.args) ~= "table" then return end
+  if type(ETBC) ~= "table" or type(ETBC.ResetModuleProfile) ~= "function" then return end
+
+  if group.args.__etbcResetModule then return end
+
+  local maxOrder = 0
+  for _, opt in pairs(group.args) do
+    if type(opt) == "table" then
+      local n = tonumber(opt.order)
+      if n and n > maxOrder then
+        maxOrder = n
+      end
+    end
+  end
+
+  group.args.__etbcResetHeader = {
+    type = "header",
+    name = "Reset",
+    order = maxOrder + 100,
+  }
+
+  group.args.__etbcResetModule = {
+    type = "execute",
+    name = "Reset this module",
+    desc = "Resets only this module's profile settings to defaults.",
+    order = maxOrder + 101,
+    func = function()
+      local ok, err = ETBC:ResetModuleProfile(key)
+      if ok then
+        ETBC:Print("Reset module: " .. tostring(name or key))
+      else
+        ETBC:Print("Reset failed for " .. tostring(name or key) .. ": " .. tostring(err))
+      end
+    end,
+  }
+end
+
 function ETBC:BuildOptions()
   local _ = self
   local opts = {
@@ -135,6 +173,8 @@ function ETBC:BuildOptions()
             -- assume "args table"
             baseGroup.args = built
           end
+
+          InjectResetAction(opts.args.modules.args[key], key, name)
         else
           baseGroup.args._err = {
             type = "description",

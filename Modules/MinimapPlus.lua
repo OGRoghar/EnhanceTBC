@@ -352,12 +352,12 @@ function mod:StyleMinimap()
   MinimapCluster.MinimapContainer:SetPoint("BOTTOM", MinimapCluster, "BOTTOM", -1, 1.5, MINIMAP_CONTAINER_FLAG)
 
   if not state.containerHooked then
-    hooksecurefunc(MinimapCluster.MinimapContainer, "SetPoint", function(self, _, _, _, _, _, flag)
+    hooksecurefunc(MinimapCluster.MinimapContainer, "SetPoint", function(frame, _, _, _, _, _, flag)
       if not GetDB().enabled then return end
       if flag == MINIMAP_CONTAINER_FLAG then return end
       RunSetPointGuard("inContainerHook", function()
-        self:ClearAllPoints()
-        self:SetPoint("BOTTOM", MinimapCluster, "BOTTOM", -1, 1.5, MINIMAP_CONTAINER_FLAG)
+        frame:ClearAllPoints()
+        frame:SetPoint("BOTTOM", MinimapCluster, "BOTTOM", -1, 1.5, MINIMAP_CONTAINER_FLAG)
       end)
     end)
     state.containerHooked = true
@@ -462,11 +462,11 @@ function mod:StyleMinimap()
     MiniMapTracking:ClearAllPoints()
     MiniMapTracking:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 2, -45, TRACKING_POINT_FLAG)
     if not state.trackingPointHooked then
-      hooksecurefunc(MiniMapTracking, "SetPoint", function(self, _, _, _, _, _, flag)
+      hooksecurefunc(MiniMapTracking, "SetPoint", function(frame, _, _, _, _, _, flag)
         if flag == TRACKING_POINT_FLAG then return end
         RunSetPointGuard("inTrackingHook", function()
-          self:ClearAllPoints()
-          self:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 2, -45, TRACKING_POINT_FLAG)
+          frame:ClearAllPoints()
+          frame:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 2, -45, TRACKING_POINT_FLAG)
         end)
       end)
       state.trackingPointHooked = true
@@ -495,7 +495,7 @@ function mod:StyleMinimap()
   state.styled = true
 end
 
-function mod:CreatePerformanceFrame()
+function mod.CreatePerformanceFrame()
   if state.performanceFrame or not Minimap then return end
   local frame = CreateFrame("Frame", "EnhanceTBC_MinimapPerformanceFrame", Minimap, "BackdropTemplate")
   frame:SetSize(Minimap:GetWidth(), 17)
@@ -543,7 +543,7 @@ function mod:CreatePerformanceFrame()
   state.performanceFrame = frame
 end
 
-function mod:CreateIconsFrame()
+function mod.CreateIconsFrame()
   if state.iconsFrame or not Minimap then return end
 
   local frame = CreateFrame("Frame", "EnhanceTBC_MinimapIconsFrame", Minimap, "BackdropTemplate")
@@ -681,7 +681,7 @@ function mod:CreateIconsFrame()
   state.iconsFrame = frame
 end
 
-function mod:EnsureSinkFrame()
+function mod.EnsureSinkFrame()
   if state.sinkFrame then return end
 
   state.sinkFrame = CreateFrame("Frame", "EnhanceTBC_MinimapSinkFrame", UIParent, "BackdropTemplate")
@@ -756,14 +756,25 @@ function mod:EnsureSinkFrame()
   ApplySinkAnchor()
 end
 
-function mod:IsBlacklisted(btn, name)
+function mod.IsBlacklisted(btn, name)
   if not btn then return true end
-  if name and (name:find("^EnhanceTBC_") or name:find("^LibDBIcon10_EnhanceTBC")) then return true end
+  if name and (
+    name:find("^EnhanceTBC_")
+    or name:find("^LibDBIcon10_EnhanceTBC")
+  ) then
+    return true
+  end
   if LDBIcon and LDBIcon.GetMinimapButton then
     local etbcBtn = LDBIcon:GetMinimapButton("EnhanceTBC")
     if btn == etbcBtn then return true end
   end
-  if btn == Minimap or btn == MinimapCluster or btn == state.iconsFrame or btn == state.performanceFrame then return true end
+  if btn == Minimap
+    or btn == MinimapCluster
+    or btn == state.iconsFrame
+    or btn == state.performanceFrame
+  then
+    return true
+  end
   if btn == state.sinkFrame then return true end
   if btn == MinimapZoneTextButton or btn == MinimapToggleButton then return true end
   if btn == MinimapZoomIn or btn == MinimapZoomOut then return true end
@@ -800,7 +811,7 @@ function mod:LooksLikeMinimapButton(btn)
   return false
 end
 
-function mod:CaptureSinkButton(btn)
+function mod.CaptureSinkButton(btn)
   if not btn or state.sinkManaged[btn] then return end
   if InCombatLockdown and InCombatLockdown() then return end
 
@@ -837,7 +848,7 @@ function mod:CaptureSinkButton(btn)
   if btn.SetHitRectInsets then btn:SetHitRectInsets(0, 0, 0, 0) end
 end
 
-function mod:RestoreSinkButtons()
+function mod.RestoreSinkButtons()
   if InCombatLockdown and InCombatLockdown() then return end
 
   for btn, info in pairs(state.sinkManaged) do
@@ -859,7 +870,7 @@ function mod:RestoreSinkButtons()
   end
 end
 
-function mod:LayoutSinkButtons()
+function mod.LayoutSinkButtons()
   if not state.sinkFrame then return end
   local buttons = {}
   for btn in pairs(state.sinkManaged) do
@@ -946,7 +957,7 @@ function mod:ScanForAddonButtons()
   self:LayoutSinkButtons()
 end
 
-function mod:ApplyWidgetVisibility()
+function mod.ApplyWidgetVisibility()
   local db = GetDB()
 
   if state.performanceFrame then
@@ -966,7 +977,7 @@ function mod:ApplyWidgetVisibility()
   end
 end
 
-function mod:StyleTimeManagerClockButton()
+function mod.StyleTimeManagerClockButton()
   if not IsAddonLoadedCompat("Blizzard_TimeManager") then return end
   if not GetDB().enabled then return end
 
@@ -1002,7 +1013,7 @@ function mod:StyleTimeManagerClockButton()
   end
 end
 
-function mod:MoveMinimapLFGButton()
+function mod.MoveMinimapLFGButton()
   if not IsAddonLoadedCompat("Blizzard_GroupFinder_VanillaStyle") then return end
   if not LFGMinimapFrame then return end
 
@@ -1022,7 +1033,7 @@ function mod:MoveMinimapLFGButton()
   end
 end
 
-function mod:StyleBattlefieldMinimap()
+function mod.StyleBattlefieldMinimap()
   if not IsAddonLoadedCompat("Blizzard_BattlefieldMap") then return end
   if not BattlefieldMapFrame then return end
 
@@ -1037,7 +1048,7 @@ function mod:StyleBattlefieldMinimap()
   end
 end
 
-function mod:MoveQuestWatchFrame()
+function mod.MoveQuestWatchFrame()
   local frame = _G["UIParentRightManagedFrameContainer"]
   if not frame then return end
 
@@ -1055,7 +1066,7 @@ function mod:MoveQuestWatchFrame()
   end
 end
 
-function mod:UpdateMinimapMask()
+function mod.UpdateMinimapMask()
   if not Minimap or not Minimap.SetMaskTexture then return end
   local db = GetDB()
   if db.enabled and db.square_mask then
@@ -1137,7 +1148,7 @@ function mod:ToggleSinkVisibility()
   self:Apply()
 end
 
-function mod:IsSinkShown()
+function mod.IsSinkShown()
   if state.sinkFrame and state.sinkFrame.IsShown then
     return state.sinkFrame:IsShown()
   end
