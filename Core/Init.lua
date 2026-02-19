@@ -24,10 +24,20 @@ ETBC.media.root = "Interface\\AddOns\\EnhanceTBC\\Media\\"
 ETBC.media.images = ETBC.media.images or (ETBC.media.root .. "Images\\")
 ETBC.media.cursor = ETBC.media.cursor or (ETBC.media.root .. "Cursor\\")
 ETBC.media.spells = ETBC.media.spells or (ETBC.media.root .. "Spells\\")
+ETBC.media.fonts = ETBC.media.fonts or (ETBC.media.root .. "Fonts\\")
 
 -- LibSharedMedia access (used by modules/settings for font/texture lists)
 if LibStub then
 	ETBC.LSM = LibStub("LibSharedMedia-3.0", true)
+
+	if ETBC.LSM and ETBC.LSM.Register and not ETBC._lsmFontsRegistered then
+		ETBC.LSM:Register("font", "EnhanceTBC - Harry P", ETBC.media.fonts .. "HARRYP__.TTF")
+		ETBC.LSM:Register("font", "EnhanceTBC - Pixeled", ETBC.media.fonts .. "Pixeled.ttf")
+		ETBC.LSM:Register("font", "EnhanceTBC - Road Rage", ETBC.media.fonts .. "Road_Rage.ttf")
+		ETBC.LSM:Register("font", "EnhanceTBC - Star Jedi", ETBC.media.fonts .. "Starjedi.ttf")
+		ETBC.LSM:Register("font", "EnhanceTBC - Times Sans", ETBC.media.fonts .. "TIMESS__.ttf")
+		ETBC._lsmFontsRegistered = true
+	end
 end
 
 -- Attach AceLocale table for legacy access (EnhanceTBC.L)
