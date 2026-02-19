@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.5 - 2026-02-19
+- Release:
+	- Excluded workspace files (`*.code-workspace`) from packaged release artifacts.
+
 ## v1.2.4 - 2026-02-19
 - Fixed:
 	- Tooltip ApplyBus error when hooking `FriendsTooltip` without `OnTooltipCleared`.

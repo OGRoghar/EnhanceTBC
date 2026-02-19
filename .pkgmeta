@@ -4,6 +4,7 @@ curseforge:
 ignore:
   - .github
   - .vscode
+  - *.code-workspace
   - spec
   - tools
   - *.md
