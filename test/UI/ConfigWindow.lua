@@ -837,6 +837,23 @@ local MODULE_SUMMARY = {
   mover = "Move-mode and anchor management for supported UI blocks.",
 }
 
+local MODULE_PREVIEW_OVERRIDES = {
+  castbar = {
+    text = "Fireball - 1.7s cast | Interrupts, width, and text styling preview.",
+    useBar = true,
+    barValue = 42,
+  },
+  cooldowns = {
+    text = "Cooldown text preview: Avenging Wrath 120s, Hammer of Justice 43s, Exorcism 7.8s.",
+    useBar = false,
+  },
+  swingtimer = {
+    text = "Swing timer preview: Main-hand cycle and latency feel.",
+    useBar = true,
+    barValue = 65,
+  },
+}
+
 local PREVIEW_KEY_BY_MODULE = {
   auras = "auras",
   actiontracker = "actiontracker",
@@ -949,13 +966,17 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
 
   if HasWidget("ETBC_PreviewPanel") then
     local preview = AceGUI:Create("ETBC_PreviewPanel")
+    local override = MODULE_PREVIEW_OVERRIDES[moduleKey]
+    local previewText = (override and override.text)
+      or MODULE_SUMMARY[moduleKey]
+      or ("Live preview for " .. g.name .. " settings.")
     preview:SetFullWidth(true)
     preview:SetTitle(g.name .. " Preview")
-    preview:SetPreviewText(MODULE_SUMMARY[moduleKey] or ("Live preview for " .. g.name .. " settings."))
+    preview:SetPreviewText(previewText)
     preview:SetIcon(g.icon)
-    if moduleKey == "castbar" or moduleKey == "swingtimer" or moduleKey == "cooldowns" then
+    if override and override.useBar then
       preview:EnableBar(true)
-      preview:SetBarValue(65)
+      preview:SetBarValue(override.barValue or 65)
       preview:SetBarColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
     else
       preview:EnableBar(false)
@@ -1070,16 +1091,11 @@ local function StyleTreeButtons(tree)
       if btn.text then
         btn.text:SetJustifyH("LEFT")
         if isCategory then
-          if not btn._etbcBaseText then
-            btn._etbcBaseText = btn.text:GetText() or ""
-          end
-          btn.text:SetText((btn._etbcBaseText or ""):upper())
+          local label = btn.text:GetText() or ""
+          btn.text:SetText(tostring(label):upper())
           btn.text:SetTextColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
           TrySetFont(btn.text, 12, "OUTLINE")
         else
-          if btn._etbcBaseText then
-            btn.text:SetText(btn._etbcBaseText)
-          end
           if isSelected then
             btn.text:SetTextColor(THEME.text[1], THEME.text[2], THEME.text[3], 1)
             TrySetFont(btn.text, 12, "OUTLINE")
@@ -1134,16 +1150,6 @@ local function ApplyWindowStyle(win)
     win.statustext:SetText("")
   end
 
-  -- Logo (DO NOT CHANGE SIZE)
-  if not win.frame._etbcLogo then
-    local logo = win.frame:CreateTexture(nil, "OVERLAY")
-    logo:SetTexture(LOGO_PATH)
-    logo:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 14, -6)
-    logo:SetSize(90, 90)
-    logo:SetAlpha(0.9)
-    win.frame._etbcLogo = logo
-  end
-
   -- Header strip for logo/title composition.
   if not win.frame._etbcHeaderStrip then
     local strip = CreateFrame("Frame", nil, win.frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -1169,6 +1175,18 @@ local function ApplyWindowStyle(win)
 
     win.frame._etbcHeaderStrip = strip
     win.frame._etbcHeaderStatus = status
+  end
+
+  -- Logo (DO NOT CHANGE SIZE)
+  if not win.frame._etbcLogo then
+    local parent = win.frame._etbcHeaderStrip or win.frame
+    local logo = parent:CreateTexture(nil, "OVERLAY", nil, 7)
+    logo:SetTexture(LOGO_PATH)
+    logo:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 14, -6)
+    logo:SetSize(90, 90)
+    logo:SetAlpha(0.9)
+    logo:SetDrawLayer("OVERLAY", 7)
+    win.frame._etbcLogo = logo
   end
 
   if win.titletext and win.frame._etbcHeaderStrip then
