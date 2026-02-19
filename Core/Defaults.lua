@@ -9,35 +9,6 @@ ETBC.defaults = {
       debug = false,
     },
 
-    mouse = {
-      enabled = true,
-
-      cursorEnabled = true,
-      cursorTexture = "Glow.tga",
-      cursorCustomTexture = "",
-      cursorSize = 32,
-      cursorAlpha = 0.9,
-      cursorBlend = "ADD",
-      cursorColor = { 0.2, 1.0, 0.2 },
-
-      trail = {
-        enabled = true,
-        texture = "Ring Soft 2.tga",
-        customTexture = "",
-        size = 24,
-        alpha = 0.5,
-        blend = "ADD",
-        color = { 0.2, 1.0, 0.2 },
-        spacing = 16,
-        life = 0.25,
-        maxActive = 30,
-        onlyWhenMoving = true,
-      },
-
-      hideWhenIdle = false,
-      idleDelay = 1.0,
-    },
-
 	    minimapPlus = {
       enabled = true,
 
@@ -399,11 +370,6 @@ ETBC.defaults = {
           solo = false, inBattleground = false,
         },
         gcdbar = {
-          enabled = false, inCombat = false, outOfCombat = false,
-          inInstance = false, inRaid = false, inParty = false,
-          solo = false, inBattleground = false,
-        },
-        mouse = {
           enabled = false, inCombat = false, outOfCombat = false,
           inInstance = false, inRaid = false, inParty = false,
           solo = false, inBattleground = false,

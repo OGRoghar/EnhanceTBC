@@ -801,17 +801,28 @@ function mod.IsBlacklisted(btn, name)
 end
 
 function mod:LooksLikeMinimapButton(btn)
-  if not btn or not btn.GetName then return false end
-  local name = btn:GetName()
+  if not btn then return false end
+  local name = btn.GetName and btn:GetName() or nil
   if self:IsBlacklisted(btn, name) then return false end
-  if not btn.IsVisible or not btn:IsVisible() then return false end
-  if btn.GetObjectType and btn:GetObjectType() ~= "Button" and not name then return false end
-  if btn.IsProtected and btn:IsProtected() then return false end
+  if btn.IsShown and not btn:IsShown() then return false end
+  if btn.IsProtected and btn:IsProtected() and InCombatLockdown and InCombatLockdown() then
+    return false
+  end
+  local objectType = btn.GetObjectType and btn:GetObjectType() or nil
+  if objectType == "Button" or objectType == "CheckButton" then return true end
   if type(name) == "string" and name:find("^LibDBIcon10_") then return true end
+  local parent = btn.GetParent and btn:GetParent() or nil
+  if parent == Minimap then return true end
+  if MinimapCluster and MinimapCluster.MinimapContainer and parent == MinimapCluster.MinimapContainer then
+    return true
+  end
   return false
 end
 
 function mod.CaptureSinkButton(btn)
+  if type(btn) == "table" and not btn.GetObjectType and btn.button then
+    btn = btn.button
+  end
   if not btn or state.sinkManaged[btn] then return end
   if InCombatLockdown and InCombatLockdown() then return end
   if type(btn) ~= "table" then return end
@@ -942,12 +953,21 @@ function mod:ScanForAddonButtons()
   if not (db.enabled and db.sink_addons and state.sinkFrame) then return end
   if InCombatLockdown and InCombatLockdown() then return end
 
+  local function TryCapture(candidate)
+    if type(candidate) == "table" and not candidate.GetObjectType and candidate.button then
+      candidate = candidate.button
+    end
+    if mod:LooksLikeMinimapButton(candidate) then
+      mod:CaptureSinkButton(candidate)
+      return true
+    end
+    return false
+  end
+
   local function ScanChildren(parent)
     if not parent or not parent.GetChildren then return end
     for _, child in ipairs({ parent:GetChildren() }) do
-      if mod:LooksLikeMinimapButton(child) then
-        mod:CaptureSinkButton(child)
-      end
+      TryCapture(child)
     end
   end
 
@@ -955,11 +975,19 @@ function mod:ScanForAddonButtons()
   if MinimapCluster and MinimapCluster.MinimapContainer then
     ScanChildren(MinimapCluster.MinimapContainer)
   end
+
+  if LDBIcon and LDBIcon.objects and LDBIcon.GetMinimapButton then
+    for ldbName in pairs(LDBIcon.objects) do
+      local ok, btn = pcall(LDBIcon.GetMinimapButton, LDBIcon, ldbName)
+      if ok and btn then
+        TryCapture(btn)
+      end
+    end
+  end
+
   for name, obj in pairs(_G) do
     if type(name) == "string" and name:find("^LibDBIcon10_") and type(obj) == "table" then
-      if mod:LooksLikeMinimapButton(obj) then
-        mod:CaptureSinkButton(obj)
-      end
+      TryCapture(obj)
     end
   end
 

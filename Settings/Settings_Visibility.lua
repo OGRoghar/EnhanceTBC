@@ -8,7 +8,6 @@ local MODULE_KEYS = {
   "actiontracker",
   "combattext",
   "gcdbar",
-  "mouse",
   "objectives",
 }
 
@@ -17,7 +16,6 @@ local MODULE_LABELS = {
   actiontracker = "Action Tracker",
   combattext = "Combat Text",
   gcdbar = "GCD Bar",
-  mouse = "Mouse",
   objectives = "Objectives",
 }
 
@@ -220,20 +218,10 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
         set = function(_, v) db.modulePresets.gcdbar = v; NotifyVisibility() end,
       },
 
-      moduleMouse = {
-        type = "select",
-        name = "Mouse",
-        order = 26,
-        values = PresetValues,
-        disabled = function() return not db.enabled end,
-        get = function() return db.modulePresets.mouse or "NONE" end,
-        set = function(_, v) db.modulePresets.mouse = v; NotifyVisibility() end,
-      },
-
       moduleObjectives = {
         type = "select",
         name = "Objectives",
-        order = 27,
+        order = 26,
         values = PresetValues,
         disabled = function() return not db.enabled end,
         get = function() return db.modulePresets.objectives or "NONE" end,

@@ -85,7 +85,6 @@ Settings\Settings_UnitFrames.lua
 Settings\Settings_Unit_Nameplates.lua
 Settings\Settings_Player_Nameplates.lua
 Settings\Settings_ActionBars.lua
-Settings\Settings_Mouse.lua
 Settings\Settings_Tooltip.lua
 Settings\Settings_Sound.lua
 Settings\Settings_Friends.lua
@@ -122,7 +121,6 @@ Modules\ChatIM.lua
 Modules\GCDBar.lua
 Modules\SwingTimer.lua
 Modules\Mailbox.lua
-Modules\Mouse.lua
 Modules\Sound.lua
 Modules\Tooltip.lua
 Modules\Vendor.lua
