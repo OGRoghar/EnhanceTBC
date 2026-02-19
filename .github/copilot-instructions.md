@@ -128,6 +128,25 @@ However, most modules assume `ETBC.db` exists after Core bootstrap completes.
 if not key or type(fn) ~= "function" then return end
 ```
 
+### WoW API Compatibility
+
+#### Container API Compatibility (Classic/TBC)
+Always use compatibility wrappers for container APIs:
+```lua
+local C = C_Container  -- May be nil in older versions
+
+local function GetBagNumSlots(bag)
+  if C and C.GetContainerNumSlots then
+    return C.GetContainerNumSlots(bag) or 0
+  end
+  if GetContainerNumSlots then
+    return GetContainerNumSlots(bag) or 0
+  end
+  return 0
+end
+```
+See `Modules/Vendor.lua` for a complete example.
+
 ### Frame and UI Constraints
 
 #### Frame Resizing Limitation
@@ -172,9 +191,12 @@ end
 
 ### Code Organization
 - Keep files focused on single responsibilities
-- Follow existing module patterns strictly
+- Follow existing module patterns strictly (check `Modules/Vendor.lua` for simple example)
 - Maintain consistency with paired Settings/Module files
 - Load order matters: Core → Settings → Modules → Visibility
+- Module complexity ranges from ~200 lines (simple) to ~1700 lines (MinimapPlus)
+- Use constants at file top for magic numbers and texture paths
+- Group related functionality into local functions before module methods
 
 ### Comments
 - Add header comments to files explaining purpose
@@ -209,20 +231,84 @@ db.highlightColor = { r = 0.2, g = 1.0, b = 0.2, a = 1.0 }
 local driver = CreateFrame("Frame", "EnhanceTBC_ModuleName", UIParent)
 ```
 
+### Slash Commands and UI Access
+```text
+-- Addon provides multiple entry points:
+/etbc                    -- Open config UI
+/etbc config            -- Open config UI (alias)
+/etbc reset             -- Reset profile to defaults
+/etbc minimap           -- Toggle minimap icon
+/etbc moveall [on|off|toggle]  -- Toggle frame mover mode
+/etbc listgossip        -- List auto-gossip patterns
+/etbc addgossip <text>  -- Add auto-gossip pattern
+/enhancetbc             -- Alias for /etbc
+```
+
+```lua
+-- Opening config programmatically
+ETBC:OpenConfig()       -- Preferred method (handles custom UI fallback)
+```
+
+### Module Registration Pattern
+```lua
+-- Standard pattern in all module files
+local ADDON_NAME, ETBC = ...
+ETBC.Modules = ETBC.Modules or {}
+local mod = {}
+ETBC.Modules.ModuleName = mod
+
+-- Then define module methods
+function mod:Initialize()
+  -- Setup code
+end
+
+function mod:Apply()
+  -- Live config update code
+end
+
+-- Register with ApplyBus
+ETBC.ApplyBus:Register("modulename", function()
+  mod:Apply()
+end)
+```
+
 ## Testing
-- Test in-game with WoW TBC Anniversary client
-- Verify settings persist across sessions
-- Test ApplyBus updates apply immediately
+
+### Automated Testing
+- Project uses **Busted** framework with Lua 5.1 for unit tests
+- Run tests: `busted` (or `busted --verbose --coverage`)
+- Test files: `spec/*_spec.lua` pattern
+- WoW API mocks: `spec/wow_mocks.lua` provides LibStub, CreateFrame, C_Timer, etc.
+- CI/CD: GitHub Actions runs tests on push/PR (see `.github/workflows/ci.yml`)
+- Coverage: Use `luacov` to generate coverage reports
+
+### Loading Core Modules in Tests
+```lua
+-- Core files expect ADDON_NAME and ETBC via varargs
+local ADDON_NAME = "EnhanceTBC"
+local ETBC = {}
+local chunk, err = loadfile('Core/ApplyBus.lua')
+assert(chunk, err)
+chunk(ADDON_NAME, ETBC)  -- Pass varargs to match production pattern
+```
+
+### Manual Testing
+- Test in-game with WoW TBC Anniversary client (Ver 2.5.5, interface 20505)
+- Verify settings persist across sessions and `/reload`
+- Test ApplyBus updates apply immediately without reload
 - Check for nil errors with defensive tests
 - Verify minimap features don't break on zone changes
+- Test UI changes across different resolutions and UI scales
 
 ## Development Workflow
 1. Understand the module's purpose and scope
-2. Follow existing patterns in similar modules
+2. Follow existing patterns in similar modules (check similar-sized modules for reference)
 3. Implement Settings file first with Apply() callback
 4. Implement Module file with ApplyBus registration
-5. Test live config updates
-6. Handle edge cases and nil values
+5. Add tests if implementing core logic (ApplyBus, utilities, validators)
+6. Test live config updates in-game
+7. Handle edge cases and nil values
+8. Run `busted` to verify tests pass before committing
 
 ## Important Notes
 - **Do NOT** add new dependencies without careful consideration
@@ -230,5 +316,60 @@ local driver = CreateFrame("Frame", "EnhanceTBC_ModuleName", UIParent)
 - **ALWAYS** use ApplyBus for settings updates
 - **ALWAYS** check for nil when unpacking WoW API returns
 - **ALWAYS** use `not not` to convert WoW boolean returns to true/false
-- File load order is critical - respect the `.toc` order
+- **ALWAYS** use HTTPS URLs in rockspec files (never git:// protocol for security)
+- File load order is critical - respect the `.toc` order (Core → Settings → Modules → Visibility)
 - The addon namespace is available as both `ETBC` and `EnhanceTBC` globals
+
+## Key Architectural Decisions
+
+### Event Bus Architecture
+ApplyBus (`Core/ApplyBus.lua`) is the central event system for settings changes:
+- Decouples Settings files from Module implementation
+- Allows multiple listeners per key
+- Uses pcall for error isolation
+- Settings files call `ApplyBus:Notify(key)` on changes
+- Modules register with `ApplyBus:Register(key, callback)`
+
+### Database Pattern
+Every module follows the same DB access pattern:
+1. Settings files have `GetDB()` with `EnsureDefaults()`
+2. Module files have `GetDB()` with inline defaults
+3. Inline defaults provide runtime safety without reload
+4. Example: `if db.enabled == nil then db.enabled = true end`
+
+### Load Order Dependencies
+The `.toc` file defines strict load order:
+1. **Libs/** - All dependencies (Ace3, LibStub, etc.)
+2. **locales/** - Localization tables
+3. **Core/** - Bootstrap (Defaults → Print → ApplyBus → SettingsRegistry → Init → EnhanceTBC)
+4. **Options/** - Root options builder
+5. **UI/** - UI components
+6. **Settings/** - AceConfig option tables (one per module)
+7. **Modules/** - Feature implementations
+8. **Visibility/** - Visibility condition system
+
+Violating this order causes nil reference errors.
+
+### Settings Registry Pattern
+Used across all Settings files to register option groups:
+```lua
+-- In Settings file, register the options group
+ETBC.SettingsRegistry:RegisterGroup("modulename", {
+  name = "Module Name",
+  order = 10,
+  options = function()
+    return {
+      -- AceConfig option table
+    }
+  end
+})
+
+-- Retrieve registered group info
+local info = ETBC.SettingsRegistry:Get("modulename")
+if info then
+  -- Access group metadata
+end
+
+-- Get all registered groups
+local groups = ETBC.SettingsRegistry:GetGroups()
+```
