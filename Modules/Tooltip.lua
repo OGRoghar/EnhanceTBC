@@ -11,9 +11,21 @@ mod.key = "tooltip"
 mod._hooked = false
 mod._idHooked = false
 mod._menuHooked = false
+mod._anchorHooked = false
 
 -- Default ID color (light green)
 local DEFAULT_ID_COLOR = { r = 0.5, g = 0.9, b = 0.5 }
+
+local BORDER_PIECES = {
+  "BorderTop",
+  "BorderTopLeft",
+  "BorderTopRight",
+  "BorderLeft",
+  "BorderRight",
+  "BorderBottom",
+  "BorderBottomLeft",
+  "BorderBottomRight",
+}
 
 -- ---------------------------------------------------------
 -- Helpers
@@ -51,6 +63,24 @@ local function SetBackdropBorderColor(frame, r, g, b, a)
   end
 end
 
+local function ApplyBackdropFallback(tip, bg, border)
+  if not tip or not tip.GetName then return end
+  local name = tip:GetName()
+  if not name then return end
+
+  local bgTex = _G[name .. "Background"]
+  if bgTex and bgTex.SetVertexColor then
+    bgTex:SetVertexColor(bg.r or 0, bg.g or 0, bg.b or 0, bg.a or 1)
+  end
+
+  for i = 1, #BORDER_PIECES do
+    local tex = _G[name .. BORDER_PIECES[i]]
+    if tex and tex.SetVertexColor then
+      tex:SetVertexColor(border.r or 1, border.g or 1, border.b or 1, border.a or 1)
+    end
+  end
+end
+
 -- Solid “accent” line helper (replaces gradient)
 local function EnsureAccentLine(tip)
   if tip._etbcAccentLine then return tip._etbcAccentLine end
@@ -76,6 +106,7 @@ local function ApplyStyleToTooltip(tip)
     local br = db.skin.border or { r = 0.20, g = 1.00, b = 0.20, a = 0.95 }
     SetBackdropColor(tip, bg.r or 0, bg.g or 0, bg.b or 0, bg.a or 1)
     SetBackdropBorderColor(tip, br.r or 1, br.g or 1, br.b or 1, br.a or 1)
+    ApplyBackdropFallback(tip, bg, br)
   end
 
   -- Accent line (solid, safe) - using db.skin.grad for the color
@@ -111,17 +142,32 @@ local function ApplyTooltipNineSlice(tip, hide)
   end
 end
 
-local function TooltipHasLine(tooltip, text)
-  if not tooltip or not text then return false end
-  local name = tooltip:GetName()
-  if not name then return false end
+local function HasLinePrefix(tooltip, prefix)
+  if not tooltip or not tooltip.GetName then return false end
+  local tn = tooltip:GetName()
+  if not tn then return false end
   for i = 1, tooltip:NumLines() do
-    local line = _G[name .. "TextLeft" .. i]
-    if line and line:GetText() == text then
-      return true
+    local left = _G[tn .. "TextLeft" .. i]
+    if left then
+      local text = left:GetText()
+      if text and text:find(prefix, 1, true) == 1 then
+        return true
+      end
     end
   end
   return false
+end
+
+local function AddLineOnce(tooltip, text, r, g, b)
+  if not tooltip or not text or text == "" then return end
+  tooltip._etbcLineKeys = tooltip._etbcLineKeys or {}
+  if tooltip._etbcLineKeys[text] then return end
+  if HasLinePrefix(tooltip, text) then
+    tooltip._etbcLineKeys[text] = true
+    return
+  end
+  tooltip._etbcLineKeys[text] = true
+  tooltip:AddLine(text, r or 1, g or 1, b or 1)
 end
 
 local function AddGuildLine(tooltip, unit)
@@ -132,8 +178,7 @@ local function AddGuildLine(tooltip, unit)
   local guild_name = GetGuildInfo(unit)
   if not guild_name or guild_name == "" then return end
   local text = "<" .. guild_name .. ">"
-  if TooltipHasLine(tooltip, text) then return end
-  tooltip:AddLine(text, 0.3, 0.9, 0.3)
+  AddLineOnce(tooltip, text, 0.3, 0.9, 0.3)
 end
 
 local function AddTargetLine(tooltip, unit)
@@ -147,19 +192,18 @@ local function AddTargetLine(tooltip, unit)
   if not target_name or target_name == "" then return end
 
   local text = "Target: " .. target_name
-  if TooltipHasLine(tooltip, text) then return end
 
   if UnitIsUnit(target, "player") then
-    tooltip:AddLine(text, 0, 1, 0)
+    AddLineOnce(tooltip, text, 0, 1, 0)
   elseif UnitIsPlayer(target) then
     local _, class = UnitClass(target)
     if class and RAID_CLASS_COLORS[class] then
-      tooltip:AddLine(text, RAID_CLASS_COLORS[class]:GetRGB())
+      AddLineOnce(tooltip, text, RAID_CLASS_COLORS[class]:GetRGB())
     else
-      tooltip:AddLine(text, 1, 1, 1)
+      AddLineOnce(tooltip, text, 1, 1, 1)
     end
   else
-    tooltip:AddLine(text, 1, 1, 1)
+    AddLineOnce(tooltip, text, 1, 1, 1)
   end
 end
 
@@ -185,23 +229,24 @@ end
 local function ApplyTooltipAnchor(tip)
   local db = GetDB()
   if not db or not db.enabled then return end
-  if not tip then return end
+  if not tip or tip ~= GameTooltip then return end
+  if not tip.IsOwned or not tip:IsOwned(UIParent) then return end
 
   local mode = db.anchorMode or "DEFAULT"
   if mode == "DEFAULT" then return end
 
+  local offsetX = tonumber(db.offsetX) or 0
+  local offsetY = tonumber(db.offsetY) or 0
+  local anchorSig = table.concat({ mode, tostring(offsetX), tostring(offsetY) }, "|")
+  if tip._etbcAnchorSig == anchorSig then return end
+  tip._etbcAnchorSig = anchorSig
+
   if mode == "CURSOR" then
-    local scale = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale() or 1
-    local pos_x, pos_y = GetCursorPosition()
-    if scale and pos_x and pos_y then
-      tip:ClearAllPoints()
-      tip:SetPoint("TOP", UIParent, "BOTTOMLEFT", pos_x / scale, (pos_y / scale) - 20, "etbc_tooltip")
-    end
+    tip:ClearAllPoints()
+    tip:SetOwner(UIParent, "ANCHOR_CURSOR_RIGHT", offsetX, offsetY)
     return
   end
 
-  local offsetX = db.offsetX or 0
-  local offsetY = db.offsetY or 0
   tip:ClearAllPoints()
   tip:SetPoint(mode, UIParent, mode, offsetX, offsetY, "etbc_tooltip")
 end
@@ -291,7 +336,7 @@ end
 local function AddIDLine(tooltip, label, id, color)
   if not tooltip or not id then return end
   local r, g, b = color.r or 0.5, color.g or 0.9, color.b or 0.5
-  tooltip:AddLine(label .. id, r, g, b)
+  AddLineOnce(tooltip, label .. id, r, g, b)
 end
 
 local function AddItemLevelLine(tooltip, itemLink)
@@ -301,7 +346,7 @@ local function AddItemLevelLine(tooltip, itemLink)
 
   local item_level = select(4, GetItemInfo(itemLink))
   if item_level then
-    tooltip:AddLine("Item Level: " .. item_level, 0.8, 0.8, 0.8)
+    AddLineOnce(tooltip, "Item Level: " .. item_level, 0.8, 0.8, 0.8)
   end
 end
 
@@ -312,7 +357,7 @@ local function AddVendorPriceLine(tooltip, itemLink)
 
   local sell_price = select(11, GetItemInfo(itemLink))
   if sell_price and sell_price > 0 and GetCoinTextureString then
-    tooltip:AddLine("Vendor Price: " .. GetCoinTextureString(sell_price), 0.8, 0.8, 0.8)
+    AddLineOnce(tooltip, "Vendor Price: " .. GetCoinTextureString(sell_price), 0.8, 0.8, 0.8)
   end
 end
 
@@ -361,7 +406,7 @@ local function AddStatSummaryLine(tooltip, itemLink)
     table.insert(summary, collected[i])
   end
 
-  tooltip:AddLine("Stats: " .. table.concat(summary, ", "), 0.8, 0.8, 0.8)
+  AddLineOnce(tooltip, "Stats: " .. table.concat(summary, ", "), 0.8, 0.8, 0.8)
 end
 
 local function EnsureStatusBarText()
@@ -468,11 +513,11 @@ local function AddReactionLine(tooltip, unit)
   local unit_reaction = UnitReaction(unit, "player")
   if unit_reaction and unit ~= "player" then
     if unit_reaction >= 1 and unit_reaction <= 3 then
-      tooltip:AddLine("Hostile", 0.8, 0.3, 0.22)
+      AddLineOnce(tooltip, "Hostile", 0.8, 0.3, 0.22)
     elseif unit_reaction == 4 then
-      tooltip:AddLine("Neutral", 0.9, 0.7, 0)
+      AddLineOnce(tooltip, "Neutral", 0.9, 0.7, 0)
     else
-      tooltip:AddLine("Friendly", 0, 0.6, 0.1)
+      AddLineOnce(tooltip, "Friendly", 0, 0.6, 0.1)
     end
   end
 end
@@ -600,6 +645,11 @@ function mod.Apply(_)
     for _, tip in pairs(tips) do
       if tip and tip.HookScript then
         tip:HookScript("OnShow", OnTooltipSet)
+        tip:HookScript("OnTooltipCleared", function(t)
+          if t._etbcAccentLine then t._etbcAccentLine:Hide() end
+          t._etbcLineKeys = nil
+          t._etbcAnchorSig = nil
+        end)
       end
     end
 
@@ -613,6 +663,13 @@ function mod.Apply(_)
         ApplyTooltipAnchor(self)
       end)
     end
+  end
+
+  if not mod._anchorHooked and hooksecurefunc and GameTooltip_SetDefaultAnchor then
+    mod._anchorHooked = true
+    hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip)
+      ApplyTooltipAnchor(tooltip)
+    end)
   end
 
   if not mod._menuHooked and MenuMixin and MenuMixin.SetMenuDescription then
