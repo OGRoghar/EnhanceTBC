@@ -4,7 +4,7 @@ ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CombatText = mod
 
-local LSM = ETBC.media
+local LSM = ETBC.LSM
 
 local driver
 local anchor
@@ -73,7 +73,7 @@ end
 local function SafeFont(face)
   face = face or "Friz Quadrata TT"
   if LSM and LSM.Fetch then
-    local f = LSM:Fetch(ETBC.LSM_FONTS, face, true)
+    local f = LSM:Fetch("font", face, true)
     return f or STANDARD_TEXT_FONT
   end
   return STANDARD_TEXT_FONT
@@ -407,6 +407,8 @@ local function HandleCLEU(db)
   if not db.trackOutgoing then isOut = false end
   if not db.trackIncoming then isIn = false end
   if not (isOut or isIn) then return end
+  local inCombat = UnitAffectingCombat and (not not UnitAffectingCombat("player")) or false
+  if db.onlyInCombat and not inCombat then return end
 
   local direction = isIn and "IN" or "OUT"
 

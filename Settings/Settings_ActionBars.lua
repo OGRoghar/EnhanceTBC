@@ -25,6 +25,16 @@ local function GetDB()
   if db.oocAlpha == nil then db.oocAlpha = 0.45 end
   if db.combatAlpha == nil then db.combatAlpha = 1.0 end
 
+  if db.fullRangeTint == nil then db.fullRangeTint = true end
+  if db.rangeTintMode == nil then
+    db.rangeTintMode = db.fullRangeTint and "FULL" or "ICON"
+  end
+  db.rangeTint = db.rangeTint or {}
+  if db.rangeTint.r == nil then db.rangeTint.r = 1.0 end
+  if db.rangeTint.g == nil then db.rangeTint.g = 0.15 end
+  if db.rangeTint.b == nil then db.rangeTint.b = 0.15 end
+  if db.rangeTint.a == nil then db.rangeTint.a = 0.35 end
+
   -- Which bars
   if db.mainBar == nil then db.mainBar = true end
   if db.multiBars == nil then db.multiBars = true end
@@ -218,6 +228,48 @@ ETBC.SettingsRegistry:RegisterGroup("actionbars", {
         disabled = function() return not (db.enabled and db.fadeOOC) end,
         get = function() return db.combatAlpha end,
         set = function(_, v) db.combatAlpha = v; ETBC.ApplyBus:Notify("actionbars") end,
+      },
+
+      rangeHeader = { type = "header", name = "Range Tint", order = 50 },
+
+      rangeTintMode = {
+        type = "select",
+        name = "Range tint mode",
+        desc = "How out-of-range action buttons are tinted.",
+        order = 51,
+        disabled = function() return not db.enabled end,
+        values = function()
+          return {
+            FULL = "Full button overlay",
+            ICON = "Icon only tint",
+          }
+        end,
+        get = function() return db.rangeTintMode or (db.fullRangeTint and "FULL" or "ICON") end,
+        set = function(_, v)
+          db.rangeTintMode = v
+          db.fullRangeTint = (v == "FULL")
+          ETBC.ApplyBus:Notify("actionbars")
+        end,
+      },
+
+      rangeTintColor = {
+        type = "color",
+        name = "Range tint color",
+        order = 52,
+        hasAlpha = true,
+        disabled = function() return not db.enabled end,
+        get = function()
+          local c = db.rangeTint or {}
+          return c.r or 1.0, c.g or 0.15, c.b or 0.15, c.a or 0.35
+        end,
+        set = function(_, r, g, b, a)
+          db.rangeTint = db.rangeTint or {}
+          db.rangeTint.r = r
+          db.rangeTint.g = g
+          db.rangeTint.b = b
+          db.rangeTint.a = a
+          ETBC.ApplyBus:Notify("actionbars")
+        end,
       },
     }
   end,

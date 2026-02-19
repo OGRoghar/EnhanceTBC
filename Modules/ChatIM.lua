@@ -79,7 +79,7 @@ local function GetDB()
   if db.copyButton == nil then db.copyButton = true end
   if db.copyButtonScale == nil then db.copyButtonScale = 1.0 end
   if db.copyButtonAlpha == nil then db.copyButtonAlpha = 0.95 end
-  if db.copyTarget == nil then db.copyTarget = "1" end  -- Default to ChatFrame1
+  if db.copyTarget == nil then db.copyTarget = "follow" end
 
   return db
 end
@@ -190,7 +190,7 @@ local function MakeLinks(db, msg)
 end
 
 -- IMPORTANT: Correct signature is (self, event, msg, author, ...)
-local function Filter(_, _event, msg, author, ...)
+local function Filter(_, _, msg, author, ...)
   local db = GetDB()
 
   if not (ETBC.db.profile.general.enabled and db.enabled) then
@@ -374,21 +374,28 @@ local function RefreshDropDown(db)
   if not copyDrop then return end
 
   local values = BuildFrameList()
+  local orderedKeys = { "follow" }
+  local n = NUM_CHAT_WINDOWS or 10
+  for i = 1, n do
+    orderedKeys[#orderedKeys + 1] = tostring(i)
+  end
 
   UIDropDownMenu_Initialize(copyDrop, function(_, level)
-    local info = UIDropDownMenu_CreateInfo()
-    for k, v in pairs(values) do
-      info.text = v
-      info.value = k
-      info.func = function()
-        db.copyTarget = k
-        UIDropDownMenu_SetSelectedValue(copyDrop, k)
-        if copyFrame and copyFrame:IsShown() then
-          -- refresh view
-          mod:OpenCopy()
+    for _, k in ipairs(orderedKeys) do
+      local v = values[k]
+      if v then
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = v
+        info.value = k
+        info.func = function()
+          db.copyTarget = k
+          UIDropDownMenu_SetSelectedValue(copyDrop, k)
+          if copyFrame and copyFrame:IsShown() then
+            mod:OpenCopy()
+          end
         end
+        UIDropDownMenu_AddButton(info, level)
       end
-      UIDropDownMenu_AddButton(info, level)
     end
   end)
 

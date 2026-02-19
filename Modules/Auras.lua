@@ -4,7 +4,7 @@ ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Auras = mod
 
-local LSM = ETBC.media
+local LSM = ETBC.LSM
 
 local driver
 
@@ -31,7 +31,7 @@ local DEBUFF_COLORS = {
 local function SafeFont(face)
   face = face or "Friz Quadrata TT"
   if LSM and LSM.Fetch then
-    local f = LSM:Fetch(ETBC.LSM_FONTS, face, true)
+    local f = LSM:Fetch("font", face, true)
     return f or STANDARD_TEXT_FONT
   end
   return STANDARD_TEXT_FONT
@@ -168,6 +168,9 @@ local function AcquireIcon()
   icon.cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
   icon.cooldown:SetAllPoints(icon)
   icon.cooldown.noCooldownCount = true
+  if icon.cooldown.SetHideCountdownNumbers then
+    icon.cooldown:SetHideCountdownNumbers(true)
+  end
 
   icon.timeText = icon:CreateFontString(nil, "OVERLAY")
   icon.timeText:SetPoint("BOTTOM", icon, "BOTTOM", 0, 1)
@@ -284,6 +287,9 @@ local function ApplyVisuals(icon, common, layout, data)
 
   if common.showCooldownSpiral and data.duration and data.duration > 0 and data.expiration and data.expiration > 0 then
     icon.cooldown:Show()
+    if icon.cooldown.SetHideCountdownNumbers then
+      icon.cooldown:SetHideCountdownNumbers(true)
+    end
     local start = data.expiration - data.duration
     icon.cooldown:SetCooldown(start, data.duration)
   else

@@ -11,6 +11,7 @@ local driver
 local hooked = false
 local cachedDB  -- Module-level cache for DB, updated by Apply()
 local moverRegistered = false
+local lastAutoCollapseAt = 0
 
 local function GetDB()
   ETBC.db.profile.objectives = ETBC.db.profile.objectives or {}
@@ -246,15 +247,41 @@ local function ApplyCombatVisibility(frame, db)
 end
 
 -- Auto collapse completed quests (WatchFrame only, best-effort)
--- Note: TBC WatchFrame doesn't have per-quest collapse API like later expansions
--- This is a placeholder for potential future implementation
 local function AutoCollapseCompleted(db)
   if not db.enabled or not db.autoCollapseCompleted then return end
   if db.onlyCollapseInDungeons and not IsInDungeonOrRaid() then return end
+  if not _G.WatchFrame then return end
 
-  -- TBC WatchFrame API doesn't support auto-collapsing individual completed quests
-  -- In later expansions, this would iterate tracked quests and collapse completed ones
-  -- For now, this is intentionally left as a no-op
+  local now = (GetTime and GetTime()) or 0
+  if (now - (lastAutoCollapseAt or 0)) < 1.5 then return end
+
+  local hasCompleted = false
+  if GetNumQuestWatches and GetQuestWatchInfo and GetQuestLogTitle then
+    local num = tonumber(GetNumQuestWatches()) or 0
+    for i = 1, num do
+      local questIndex = select(1, GetQuestWatchInfo(i))
+      if questIndex then
+        local _, _, _, _, _, _, _, isComplete = GetQuestLogTitle(questIndex)
+        if isComplete and isComplete ~= 0 then
+          hasCompleted = true
+          break
+        end
+      end
+    end
+  end
+
+  if not hasCompleted then return end
+
+  local collapsed = false
+  if type(_G.WatchFrame_CollapseAll) == "function" then
+    collapsed = pcall(_G.WatchFrame_CollapseAll)
+  elseif type(_G.WatchFrame_Collapse) == "function" then
+    collapsed = pcall(_G.WatchFrame_Collapse)
+  end
+
+  if collapsed then
+    lastAutoCollapseAt = now
+  end
 end
 
 local function HookTracker(frame, kind)

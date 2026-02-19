@@ -15,6 +15,26 @@ mod._anchorHooked = false
 
 -- Default ID color (light green)
 local DEFAULT_ID_COLOR = { r = 0.5, g = 0.9, b = 0.5 }
+local CLASS_FALLBACK = { r = 0.78, g = 0.78, b = 0.78 }
+
+local function GetClassColorForUnit(unit)
+  if not unit then return CLASS_FALLBACK.r, CLASS_FALLBACK.g, CLASS_FALLBACK.b end
+  local _, unit_class = UnitClass(unit)
+  local c = unit_class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[unit_class]
+  if c then
+    return c.r, c.g, c.b
+  end
+  return CLASS_FALLBACK.r, CLASS_FALLBACK.g, CLASS_FALLBACK.b
+end
+
+local function WithAnchorSuppressed(fn)
+  mod._suppressAnchorHook = true
+  local ok, err = pcall(fn)
+  mod._suppressAnchorHook = false
+  if not ok and ETBC and ETBC.Debug then
+    ETBC:Debug("Tooltip anchor apply error: " .. tostring(err))
+  end
+end
 
 local BORDER_PIECES = {
   "BorderTop",
@@ -121,7 +141,10 @@ local function ApplyStyleToTooltip(tip)
 
   -- Scale
   if db.scale and type(db.scale) == "number" then
-    tip:SetScale(db.scale)
+    if tip._etbcScale ~= db.scale then
+      tip:SetScale(db.scale)
+      tip._etbcScale = db.scale
+    end
   end
 end
 
@@ -196,12 +219,7 @@ local function AddTargetLine(tooltip, unit)
   if UnitIsUnit(target, "player") then
     AddLineOnce(tooltip, text, 0, 1, 0)
   elseif UnitIsPlayer(target) then
-    local _, class = UnitClass(target)
-    if class and RAID_CLASS_COLORS[class] then
-      AddLineOnce(tooltip, text, RAID_CLASS_COLORS[class]:GetRGB())
-    else
-      AddLineOnce(tooltip, text, 1, 1, 1)
-    end
+    AddLineOnce(tooltip, text, GetClassColorForUnit(target))
   else
     AddLineOnce(tooltip, text, 1, 1, 1)
   end
@@ -242,13 +260,31 @@ local function ApplyTooltipAnchor(tip)
   tip._etbcAnchorSig = anchorSig
 
   if mode == "CURSOR" then
-    tip:ClearAllPoints()
-    tip:SetOwner(UIParent, "ANCHOR_CURSOR_RIGHT", offsetX, offsetY)
+    WithAnchorSuppressed(function()
+      tip:ClearAllPoints()
+      tip:SetOwner(UIParent, "ANCHOR_CURSOR_RIGHT", offsetX, offsetY)
+    end)
     return
   end
 
-  tip:ClearAllPoints()
-  tip:SetPoint(mode, UIParent, mode, offsetX, offsetY, "etbc_tooltip")
+  WithAnchorSuppressed(function()
+    tip:ClearAllPoints()
+    if mode == "TOP" then
+      tip:SetPoint("TOP", UIParent, "TOP", offsetX, -8 + offsetY)
+    elseif mode == "BOTTOM" then
+      tip:SetPoint("BOTTOM", UIParent, "BOTTOM", offsetX, 8 + offsetY)
+    elseif mode == "TOPLEFT" then
+      tip:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 8 + offsetX, -8 + offsetY)
+    elseif mode == "TOPRIGHT" then
+      tip:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -8 + offsetX, -8 + offsetY)
+    elseif mode == "BOTTOMLEFT" then
+      tip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 8 + offsetX, 8 + offsetY)
+    elseif mode == "BOTTOMRIGHT" then
+      tip:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -8 + offsetX, 8 + offsetY)
+    else
+      tip:SetPoint(mode, UIParent, mode, offsetX, offsetY)
+    end
+  end)
 end
 
 -- ---------------------------------------------------------
@@ -335,7 +371,8 @@ end
 -- Add ID line to tooltip with color
 local function AddIDLine(tooltip, label, id, color)
   if not tooltip or not id then return end
-  local r, g, b = color.r or 0.5, color.g or 0.9, color.b or 0.5
+  local c = color or DEFAULT_ID_COLOR
+  local r, g, b = c.r or 0.5, c.g or 0.9, c.b or 0.5
   AddLineOnce(tooltip, label .. id, r, g, b)
 end
 
@@ -449,7 +486,8 @@ local function SetStatusBarStyle(statusbar, unit)
 
     local _, unit_class = UnitClass(unit)
     if unit_class and RAID_CLASS_COLORS[unit_class] then
-      statusbar:SetStatusBarColor(RAID_CLASS_COLORS[unit_class]:GetRGB())
+      local r, g, b = GetClassColorForUnit(unit)
+      statusbar:SetStatusBarColor(r, g, b)
       return
     end
   end
@@ -535,7 +573,8 @@ local function ApplyClassColorName(tooltip, unit)
 
   local _, unit_class = UnitClass(unit)
   if unit_class and RAID_CLASS_COLORS[unit_class] then
-    name_line:SetTextColor(RAID_CLASS_COLORS[unit_class]:GetRGB())
+    local r, g, b = GetClassColorForUnit(unit)
+    name_line:SetTextColor(r, g, b)
   end
 end
 
@@ -658,8 +697,8 @@ function mod.Apply(_)
         ApplyTooltipAnchor(tip)
       end)
 
-      hooksecurefunc(GameTooltip, "SetPoint", function(self, _, _, _, _, _, flag)
-        if flag == "etbc_tooltip" then return end
+      hooksecurefunc(GameTooltip, "SetPoint", function(self)
+        if mod._suppressAnchorHook then return end
         ApplyTooltipAnchor(self)
       end)
     end

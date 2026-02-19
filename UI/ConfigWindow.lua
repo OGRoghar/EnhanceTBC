@@ -349,9 +349,7 @@ end
 
 local function AddToggle(container, opt, info)
   local w = AceGUI:Create("CheckBox")
-  local label = ResolveText(opt.name, info, opt)
-  if label == "" then label = tostring(opt._id or "") end
-  w:SetLabel(label)
+  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
   w:SetFullWidth(opt.width == "full")
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -369,9 +367,7 @@ end
 
 local function AddRange(container, opt, info)
   local w = AceGUI:Create("Slider")
-  local label = ResolveText(opt.name, info, opt)
-  if label == "" then label = tostring(opt._id or "") end
-  w:SetLabel(label)
+  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -395,9 +391,7 @@ end
 
 local function AddSelect(container, opt, info)
   local w = AceGUI:Create("Dropdown")
-  local label = ResolveText(opt.name, info, opt)
-  if label == "" then label = tostring(opt._id or "") end
-  w:SetLabel(label)
+  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -419,9 +413,7 @@ end
 
 local function AddColor(container, opt, info)
   local w = AceGUI:Create("ColorPicker")
-  local label = ResolveText(opt.name, info, opt)
-  if label == "" then label = tostring(opt._id or "") end
-  w:SetLabel(label)
+  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 

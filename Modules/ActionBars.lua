@@ -10,6 +10,8 @@ ETBC.Modules.ActionBars = mod
 local driver
 local hooked = false
 local pendingLayoutApply = false
+local rangeAccum = 0
+local RANGE_UPDATE_INTERVAL = 0.10
 
 local function GetDB()
   ETBC.db.profile.actionbars = ETBC.db.profile.actionbars or {}
@@ -29,6 +31,16 @@ local function GetDB()
   if db.fadeOOC == nil then db.fadeOOC = false end
   if db.oocAlpha == nil then db.oocAlpha = 0.45 end
   if db.combatAlpha == nil then db.combatAlpha = 1.0 end
+
+  if db.fullRangeTint == nil then db.fullRangeTint = true end
+  if db.rangeTintMode == nil then
+    db.rangeTintMode = db.fullRangeTint and "FULL" or "ICON"
+  end
+  db.rangeTint = db.rangeTint or {}
+  if db.rangeTint.r == nil then db.rangeTint.r = 1.0 end
+  if db.rangeTint.g == nil then db.rangeTint.g = 0.15 end
+  if db.rangeTint.b == nil then db.rangeTint.b = 0.15 end
+  if db.rangeTint.a == nil then db.rangeTint.a = 0.35 end
 
   if db.mainBar == nil then db.mainBar = true end
   if db.multiBars == nil then db.multiBars = true end
@@ -200,6 +212,115 @@ local function ApplyAlpha()
   end
 end
 
+local function EnsureRangeOverlay(btn)
+  if not btn then return nil end
+  if btn._etbcRangeOverlay then return btn._etbcRangeOverlay end
+
+  local tx = btn:CreateTexture(nil, "OVERLAY")
+  tx:SetTexture("Interface\\Buttons\\WHITE8x8")
+  tx:SetAllPoints(btn)
+  tx:SetBlendMode("BLEND")
+  tx:Hide()
+  btn._etbcRangeOverlay = tx
+  return tx
+end
+
+local function GetButtonIcon(btn)
+  if not btn then return nil end
+  return btn.icon or _G[(btn:GetName() or "") .. "Icon"]
+end
+
+local function SetRangeOverlay(btn, show, r, g, b, a)
+  if not btn then return end
+  local tx = EnsureRangeOverlay(btn)
+  if not tx then return end
+  if show then
+    tx:SetVertexColor(r or 1, g or 1, b or 1, a or 0.3)
+    tx:Show()
+  else
+    tx:Hide()
+  end
+end
+
+local function SetRangeIconTint(btn, show, r, g, b)
+  local icon = GetButtonIcon(btn)
+  if not icon or not icon.SetVertexColor then return end
+  if show then
+    icon:SetVertexColor(r or 1, g or 1, b or 1)
+  else
+    icon:SetVertexColor(1, 1, 1)
+  end
+end
+
+local function ClearAllRangeOverlays()
+  for _, bar in ipairs(GetBars()) do
+    local btns = GetAllButtonsFromBar(bar)
+    for i = 1, #btns do
+      SetRangeOverlay(btns[i], false)
+    end
+  end
+end
+
+local function ClearAllIconTints()
+  for _, bar in ipairs(GetBars()) do
+    local btns = GetAllButtonsFromBar(bar)
+    for i = 1, #btns do
+      SetRangeIconTint(btns[i], false)
+    end
+  end
+end
+
+local function IsOutOfRange(btn)
+  if not btn then return false end
+  local action = btn.action
+  if not action or action <= 0 then return false end
+  if not HasAction or not HasAction(action) then return false end
+  if not IsActionInRange then return false end
+  local inRange = IsActionInRange(action)
+  return inRange == 0
+end
+
+local function UpdateRangeTints()
+  local db = GetDB()
+  if not db.enabled then
+    ClearAllRangeOverlays()
+    ClearAllIconTints()
+    return
+  end
+
+  local mode = db.rangeTintMode
+  if mode ~= "FULL" and mode ~= "ICON" then
+    mode = db.fullRangeTint and "FULL" or "ICON"
+  end
+
+  if mode ~= "FULL" and mode ~= "ICON" then
+    ClearAllRangeOverlays()
+    ClearAllIconTints()
+    return
+  end
+
+  local c = db.rangeTint or {}
+  local r = tonumber(c.r) or 1.0
+  local g = tonumber(c.g) or 0.15
+  local b = tonumber(c.b) or 0.15
+  local a = tonumber(c.a) or 0.35
+
+  for _, bar in ipairs(GetBars()) do
+    local btns = GetAllButtonsFromBar(bar)
+    for i = 1, #btns do
+      local btn = btns[i]
+      local out = IsOutOfRange(btn)
+      if mode == "FULL" then
+        SetRangeOverlay(btn, out, r, g, b, a)
+        SetRangeIconTint(btn, false)
+      else
+        SetRangeOverlay(btn, false)
+        SetRangeIconTint(btn, out, r, g, b)
+      end
+    end
+  end
+end
+
 local function HookEvents()
   if hooked then return end
   hooked = true
@@ -211,6 +332,9 @@ local function HookEvents()
   driver:RegisterEvent("PLAYER_REGEN_ENABLED")
   driver:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
   driver:RegisterEvent("UPDATE_BINDINGS")
+  driver:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
+  driver:RegisterEvent("ACTIONBAR_UPDATE_STATE")
+  driver:RegisterEvent("PLAYER_TARGET_CHANGED")
 
   driver:SetScript("OnEvent", function(_, event)
     local db = GetDB()
@@ -240,8 +364,27 @@ local function HookEvents()
           StyleHotkey(btns[i])
         end
       end
+      UpdateRangeTints()
       return
     end
+
+    if event == "ACTIONBAR_UPDATE_USABLE"
+      or event == "ACTIONBAR_UPDATE_STATE"
+      or event == "PLAYER_TARGET_CHANGED" then
+      UpdateRangeTints()
+      return
+    end
+  end)
+
+  driver:SetScript("OnUpdate", function(_, elapsed)
+    local db = GetDB()
+    if not (ETBC.db.profile.general and ETBC.db.profile.general.enabled and db.enabled) then
+      return
+    end
+    rangeAccum = rangeAccum + (elapsed or 0)
+    if rangeAccum < RANGE_UPDATE_INTERVAL then return end
+    rangeAccum = 0
+    UpdateRangeTints()
   end)
 end
 
@@ -264,6 +407,8 @@ local function Apply()
         if mt and mt.SetAlpha then mt:SetAlpha(1) end
       end
     end
+    ClearAllRangeOverlays()
+    ClearAllIconTints()
     return
   end
 
@@ -276,6 +421,7 @@ local function Apply()
   end
 
   ApplyAlpha()
+  UpdateRangeTints()
 end
 
 ETBC.ApplyBus:Register("actionbars", Apply)

@@ -4,8 +4,14 @@
     {
       "label": "Build WoW TBC Addon",
       "type": "shell",
-      "command": "make",
-      "args": ["build"],
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/run-busted.ps1"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -14,12 +20,48 @@
     {
       "label": "Debug WoW TBC Addon",
       "type": "shell",
-      "command": "make",
-      "args": ["debug"],
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/run-busted.ps1",
+        "-Coverage"
+      ],
       "group": {
         "kind": "test",
         "isDefault": false
       }
+    },
+    {
+      "label": "Test (Busted)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/run-busted.ps1"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test (Busted + Coverage)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/run-busted.ps1",
+        "-Coverage"
+      ],
+      "group": "test",
+      "problemMatcher": []
     },
     {
       "label": "EnhanceTBC: Scan",
