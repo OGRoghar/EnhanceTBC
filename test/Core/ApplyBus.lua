@@ -38,7 +38,7 @@ local function DispatchKey(key)
 end
 
 local function QueueKey(key)
-  if key == nil then return end
+  if type(key) ~= "string" or key == "" then return end
   if pendingKeys[key] then return end
   pendingKeys[key] = true
   pendingOrder[#pendingOrder + 1] = key
@@ -48,11 +48,19 @@ local function FlushPending()
   if flushing then return end
   flushing = true
 
-  for i = 1, #pendingOrder do
-    local key = pendingOrder[i]
-    pendingOrder[i] = nil
-    pendingKeys[key] = nil
-    DispatchKey(key)
+  -- Swap queues up front so recursive/batched Notify calls enqueue into a fresh buffer.
+  local order = pendingOrder
+  local queued = pendingKeys
+  pendingOrder = {}
+  pendingKeys = {}
+
+  for i = 1, #order do
+    local key = order[i]
+    order[i] = nil
+    if type(key) == "string" and key ~= "" then
+      queued[key] = nil
+      DispatchKey(key)
+    end
   end
 
   flushing = false

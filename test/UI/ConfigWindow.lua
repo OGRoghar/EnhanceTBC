@@ -859,16 +859,27 @@ local PREVIEW_KEY_BY_MODULE = {
   actiontracker = "actiontracker",
   swingtimer = "swingtimer",
   combattext = "combattext",
-  gcdbar = "gcdbar",
 }
+
+local function GetPreviewApplyKey(moduleKey)
+  local key = PREVIEW_KEY_BY_MODULE[moduleKey]
+  if key then return key end
+  local p = ETBC.db and ETBC.db.profile
+  local db = p and p[moduleKey]
+  if type(db) == "table" and db.preview ~= nil then
+    return moduleKey
+  end
+  return nil
+end
 
 local function ToggleModulePreview(moduleKey)
   local p = ETBC.db and ETBC.db.profile
   if not p then return end
-  local previewKey = PREVIEW_KEY_BY_MODULE[moduleKey]
+  local previewKey = GetPreviewApplyKey(moduleKey)
   if not previewKey then return end
   local db = p[previewKey]
   if type(db) ~= "table" then return end
+  if db.preview == nil then return end
   db.preview = not (db.preview and true or false)
   if ETBC.ApplyBus and ETBC.ApplyBus.Notify then
     ETBC.ApplyBus:Notify(previewKey)
@@ -925,7 +936,7 @@ local function AddModuleHeaderBlock(container, group, moduleKey)
   end)
   actions:AddChild(resetBtn)
 
-  if PREVIEW_KEY_BY_MODULE[moduleKey] then
+  if GetPreviewApplyKey(moduleKey) then
     local previewBtn = AceGUI:Create("Button")
     previewBtn:SetText("Toggle Preview")
     previewBtn:SetWidth(130)
@@ -1315,7 +1326,6 @@ local function ClearPreviewModes()
 
   DisablePreview("auras")
   DisablePreview("actiontracker")
-  DisablePreview("gcdbar")
   DisablePreview("swingtimer")
   DisablePreview("combattext")
 
