@@ -2,7 +2,7 @@
 ## Title: EnhanceTBC
 ## Notes: QoL suite for TBC Anniversary (Ace3)
 ## Author: Roghar
-## Version: 1.2.1
+## Version: 1.2.2
 ## SavedVariables: EnhanceTBCDB
 ## OptionalDeps: Ace3
 ## X-Category: Interface Enhancements

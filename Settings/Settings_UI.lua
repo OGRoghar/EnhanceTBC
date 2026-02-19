@@ -11,6 +11,7 @@ local function GetDB()
   -- Camera max zoom (zoom out further from character)
   if db.cameraMaxZoom == nil then db.cameraMaxZoom = true end
   if db.cameraMaxZoomFactor == nil then db.cameraMaxZoomFactor = 2.6 end
+  if db.deleteWordForHighQuality == nil then db.deleteWordForHighQuality = true end
 
   return db
 end
@@ -66,6 +67,22 @@ ETBC.SettingsRegistry:RegisterGroup("ui", {
         get = function() return db.cameraMaxZoomFactor end,
         set = function(_, v)
           db.cameraMaxZoomFactor = v
+          ETBC.ApplyBus:Notify("ui")
+        end,
+      },
+
+      deleteHeader = { type = "header", name = "Delete Protection", order = 30 },
+
+      deleteWordForHighQuality = {
+        type = "toggle",
+        name = "Require typing DELETE for rare/epic/legendary",
+        desc = "Adds a text confirmation step when deleting quality 3+ items from bags.",
+        order = 31,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.deleteWordForHighQuality end,
+        set = function(_, v)
+          db.deleteWordForHighQuality = v and true or false
           ETBC.ApplyBus:Notify("ui")
         end,
       },

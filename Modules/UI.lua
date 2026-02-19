@@ -14,6 +14,46 @@ ETBC.Modules.UI = mod
 
 local driver
 local storedZoom -- session-stored original zoom factor (string)
+local deleteHookInstalled = false
+local originalDeleteCursorItem
+
+if not StaticPopupDialogs.ETBC_DELETE_WORD_CONFIRM then
+  StaticPopupDialogs.ETBC_DELETE_WORD_CONFIRM = {
+    text = "Type DELETE to permanently delete this item:\n%s",
+    button1 = DELETE,
+    button2 = CANCEL,
+    hasEditBox = 1,
+    maxLetters = 6,
+    whileDead = 1,
+    hideOnEscape = 1,
+    timeout = 0,
+    preferredIndex = 3,
+    OnShow = function(self)
+      if self and self.editBox then
+        self.editBox:SetText("")
+        self.editBox:SetFocus()
+      end
+      if self and self.button1 then
+        self.button1:Disable()
+      end
+    end,
+    EditBoxOnTextChanged = function(editBox)
+      local parent = editBox and editBox:GetParent()
+      local txt = (editBox and editBox:GetText() or ""):upper()
+      if parent and parent.button1 then
+        if txt == "DELETE" then
+          parent.button1:Enable()
+        else
+          parent.button1:Disable()
+        end
+      end
+    end,
+    OnAccept = function(_, data)
+      if not data or type(data.fn) ~= "function" then return end
+      data.fn(unpack(data.args or {}))
+    end,
+  }
+end
 
 local function GetDB()
   ETBC.db.profile.ui = ETBC.db.profile.ui or {}
@@ -22,8 +62,60 @@ local function GetDB()
   if db.enabled == nil then db.enabled = true end
   if db.cameraMaxZoom == nil then db.cameraMaxZoom = true end
   if db.cameraMaxZoomFactor == nil then db.cameraMaxZoomFactor = 2.6 end
+  if db.deleteWordForHighQuality == nil then db.deleteWordForHighQuality = true end
 
   return db
+end
+
+local function CursorItemQualityAndLabel()
+  if type(GetCursorInfo) ~= "function" then return nil, nil end
+
+  local infoType, itemID, itemLink = GetCursorInfo()
+  if infoType ~= "item" then return nil, nil end
+
+  local quality
+  if type(GetItemInfo) == "function" then
+    local _, _, q = GetItemInfo(itemLink or itemID)
+    quality = q
+  end
+
+  if not quality and type(GetItemInfoInstant) == "function" then
+    local _, _, q = GetItemInfoInstant(itemLink or itemID)
+    quality = q
+  end
+
+  return quality, itemLink or (itemID and ("item:" .. tostring(itemID))) or "item"
+end
+
+local function ShouldRequireDeleteWord(db)
+  if not (db and db.enabled and db.deleteWordForHighQuality) then
+    return false
+  end
+
+  local quality = CursorItemQualityAndLabel()
+  return type(quality) == "number" and quality >= 3
+end
+
+local function EnsureDeleteHook()
+  if deleteHookInstalled then return end
+  if type(DeleteCursorItem) ~= "function" then return end
+
+  originalDeleteCursorItem = DeleteCursorItem
+
+  DeleteCursorItem = function(...)
+    local db = GetDB()
+    if ShouldRequireDeleteWord(db) then
+      local _, label = CursorItemQualityAndLabel()
+      StaticPopup_Show("ETBC_DELETE_WORD_CONFIRM", tostring(label or "item"), nil, {
+        fn = originalDeleteCursorItem,
+        args = { ... },
+      })
+      return
+    end
+    return originalDeleteCursorItem(...)
+  end
+
+  deleteHookInstalled = true
 end
 
 local function EnsureDriver()
@@ -72,6 +164,7 @@ end
 
 local function Apply()
   EnsureDriver()
+  EnsureDeleteHook()
 
   local db = GetDB()
   local generalEnabled = ETBC.db.profile.general and ETBC.db.profile.general.enabled
