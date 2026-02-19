@@ -1,6 +1,5 @@
 -- Modules/ActionTracker.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.ActionTracker = mod

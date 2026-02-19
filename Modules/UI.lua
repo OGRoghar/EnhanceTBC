@@ -7,8 +7,7 @@
 --
 -- Performance: no OnUpdate. Minimal events.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.UI = mod
@@ -44,16 +43,16 @@ local function SafeGetCVar(name)
   return nil
 end
 
-function mod:StoreCameraZoomIfNeeded()
+function mod.StoreCameraZoomIfNeeded()
   if storedZoom ~= nil then return end
   storedZoom = SafeGetCVar("cameraDistanceMaxZoomFactor")
 end
 
-function mod:ApplyCameraZoomOneShot()
+function mod.ApplyCameraZoomOneShot()
   local db = GetDB()
   if not (db and db.enabled and db.cameraMaxZoom) then return end
 
-  self:StoreCameraZoomIfNeeded()
+  mod.StoreCameraZoomIfNeeded()
 
   local target = tonumber(db.cameraMaxZoomFactor) or 2.6
   if target < 1.0 then target = 1.0 end
@@ -62,7 +61,7 @@ function mod:ApplyCameraZoomOneShot()
   SafeSetCVar("cameraDistanceMaxZoomFactor", target)
 end
 
-function mod:RestoreCameraZoom(force)
+function mod.RestoreCameraZoom(force)
   local db = GetDB()
   if force or (db and (not db.enabled or not db.cameraMaxZoom)) then
     if storedZoom ~= nil then
@@ -87,7 +86,7 @@ local function Apply()
 
   -- Apply immediately on ApplyBus changes (toggle/slider change)
   if db.cameraMaxZoom then
-    mod:ApplyCameraZoomOneShot()
+    mod.ApplyCameraZoomOneShot()
   else
     mod:RestoreCameraZoom(false)
   end
@@ -101,7 +100,7 @@ local function Apply()
     if not (ETBC.db.profile.general and ETBC.db.profile.general.enabled and db2.enabled) then return end
 
     if db2.cameraMaxZoom then
-      mod:ApplyCameraZoomOneShot()
+      mod.ApplyCameraZoomOneShot()
     end
   end)
 

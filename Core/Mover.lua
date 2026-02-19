@@ -2,7 +2,9 @@
 -- EnhanceTBC - Mover system (global lock/unlock, grid, snap, saved anchors)
 --
 -- How modules use it:
---   ETBC.Mover:Register("AurasAnchor", frame, { default = { point="CENTER", rel="UIParent", relPoint="CENTER", x=0, y=0 } })
+--   ETBC.Mover:Register("AurasAnchor", frame, {
+--     default = { point="CENTER", rel="UIParent", relPoint="CENTER", x=0, y=0 }
+--   })
 --   ETBC.Mover:Apply("AurasAnchor") -- optional; ApplyBus will also re-apply
 --
 -- Saved data:
@@ -13,10 +15,10 @@
 --
 -- Notes:
 -- - Safe: does not attempt to move protected frames in combat if onlyOutOfCombat is enabled.
--- - No heavy OnUpdate: only uses OnUpdate when unlocked for dragging label refresh (very light).
+-- - No heavy OnUpdate: only uses OnUpdate when unlocked
+--   for dragging label refresh (very light).
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Mover = ETBC.Mover or {}
 local M = ETBC.Mover
 
@@ -227,7 +229,10 @@ local function CreateHandle(key, entry)
   local frame = entry.frame
   if not frame then return end
 
-  local h = CreateFrame("Frame", HandleFrameNameForKey(key), UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  local h = CreateFrame(
+    "Frame", HandleFrameNameForKey(key), UIParent,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   h:SetFrameStrata("DIALOG")
   h:SetClampedToScreen(true)
   h:EnableMouse(true)
@@ -284,7 +289,7 @@ local function CreateHandle(key, entry)
 
   h._sync = SyncSizeAndPos
 
-  h:SetScript("OnDragStart", function(self)
+  h:SetScript("OnDragStart", function(_)
     if not CanMoveNow() then return end
     if frame.IsProtected and frame:IsProtected() and InCombat() then return end
     if not frame.StartMoving then return end
@@ -330,7 +335,7 @@ local function CreateHandle(key, entry)
     if self._sync then self:_sync() end
   end)
 
-  h:SetScript("OnMouseUp", function(self, btn)
+  h:SetScript("OnMouseUp", function(_, btn)
     if btn == "RightButton" then
       M:Reset(key)
     end
@@ -394,7 +399,7 @@ local function UpdateAllHandles()
   end
 end
 
-function M:Register(key, frame, opts)
+function M.Register(_, key, frame, opts)
   if not key or key == "" then return end
   if not frame then return end
 
@@ -423,11 +428,11 @@ function M:Register(key, frame, opts)
   UpdateAllHandles()
 end
 
-function M:GetRegistered()
+function M.GetRegistered(_)
   return registry
 end
 
-function M:ApplyAnchorFromHandle(entry, point, relPoint, x, y)
+function M.ApplyAnchorFromHandle(_, entry, point, relPoint, x, y)
   local key = FindKeyForEntry(entry)
   if not key then return end
 
@@ -452,12 +457,12 @@ function M:ResetAll()
   self:Reset("all")
 end
 
-function M:AutoRegisterKnown()
+function M.AutoRegisterKnown(_)
   -- Compatibility no-op: some UI layers call this to allow modules to lazily
   -- register movers. Individual modules can still register directly.
 end
 
-function M:Apply(key)
+function M.Apply(_, key)
   if key then
     ApplyPointToFrame(key)
     local h = handles[key]
@@ -471,7 +476,7 @@ function M:Apply(key)
   end
 end
 
-function M:SetUnlocked(v)
+function M.SetUnlocked(_, v)
   local db = GetDB()
   db.unlocked = v and true or false
 
@@ -497,7 +502,7 @@ function M:Unlock()
   self:SetUnlocked(true)
 end
 
-function M:SetMoveMode(enabled)
+function M.SetMoveMode(_, enabled)
   local db = GetDB()
   -- Convert to boolean using Lua idiom
   db.moveMode = not not enabled
@@ -515,18 +520,18 @@ function M:ToggleMasterMove()
   self:SetMasterMove(nextState)
 end
 
-function M:GetGridSize()
+function M.GetGridSize(_)
   return GetDB().gridSize or 8
 end
 
-function M:SetupChatCommands()
+function M.SetupChatCommands(_)
   -- Wrapper function called by MoverUI to ensure slash commands are registered
   -- for mover functionality (/etbcmove, /etbc unlock, /etbc lock, /etbc reset)
   -- This allows MoverUI to initialize commands without directly accessing internal functions
   EnsureSlash()
 end
 
-function M:Reset(key)
+function M.Reset(_, key)
   local db = GetDB()
   if key == "all" or key == "*" then
     db.frames = {}
@@ -551,7 +556,7 @@ function M:Reset(key)
   UpdateAllHandles()
 end
 
-function M:Nudge(key, dx, dy)
+function M.Nudge(_, key, dx, dy)
   local entry = registry[key]
   if not entry or not entry.frame then return end
   local frame = entry.frame
@@ -601,12 +606,7 @@ local function Apply()
     driver:RegisterEvent("PLAYER_REGEN_DISABLED")
     driver:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-    driver:SetScript("OnEvent", function(_, event)
-      if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
-        -- If onlyOutOfCombat is on, handles are still shown but dragging will be blocked.
-        -- Still refresh tooltips/labels/grid if desired.
-      end
-
+    driver:SetScript("OnEvent", function()
       -- Re-sync grid/handles on any of these
       local db2 = GetDB()
       if db2.unlocked and db2.showGrid then

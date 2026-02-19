@@ -1,7 +1,7 @@
 -- Modules/MinimapPlus.lua
 -- EnhanceTBC - Minimap styling and minimap info rows
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.MinimapPlus = mod
@@ -74,13 +74,14 @@ local function EnsureEventFrame()
       state.iconsFrame:updateInventoryDisplay()
     end
 
-    if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_REGEN_ENABLED" or event == "MERCHANT_CLOSED" then
+    if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_EQUIPMENT_CHANGED"
+      or event == "PLAYER_REGEN_ENABLED" or event == "MERCHANT_CLOSED" then
       state.iconsFrame:updateDurabilityDisplay()
     end
   end)
 end
 
-function mod:StyleMinimap()
+function mod.StyleMinimap(_)
   if state.styled then return end
   local db = GetDB()
 
@@ -227,7 +228,7 @@ function mod:StyleMinimap()
   state.styled = true
 end
 
-function mod:CreatePerformanceFrame()
+function mod.CreatePerformanceFrame(_)
   if state.performanceFrame or not Minimap then return end
 
   local frame = CreateFrame("Frame", "EnhanceTBC_MinimapPerformanceFrame", Minimap, "BackdropTemplate")
@@ -298,7 +299,7 @@ function mod:CreatePerformanceFrame()
   state.performanceFrame = frame
 end
 
-function mod:CreateIconsFrame()
+function mod.CreateIconsFrame(_)
   if state.iconsFrame or not Minimap then return end
 
   local frame = CreateFrame("Frame", "EnhanceTBC_MinimapIconsFrame", Minimap, "BackdropTemplate")
@@ -477,7 +478,9 @@ function mod:CreateIconsFrame()
 
       if item_current_durability and item_maximum_durability then
         if item_current_durability < item_maximum_durability then
-          total_durability = total_durability + math.floor(item_current_durability / item_maximum_durability * 100 + 0.5)
+          total_durability = total_durability + math.floor(
+            item_current_durability / item_maximum_durability * 100 + 0.5
+          )
         else
           total_durability = total_durability + 100
         end
@@ -510,7 +513,7 @@ function mod:CreateIconsFrame()
   state.iconsFrame = frame
 end
 
-function mod:StyleTimeManagerClockButton()
+function mod.StyleTimeManagerClockButton(_)
   if not C_AddOns or not C_AddOns.IsAddOnLoaded then return end
   if not C_AddOns.IsAddOnLoaded("Blizzard_TimeManager") then return end
   if not GetDB().enabled then return end
@@ -547,7 +550,7 @@ function mod:StyleTimeManagerClockButton()
   end
 end
 
-function mod:MoveMinimapLFGButton()
+function mod.MoveMinimapLFGButton(_)
   if not C_AddOns or not C_AddOns.IsAddOnLoaded then return end
   if not C_AddOns.IsAddOnLoaded("Blizzard_GroupFinder_VanillaStyle") then return end
   if not LFGMinimapFrame then return end
@@ -557,7 +560,7 @@ function mod:MoveMinimapLFGButton()
   LFGMinimapFrame:SetPoint("BOTTOMLEFT", 1.5, 85)
 end
 
-function mod:StyleBattlefieldMinimap()
+function mod.StyleBattlefieldMinimap(_)
   if not C_AddOns or not C_AddOns.IsAddOnLoaded then return end
   if not C_AddOns.IsAddOnLoaded("Blizzard_BattlefieldMap") then return end
   if not BattlefieldMapFrame then return end
@@ -573,7 +576,7 @@ function mod:StyleBattlefieldMinimap()
   end
 end
 
-function mod:MoveQuestWatchFrame()
+function mod.MoveQuestWatchFrame(_)
   local frame = _G["UIParentRightManagedFrameContainer"]
   if not frame then return end
 
@@ -590,7 +593,7 @@ function mod:MoveQuestWatchFrame()
   end
 end
 
-function mod:UpdateMinimapIcons()
+function mod.UpdateMinimapIcons(_)
   local db = GetDB()
 
   if MinimapCluster then
@@ -615,7 +618,7 @@ function mod:UpdateMinimapIcons()
   end
 end
 
-function mod:UpdateMinimapPerformance()
+function mod.UpdateMinimapPerformance(_)
   if not state.performanceFrame then return end
 
   if PerformanceEnabled() then
@@ -627,7 +630,7 @@ function mod:UpdateMinimapPerformance()
   end
 end
 
-function mod:UpdateMinimapMask()
+function mod.UpdateMinimapMask(_)
   if not Minimap or not Minimap.SetMaskTexture then return end
   local db = GetDB()
   if db.enabled then

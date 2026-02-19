@@ -1,7 +1,7 @@
 -- Settings/Settings_Unit_Nameplates.lua
 -- EnhanceTBC - Unit nameplate settings
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 
 local function GetDB()
   ETBC.db.profile.nameplates = ETBC.db.profile.nameplates or {}
@@ -106,7 +106,10 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.enemy_nameplate_health_text end,
-        set = function(_, v) db.enemy_nameplate_health_text = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+        set = function(_, v)
+          db.enemy_nameplate_health_text = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
       },
 
       enemy_nameplate_debuff = {
@@ -116,7 +119,10 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.enemy_nameplate_debuff end,
-        set = function(_, v) db.enemy_nameplate_debuff = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+        set = function(_, v)
+          db.enemy_nameplate_debuff = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
       },
 
       enemy_nameplate_debuff_scale = {
@@ -136,7 +142,10 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.enemy_nameplate_player_debuffs end,
-        set = function(_, v) db.enemy_nameplate_player_debuffs = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+        set = function(_, v)
+          db.enemy_nameplate_player_debuffs = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
       },
 
       enemy_nameplate_player_debuffs_scale = {
@@ -166,7 +175,10 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.enemy_nameplate_stance end,
-        set = function(_, v) db.enemy_nameplate_stance = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+        set = function(_, v)
+          db.enemy_nameplate_stance = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
       },
 
       enemy_nameplate_stance_scale = {
@@ -237,7 +249,10 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.friendly_nameplate_default_color end,
-        set = function(_, v) db.friendly_nameplate_default_color = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+        set = function(_, v)
+          db.friendly_nameplate_default_color = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
       },
 
       nameplate_unit_target_color = {
@@ -247,7 +262,10 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.nameplate_unit_target_color end,
-        set = function(_, v) db.nameplate_unit_target_color = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+        set = function(_, v)
+          db.nameplate_unit_target_color = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
       },
 
       totem_nameplate_colors = {

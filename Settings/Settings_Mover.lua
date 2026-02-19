@@ -1,8 +1,7 @@
 -- Settings/Settings_Mover.lua
 -- EnhanceTBC - Mover settings (grid + unlock/lock + snap)
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.mover = ETBC.db.profile.mover or {}
   local db = ETBC.db.profile.mover

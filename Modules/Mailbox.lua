@@ -1,6 +1,5 @@
 -- Modules/Mailbox.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Mailbox = mod
@@ -42,7 +41,7 @@ local function StopTicker()
   end
 end
 
-function mod:Stop()
+function mod.Stop(_)
   StopTicker()
   queue = nil
   pendingAuto = false
@@ -254,7 +253,7 @@ local function StartTicker(interval, fn)
   }
 end
 
-function mod:RunNow()
+function mod.RunNow(_)
   local db = ETBC.db.profile.mailbox
   if not (ETBC.db.profile.general.enabled and db.enabled) then return end
   if not IsMailboxOpen() then
@@ -271,17 +270,14 @@ function mod:RunNow()
 
   ResetSession()
   queue = BuildQueue(db)
-  
+
   -- Validate queue before proceeding
   if not queue then return end
 
   StopTicker()
-  local interval = 0.05
-  if db.throttle and db.throttle.enabled then
-    interval = tonumber(db.throttle.interval) or 0.05
-  else
-    interval = 0.01
-  end
+  local interval = (db.throttle and db.throttle.enabled)
+    and (tonumber(db.throttle.interval) or 0.05)
+    or 0.01
   StartTicker(interval, function() Step(db) end)
 end
 

@@ -2,8 +2,7 @@
 -- EnhanceTBC - Minimap Button (LibDataBroker + LibDBIcon)
 -- Safe: no ETBC.db access at file load.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 if not ETBC then return end
 
 local LDB = LibStub and LibStub("LibDataBroker-1.1", true)
@@ -64,7 +63,7 @@ local function EnsureDataObject()
       tooltip:AddLine(" ")
 
       if ETBC.db and ETBC.db.profile and ETBC.db.profile.minimapPlus then
-        local sinkShown = ETBC.Modules and ETBC.Modules.MinimapPlus and ETBC.Modules.MinimapPlus.IsSinkShown 
+        local sinkShown = ETBC.Modules and ETBC.Modules.MinimapPlus and ETBC.Modules.MinimapPlus.IsSinkShown
           and ETBC.Modules.MinimapPlus:IsSinkShown() or false
         local state = sinkShown and "|cff00ff00Visible|r" or "|cffff0000Hidden|r"
         tooltip:AddLine("Button Sink: " .. state)

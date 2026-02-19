@@ -1,11 +1,10 @@
 -- Core/ApplyBus.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.ApplyBus = ETBC.ApplyBus or {}
 
 local listeners = {}
 
-function ETBC.ApplyBus:Register(key, fn)
+function ETBC.ApplyBus.Register(_, key, fn)
   if not key or type(fn) ~= "function" then return end
   listeners[key] = listeners[key] or {}
   for i = 1, #listeners[key] do
@@ -16,7 +15,7 @@ function ETBC.ApplyBus:Register(key, fn)
   table.insert(listeners[key], fn)
 end
 
-function ETBC.ApplyBus:Unregister(key, fn)
+function ETBC.ApplyBus.Unregister(_, key, fn)
   local list = listeners[key]
   if not list or type(fn) ~= "function" then return end
   for i = #list, 1, -1 do
@@ -26,7 +25,7 @@ function ETBC.ApplyBus:Unregister(key, fn)
   end
 end
 
-function ETBC.ApplyBus:Notify(key)
+function ETBC.ApplyBus.Notify(_, key)
   local list = listeners[key]
   if not list then return end
   local snapshot = {}
@@ -45,7 +44,7 @@ function ETBC.ApplyBus:NotifyAll()
   end
 end
 
-function ETBC.ApplyBus:Keys()
+function ETBC.ApplyBus.Keys(_)
   local out = {}
   for key in pairs(listeners) do
     out[#out + 1] = key

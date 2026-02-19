@@ -1,16 +1,16 @@
 -- Settings/Settings_AutoGossip.lua
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 
 local tempText = ""
 
 local function GetDB()
   ETBC.db.profile.autoGossip = ETBC.db.profile.autoGossip or {}
   local db = ETBC.db.profile.autoGossip
-  
+
   if db.enabled == nil then db.enabled = true end
   if db.delay == nil then db.delay = 0 end
   db.options = db.options or {}
-  
+
   return db
 end
 
@@ -31,7 +31,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
   options = function()
     EnsureDefaults()
     local db = GetDB()
-    
+
     return {
       enabled = {
         type = "toggle",
@@ -45,14 +45,14 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           Apply()
         end,
       },
-      
+
       bypassInfo = {
         type = "description",
         name = "|cffffaa00Hold Shift|r while talking to an NPC to temporarily bypass auto-selection.",
         order = 2,
         width = "full",
       },
-      
+
       delay = {
         type = "range",
         name = "Selection Delay",
@@ -67,19 +67,20 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           Apply()
         end,
       },
-      
+
       optionsHeader = {
         type = "header",
         name = "Gossip Options to Auto-Select",
         order = 10,
       },
-      
+
       optionsDesc = {
         type = "description",
-        name = "Add gossip option text patterns that should be automatically selected. These are matched case-insensitively.",
+        name = "Add gossip option text patterns that should be automatically selected. "
+          .. "These are matched case-insensitively.",
         order = 11,
       },
-      
+
       addOption = {
         type = "group",
         name = "Add Option",
@@ -89,7 +90,8 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           text = {
             type = "input",
             name = "Gossip Text Pattern",
-            desc = "Enter the text of a gossip option to auto-select (e.g., 'I want to fly', 'Train me').",
+            desc = "Enter the text of a gossip option to auto-select "
+              .. "(e.g., 'I want to fly', 'Train me').",
             order = 1,
             width = "double",
             get = function() return tempText end,
@@ -112,7 +114,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
                       break
                     end
                   end
-                  
+
                   if not exists then
                     table.insert(db.options, pattern)
                     tempText = ""
@@ -131,7 +133,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           },
         },
       },
-      
+
       currentOptions = {
         type = "group",
         name = "Current Auto-Select Patterns",
@@ -141,12 +143,13 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           list = {
             type = "description",
             name = function()
-              local db = GetDB()
-              if #db.options == 0 then
-                return "|cffaaaaaa(No patterns added yet)\n\nUse /etbc listgossip to list patterns\nUse /etbc addgossip <text> to add patterns|r"
+              local currentDB = GetDB()
+              if #currentDB.options == 0 then
+                return "|cffaaaaaa(No patterns added yet)\n\nUse /etbc listgossip to list patterns\n"
+                  .. "Use /etbc addgossip <text> to add patterns|r"
               else
                 local text = "Current patterns:\n"
-                for i, pattern in ipairs(db.options) do
+                for i, pattern in ipairs(currentDB.options) do
                   text = text .. "|cff00ff00" .. i .. ". " .. pattern .. "|r\n"
                 end
                 text = text .. "\n|cffffaa00Use /etbc listgossip to list in chat|r"

@@ -3,8 +3,7 @@
 -- SUCCEEDED-only mode: bar starts only when the spell successfully fires.
 -- Also fixes Only-in-combat by using InCombatLockdown + regen events.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.GCDBar = mod
@@ -119,7 +118,10 @@ local function EnsureFrame()
   anchorFrame = CreateFrame("Frame", "EnhanceTBC_GCDBarAnchor", UIParent)
   anchorFrame:SetSize(220, 12)
 
-  barFrame = CreateFrame("Frame", "EnhanceTBC_GCDBarFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  barFrame = CreateFrame(
+    "Frame", "EnhanceTBC_GCDBarFrame", UIParent,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   barFrame:SetFrameStrata("MEDIUM")
   barFrame:SetClampedToScreen(true)
   barFrame:SetPoint("CENTER", anchorFrame, "CENTER", 0, 0)
@@ -169,9 +171,12 @@ local function UpdateLayout(db)
 
   if db.spark then spark:Show() else spark:Hide() end
 
-  local r, g, b = 0.20, 1.00, 0.20
+  local r, g, b
   if db.colorMode == "CLASS" then
     r, g, b = GetClassColor()
+    if not r or not g or not b then
+      r, g, b = 0.20, 1.00, 0.20
+    end
   else
     local c = db.customColor or { r = 0.2, g = 1.0, b = 0.2 }
     r, g, b = c.r or 0.2, c.g or 1.0, c.b or 0.2
@@ -186,12 +191,6 @@ local function StartFade(toAlpha, duration)
   fadeTo = toAlpha or 0
   fadeStartAt = GetTime()
   fadeDuration = duration or 0.25
-end
-
-local function PlayerInCombat()
-  if InCombatLockdown and InCombatLockdown() then return true end
-  if UnitAffectingCombat then return UnitAffectingCombat("player") and true or false end
-  return false
 end
 
 local function ShouldBeVisible(db, active)
@@ -325,7 +324,7 @@ local function Apply()
     driver:RegisterUnitEvent("UNIT_SPELLCAST_START", "player")
     driver:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 
-    driver:SetScript("OnEvent", function(_, event, unit, castGUID, spellID)
+    driver:SetScript("OnEvent", function(_, event, _unit, _castGUID, _spellID)
       if event == "PLAYER_ENTERING_WORLD" or event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
         UpdateLayout(GetDB())
         return

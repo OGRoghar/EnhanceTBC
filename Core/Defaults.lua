@@ -1,6 +1,5 @@
 -- Core/Defaults.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.defaults = {
   profile = {
     general = {
@@ -38,7 +37,7 @@ ETBC.defaults = {
       hideWhenIdle = false,
       idleDelay = 1.0,
     },
-	
+
 	    minimapPlus = {
       enabled = true,
 
@@ -387,12 +386,36 @@ ETBC.defaults = {
 
       -- per-module overrides (if override.enabled = true, it replaces global)
       modules = {
-        auras = { enabled = false, inCombat = false, outOfCombat = false, inInstance = false, inRaid = false, inParty = false, solo = false, inBattleground = false },
-        actiontracker = { enabled = false, inCombat = false, outOfCombat = false, inInstance = false, inRaid = false, inParty = false, solo = false, inBattleground = false },
-        combattext = { enabled = false, inCombat = false, outOfCombat = false, inInstance = false, inRaid = false, inParty = false, solo = false, inBattleground = false },
-        gcdbar = { enabled = false, inCombat = false, outOfCombat = false, inInstance = false, inRaid = false, inParty = false, solo = false, inBattleground = false },
-        mouse = { enabled = false, inCombat = false, outOfCombat = false, inInstance = false, inRaid = false, inParty = false, solo = false, inBattleground = false },
-        objectives = { enabled = false, inCombat = false, outOfCombat = false, inInstance = false, inRaid = false, inParty = false, solo = false, inBattleground = false },
+        auras = {
+          enabled = false, inCombat = false, outOfCombat = false,
+          inInstance = false, inRaid = false, inParty = false,
+          solo = false, inBattleground = false,
+        },
+        actiontracker = {
+          enabled = false, inCombat = false, outOfCombat = false,
+          inInstance = false, inRaid = false, inParty = false,
+          solo = false, inBattleground = false,
+        },
+        combattext = {
+          enabled = false, inCombat = false, outOfCombat = false,
+          inInstance = false, inRaid = false, inParty = false,
+          solo = false, inBattleground = false,
+        },
+        gcdbar = {
+          enabled = false, inCombat = false, outOfCombat = false,
+          inInstance = false, inRaid = false, inParty = false,
+          solo = false, inBattleground = false,
+        },
+        mouse = {
+          enabled = false, inCombat = false, outOfCombat = false,
+          inInstance = false, inRaid = false, inParty = false,
+          solo = false, inBattleground = false,
+        },
+        objectives = {
+          enabled = false, inCombat = false, outOfCombat = false,
+          inInstance = false, inRaid = false, inParty = false,
+          solo = false, inBattleground = false,
+        },
       },
     },
 

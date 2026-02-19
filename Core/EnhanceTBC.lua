@@ -1,6 +1,5 @@
 -- Core/EnhanceTBC.lua
 local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
 local AceAddon = LibStub("AceAddon-3.0")
 local AceDB = LibStub("AceDB-3.0")
 local AceConfig = LibStub("AceConfig-3.0")
@@ -48,7 +47,7 @@ local function GetModuleEnabledState(key)
   return nil
 end
 
-function ETBC:RefreshAll(reason)
+function ETBC:RefreshAll(_reason)
   if not self.db or not self.db.profile then return end
 
   if self.Theme and self.Theme.RefreshCache then
@@ -159,7 +158,8 @@ function ETBC:SlashCommand(input)
   end
 
   if input:match("^addgossip%s+(.+)") or input:match("^gossipadd%s+(.+)") then
-    local pattern = rawInput:match("^[Aa][Dd][Dd][Gg][Oo][Ss][Ss][Ii][Pp]%s+(.+)") or rawInput:match("^[Gg][Oo][Ss][Ss][Ii][Pp][Aa][Dd][Dd]%s+(.+)")
+    local pattern = rawInput:match("^[Aa][Dd][Dd][Gg][Oo][Ss][Ss][Ii][Pp]%s+(.+)")
+      or rawInput:match("^[Gg][Oo][Ss][Ss][Ii][Pp][Aa][Dd][Dd]%s+(.+)")
     if ETBC.Modules and ETBC.Modules.AutoGossip and ETBC.Modules.AutoGossip.AddPattern then
       ETBC.Modules.AutoGossip:AddPattern(pattern)
     else
@@ -168,7 +168,10 @@ function ETBC:SlashCommand(input)
     return
   end
 
-  self:Print("Commands: /etbc (open), /etbc reset, /etbc minimap, /etbc moveall [on|off|toggle], /etbc listgossip (list auto-gossip), /etbc addgossip <pattern> (add auto-gossip)")
+  self:Print(
+    "Commands: /etbc (open), /etbc reset, /etbc minimap, /etbc moveall [on|off|toggle], "
+      .. "/etbc listgossip (list auto-gossip), /etbc addgossip <pattern> (add auto-gossip)"
+  )
 end
 
 -- ---------------------------------------------------------

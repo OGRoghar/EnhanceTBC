@@ -3,8 +3,7 @@
 -- Build: TBC Anniversary 20505
 -- Logic lives here; Settings/Settings_CVars.lua registers the options UI.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CVars = mod
@@ -173,7 +172,7 @@ local CATEGORY_DEFAULTS = {
   },
 }
 
-function mod:ApplyDefaults(categoryKey)
+function mod.ApplyDefaults(_, categoryKey)
   local list = CATEGORY_DEFAULTS[categoryKey]
   if not list then return end
 
@@ -303,7 +302,7 @@ end
 -- -----------------------------
 -- Public: Build the options table (Settings file registers it)
 -- -----------------------------
-function mod:BuildOptions()
+function mod.BuildOptions(_)
   -- Ensure DB exists as soon as options panel opens
   GetDB()
 
@@ -313,10 +312,11 @@ function mod:BuildOptions()
     order = 60,
     args = {
       header = { type = "header", name = "Interface CVars (20505)", order = 0 },
-      
+
       infoBox = {
         type = "description",
-        name = "|cffffaa00Note:|r Most CVars apply immediately. Some may require a UI reload (/reload) to take full effect.",
+        name = "|cffffaa00Note:|r Most CVars apply immediately. Some may require a UI reload (/reload) "
+          .. "to take full effect.",
         order = 0.5,
         width = "full",
       },
@@ -333,7 +333,8 @@ function mod:BuildOptions()
       showMissing = {
         type = "toggle",
         name = "Show Unsupported CVars (Debug)",
-        desc = "If enabled, shows CVars even if the client doesn't report them as valid (useful for testing).",
+        desc = "If enabled, shows CVars even if the client doesn't report them as valid"
+          .. " (useful for testing).",
         order = 2,
         width = "full",
         get = function() return GetDB().showMissing end,
@@ -343,7 +344,8 @@ function mod:BuildOptions()
       resetAll = {
         type = "execute",
         name = "Reset ALL CVar Categories",
-        desc = "Resets all categories below to their defaults (only applies CVars that exist, unless Debug is enabled).",
+        desc = "Resets all categories below to their defaults (only applies CVars that exist, "
+          .. "unless Debug is enabled).",
         order = 3,
         width = "full",
         confirm = true,
@@ -356,25 +358,64 @@ function mod:BuildOptions()
 
       -- Convenience
       gameplayHeader = { type = "header", name = "Convenience", order = 10 },
-      gameplayReset = MakeResetButton({ name = "Reset Convenience", desc = "Reset convenience CVars to defaults.", categoryKey = "convenience", order = 11 }),
+      gameplayReset = MakeResetButton({
+        name = "Reset Convenience",
+        desc = "Reset convenience CVars to defaults.",
+        categoryKey = "convenience",
+        order = 11,
+      }),
 
-      autoDismount = MakeToggle({ name = "Auto Dismount", desc = "Automatically dismount when casting or using abilities.", cvar = "autoDismount", perChar = true, order = 12 }),
-      autoDismountFlying = MakeToggle({ name = "Auto Dismount (Flying)", desc = "Automatically dismount while flying when using abilities (if supported).", cvar = "autoDismountFlying", perChar = true, order = 13 }),
-      autoLootDefault = MakeToggle({ name = "Auto Loot (Default)", desc = "Makes auto-loot the default loot behavior.", cvar = "autoLootDefault", perChar = true, order = 14 }),
+      autoDismount = MakeToggle({
+        name = "Auto Dismount",
+        desc = "Automatically dismount when casting or using abilities.",
+        cvar = "autoDismount",
+        perChar = true,
+        order = 12,
+      }),
+      autoDismountFlying = MakeToggle({
+        name = "Auto Dismount (Flying)",
+        desc = "Automatically dismount while flying when using abilities (if supported).",
+        cvar = "autoDismountFlying",
+        perChar = true,
+        order = 13,
+      }),
+      autoLootDefault = MakeToggle({
+        name = "Auto Loot (Default)",
+        desc = "Makes auto-loot the default loot behavior.",
+        cvar = "autoLootDefault",
+        perChar = true,
+        order = 14,
+      }),
 
       spacer10 = { type = "description", name = " ", order = 15 },
 
       -- Help & Tutorials
       helpHeader = { type = "header", name = "Help & Tutorials", order = 20 },
-      helpReset = MakeResetButton({ name = "Reset Help & Tutorials", desc = "Reset tutorial CVars to defaults.", categoryKey = "help", order = 21 }),
+      helpReset = MakeResetButton({
+        name = "Reset Help & Tutorials",
+        desc = "Reset tutorial CVars to defaults.",
+        categoryKey = "help",
+        order = 21,
+      }),
 
-      showTutorials = MakeToggle({ name = "Show Tutorials", desc = "Enable/disable Blizzard tutorial popups.", cvar = "showTutorials", perChar = true, order = 22 }),
+      showTutorials = MakeToggle({
+        name = "Show Tutorials",
+        desc = "Enable/disable Blizzard tutorial popups.",
+        cvar = "showTutorials",
+        perChar = true,
+        order = 22,
+      }),
 
       spacer20 = { type = "description", name = " ", order = 23 },
 
       -- Tooltips
       tooltipHeader = { type = "header", name = "Tooltips", order = 30 },
-      tooltipReset = MakeResetButton({ name = "Reset Tooltips", desc = "Reset tooltip CVars to defaults.", categoryKey = "tooltips", order = 31 }),
+      tooltipReset = MakeResetButton({
+        name = "Reset Tooltips",
+        desc = "Reset tooltip CVars to defaults.",
+        categoryKey = "tooltips",
+        order = 31,
+      }),
 
       showTargetOfTarget = MakeToggle({
         name = "Show Target of Target in Tooltip",
@@ -398,12 +439,45 @@ function mod:BuildOptions()
 
       -- Nameplates
       nameplateHeader = { type = "header", name = "Nameplates", order = 40 },
-      nameplateReset = MakeResetButton({ name = "Reset Nameplates", desc = "Reset nameplate CVars to defaults.", categoryKey = "nameplates", order = 41 }),
+      nameplateReset = MakeResetButton({
+        name = "Reset Nameplates",
+        desc = "Reset nameplate CVars to defaults.",
+        categoryKey = "nameplates",
+        order = 41,
+      }),
 
-      nameplateShowEnemies = MakeToggle({ name = "Show Enemy Nameplates", desc = "Toggles enemy nameplates.", cvar = "nameplateShowEnemies", perChar = true, order = 42, onChange = RefreshNameplates }),
-      nameplateShowFriends = MakeToggle({ name = "Show Friendly Nameplates", desc = "Toggles friendly nameplates.", cvar = "nameplateShowFriends", perChar = true, order = 43, onChange = RefreshNameplates }),
-      nameplateShowFriendlyNPCs = MakeToggle({ name = "Show Friendly NPC Nameplates", desc = "Toggles friendly NPC nameplates (if supported).", cvar = "nameplateShowFriendlyNPCs", perChar = true, order = 44, onChange = RefreshNameplates }),
-      nameplateShowFriendlyMinions = MakeToggle({ name = "Show Friendly Minion Nameplates", desc = "Toggles friendly minion nameplates (if supported).", cvar = "nameplateShowFriendlyMinions", perChar = true, order = 45, onChange = RefreshNameplates }),
+      nameplateShowEnemies = MakeToggle({
+        name = "Show Enemy Nameplates",
+        desc = "Toggles enemy nameplates.",
+        cvar = "nameplateShowEnemies",
+        perChar = true,
+        order = 42,
+        onChange = RefreshNameplates,
+      }),
+      nameplateShowFriends = MakeToggle({
+        name = "Show Friendly Nameplates",
+        desc = "Toggles friendly nameplates.",
+        cvar = "nameplateShowFriends",
+        perChar = true,
+        order = 43,
+        onChange = RefreshNameplates,
+      }),
+      nameplateShowFriendlyNPCs = MakeToggle({
+        name = "Show Friendly NPC Nameplates",
+        desc = "Toggles friendly NPC nameplates (if supported).",
+        cvar = "nameplateShowFriendlyNPCs",
+        perChar = true,
+        order = 44,
+        onChange = RefreshNameplates,
+      }),
+      nameplateShowFriendlyMinions = MakeToggle({
+        name = "Show Friendly Minion Nameplates",
+        desc = "Toggles friendly minion nameplates (if supported).",
+        cvar = "nameplateShowFriendlyMinions",
+        perChar = true,
+        order = 45,
+        onChange = RefreshNameplates,
+      }),
 
       nameplateMotion = MakeSelect({
         name = "Nameplate Motion",
@@ -485,7 +559,12 @@ function mod:BuildOptions()
 
       -- Castbars
       castbarHeader = { type = "header", name = "Castbars", order = 60 },
-      castbarReset = MakeResetButton({ name = "Reset Castbars", desc = "Reset castbar CVars to defaults.", categoryKey = "castbars", order = 61 }),
+      castbarReset = MakeResetButton({
+        name = "Reset Castbars",
+        desc = "Reset castbar CVars to defaults.",
+        categoryKey = "castbars",
+        order = 61,
+      }),
 
       showNameplateCastbar = MakeToggle({
         name = "Show Nameplate Castbars",
@@ -500,18 +579,52 @@ function mod:BuildOptions()
 
       -- World Map
       mapHeader = { type = "header", name = "World Map", order = 70 },
-      mapReset = MakeResetButton({ name = "Reset World Map", desc = "Reset map CVars to defaults.", categoryKey = "worldmap", order = 71 }),
+      mapReset = MakeResetButton({
+        name = "Reset World Map",
+        desc = "Reset map CVars to defaults.",
+        categoryKey = "worldmap",
+        order = 71,
+      }),
 
-      mapFade = MakeToggle({ name = "Map Fade While Moving", desc = "Fades the world map while moving.", cvar = "mapFade", perChar = true, order = 72, onChange = RefreshWorldMap }),
-      mapOpacity = MakeRange({ name = "Map Opacity", desc = "World map opacity.", cvar = "mapOpacity", min = 0, max = 1, step = 0.05, default = 1.0, perChar = true, order = 73, onChange = RefreshWorldMap }),
+      mapFade = MakeToggle({
+        name = "Map Fade While Moving",
+        desc = "Fades the world map while moving.",
+        cvar = "mapFade",
+        perChar = true,
+        order = 72,
+        onChange = RefreshWorldMap,
+      }),
+      mapOpacity = MakeRange({
+        name = "Map Opacity",
+        desc = "World map opacity.",
+        cvar = "mapOpacity",
+        min = 0,
+        max = 1,
+        step = 0.05,
+        default = 1.0,
+        perChar = true,
+        order = 73,
+        onChange = RefreshWorldMap,
+      }),
 
       spacer60 = { type = "description", name = " ", order = 74 },
 
       -- Colors
       colorHeader = { type = "header", name = "Colors", order = 80 },
-      colorReset = MakeResetButton({ name = "Reset Colors", desc = "Reset color-related CVars to defaults.", categoryKey = "colors", order = 81 }),
+      colorReset = MakeResetButton({
+        name = "Reset Colors",
+        desc = "Reset color-related CVars to defaults.",
+        categoryKey = "colors",
+        order = 81,
+      }),
 
-      threatWarning = MakeToggle({ name = "Threat Warning", desc = "Enable threat warning visuals.", cvar = "threatWarning", perChar = true, order = 82 }),
+      threatWarning = MakeToggle({
+        name = "Threat Warning",
+        desc = "Enable threat warning visuals.",
+        cvar = "threatWarning",
+        perChar = true,
+        order = 82,
+      }),
 
       showClassColorInNameplate = MakeToggle({
         name = "Class Colors on Nameplates",
@@ -534,6 +647,14 @@ function mod:BuildOptions()
   }
 end
 
-function mod:Init()
+function mod.Init(_)
   -- Options-driven module; nothing required at runtime.
 end
+
+function mod:Apply()
+  self:Init()
+end
+
+ETBC.ApplyBus:Register("cvars", function()
+  mod:Apply()
+end)

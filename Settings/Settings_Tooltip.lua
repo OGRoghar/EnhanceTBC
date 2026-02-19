@@ -1,5 +1,5 @@
 -- Settings/Settings_Tooltip.lua
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.tooltip = ETBC.db.profile.tooltip or {}
   local db = ETBC.db.profile.tooltip

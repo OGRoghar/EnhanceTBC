@@ -1,8 +1,7 @@
 -- Settings/Settings_CVars.lua
 -- EnhanceTBC - SettingsRegistry registration for CVars module
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 if not ETBC.SettingsRegistry or type(ETBC.SettingsRegistry.RegisterGroup) ~= "function" then
   return
 end

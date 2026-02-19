@@ -1,6 +1,5 @@
 -- Modules/ChatIM.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.ChatIM = mod
@@ -12,7 +11,7 @@ local lastWhisperSoundAt = 0
 -- Copy UI
 local copyFrame, copyBox, copyScroll
 local copyButton
-local copyDrop, copyFollowToggle
+local copyDrop
 local addMessageHooksInstalled = false
 
 -- Per-frame rolling history
@@ -55,14 +54,6 @@ local function EnsureDriver()
   if driver then return end
   driver = CreateFrame("Frame", "EnhanceTBC_ChatIMDriver", UIParent)
   driver:Hide()
-end
-
-local function Print(msg)
-  if ETBC and ETBC.Print then
-    ETBC:Print(msg)
-  elseif DEFAULT_CHAT_FRAME then
-    DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99EnhanceTBC|r " .. tostring(msg))
-  end
 end
 
 local function GetDB()
@@ -135,7 +126,7 @@ local function InstallAddMessageHooks()
   for i = 1, n do
     local cf = _G["ChatFrame" .. i]
     if cf and cf.AddMessage and type(cf.AddMessage) == "function" then
-      hooksecurefunc(cf, "AddMessage", function(self, text)
+      hooksecurefunc(cf, "AddMessage", function(_, text)
         if not ETBC.db or not ETBC.db.profile then return end
         local db = GetDB()
         if not (ETBC.db.profile.general.enabled and db.enabled) then return end
@@ -147,29 +138,6 @@ local function InstallAddMessageHooks()
       end)
     end
   end
-end
-
-local function FindFrameIdForFilterSelf(self)
-  -- In many builds, filter "self" is ChatFrameX (or its underlying frame)
-  if type(self) ~= "table" then return 1 end
-  local name = self.GetName and self:GetName()
-  if type(name) == "string" then
-    local id = name:match("^ChatFrame(%d+)$")
-    id = tonumber(id)
-    if id then return id end
-  end
-  -- fallback to current
-  if FCF_GetCurrentChatFrame then
-    local cf = FCF_GetCurrentChatFrame()
-    if cf and cf.GetName then
-      local n2 = cf:GetName()
-      if type(n2) == "string" then
-        local id2 = tonumber(n2:match("^ChatFrame(%d+)$"))
-        if id2 then return id2 end
-      end
-    end
-  end
-  return 1
 end
 
 -- --------------------
@@ -221,22 +189,8 @@ local function MakeLinks(db, msg)
   return msg
 end
 
-local function EventPrefix(event)
-  if event == "CHAT_MSG_WHISPER" then return "[W] "
-  elseif event == "CHAT_MSG_WHISPER_INFORM" then return "[To] "
-  elseif event == "CHAT_MSG_GUILD" then return "[G] "
-  elseif event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_PARTY_LEADER" then return "[P] "
-  elseif event == "CHAT_MSG_RAID" or event == "CHAT_MSG_RAID_LEADER" then return "[R] "
-  elseif event == "CHAT_MSG_RAID_WARNING" then return "[RW] "
-  elseif event == "CHAT_MSG_INSTANCE_CHAT" or event == "CHAT_MSG_INSTANCE_CHAT_LEADER" then return "[I] "
-  elseif event == "CHAT_MSG_SYSTEM" then return "[SYS] "
-  elseif event == "CHAT_MSG_LOOT" then return "[LOOT] "
-  end
-  return ""
-end
-
 -- IMPORTANT: Correct signature is (self, event, msg, author, ...)
-local function Filter(self, event, msg, author, ...)
+local function Filter(_, _event, msg, author, ...)
   local db = GetDB()
 
   if not (ETBC.db.profile.general.enabled and db.enabled) then
@@ -347,7 +301,10 @@ end
 local function EnsureCopyUI()
   if copyFrame then return end
 
-  copyFrame = CreateFrame("Frame", "EnhanceTBC_ChatCopyFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  copyFrame = CreateFrame(
+    "Frame", "EnhanceTBC_ChatCopyFrame", UIParent,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   copyFrame:SetSize(780, 470)
   copyFrame:SetPoint("CENTER")
   copyFrame:SetFrameStrata("DIALOG")
@@ -439,7 +396,7 @@ local function RefreshDropDown(db)
   UIDropDownMenu_SetSelectedValue(copyDrop, db.copyTarget)
 end
 
-function mod:OpenCopy()
+function mod.OpenCopy(_)
   local db = GetDB()
   EnsureCopyUI()
   RefreshDropDown(db)
@@ -471,7 +428,10 @@ end
 local function EnsureCopyButton()
   if copyButton then return end
 
-  copyButton = CreateFrame("Button", "EnhanceTBC_ChatCopyButton", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  copyButton = CreateFrame(
+    "Button", "EnhanceTBC_ChatCopyButton", UIParent,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   copyButton:SetSize(18, 18)
   copyButton:SetFrameStrata("HIGH")
   copyButton:EnableMouse(true)
@@ -500,7 +460,7 @@ local function EnsureCopyButton()
     GameTooltip:AddLine("Command: /etbccopy", 0.8, 0.8, 0.8, true)
     GameTooltip:Show()
   end)
-  copyButton:SetScript("OnLeave", function() 
+  copyButton:SetScript("OnLeave", function()
     if GameTooltip then GameTooltip:Hide() end
   end)
 
@@ -598,7 +558,7 @@ local function Apply()
 
     driver:SetScript("OnEvent", function(_, event)
       if not ETBC.db or not ETBC.db.profile then return end
-      
+
       if event == "CHAT_MSG_WHISPER" or event == "CHAT_MSG_WHISPER_INFORM" then
         MaybePlayWhisperSound(event)
         return
@@ -606,7 +566,7 @@ local function Apply()
 
       local db2 = GetDB()
       if not (ETBC.db.profile.general.enabled and db2.enabled) then return end
-      
+
       if db2.copyButton then
         PositionCopyButton(db2)
       else

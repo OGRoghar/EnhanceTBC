@@ -1,6 +1,5 @@
 -- Settings/Settings_Friends.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.friends = ETBC.db.profile.friends or {}
   local db = ETBC.db.profile.friends
@@ -39,7 +38,7 @@ ETBC.SettingsRegistry:RegisterGroup("friends", {
         width = "full",
         order = 1,
         get = function() return db.enabled end,
-        set = function(_, v) 
+        set = function(_, v)
           db.enabled = v and true or false
           Apply()
         end,
@@ -58,7 +57,7 @@ ETBC.SettingsRegistry:RegisterGroup("friends", {
         width = "full",
         order = 11,
         get = function() return db.showLocation end,
-        set = function(_, v) 
+        set = function(_, v)
           db.showLocation = v and true or false
           Apply()
         end,
@@ -72,7 +71,7 @@ ETBC.SettingsRegistry:RegisterGroup("friends", {
         width = "full",
         order = 12,
         get = function() return db.hideOwnRealm end,
-        set = function(_, v) 
+        set = function(_, v)
           db.hideOwnRealm = v and true or false
           Apply()
         end,
@@ -88,7 +87,7 @@ ETBC.SettingsRegistry:RegisterGroup("friends", {
         max = 24,
         step = 1,
         get = function() return db.nameFontSize end,
-        set = function(_, v) 
+        set = function(_, v)
           db.nameFontSize = v
           Apply()
         end,

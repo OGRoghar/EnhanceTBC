@@ -1,6 +1,5 @@
 -- Modules/Visibility.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Visibility = mod
@@ -56,7 +55,7 @@ local function MatchRules(rules)
   return true
 end
 
-function mod:Allowed(moduleKey)
+function mod.Allowed(_, moduleKey)
   local p = ETBC.db.profile
   local v = p.visibility
   if not (p.general.enabled and v and v.enabled) then

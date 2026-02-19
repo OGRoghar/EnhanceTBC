@@ -1,6 +1,5 @@
 -- Settings/Settings_Auras.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local LSM = ETBC.media
 
 local function OutlineValues()

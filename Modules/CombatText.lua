@@ -1,6 +1,5 @@
 -- Modules/CombatText.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CombatText = mod
@@ -492,7 +491,13 @@ end
 
 local function Position(db)
   anchor:ClearAllPoints()
-  anchor:SetPoint(db.anchor.point or "CENTER", UIParent, db.anchor.relPoint or "CENTER", db.anchor.x or 0, db.anchor.y or 0)
+  anchor:SetPoint(
+    db.anchor.point or "CENTER",
+    UIParent,
+    db.anchor.relPoint or "CENTER",
+    db.anchor.x or 0,
+    db.anchor.y or 0
+  )
 end
 
 local function RegisterMover()

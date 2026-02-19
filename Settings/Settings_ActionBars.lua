@@ -1,8 +1,7 @@
 -- Settings/Settings_ActionBars.lua
 -- EnhanceTBC - Actionbar Micro Tweaks (Blizzard bars)
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.actionbars = ETBC.db.profile.actionbars or {}
   local db = ETBC.db.profile.actionbars

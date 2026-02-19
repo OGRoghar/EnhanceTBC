@@ -2,8 +2,7 @@
 -- EnhanceTBC - Friends list decorator with EnhanceQoL styling
 -- Shows area and realm, class colors, level colors, and faction icons
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
@@ -134,7 +133,7 @@ end
 local function BuildLocationText(areaText, realmText)
   local db = GetDB()
   if not db.showLocation then return nil end
-  
+
   local area = (type(areaText) == "string" and areaText ~= "") and areaText or nil
   local realm = GetRealmDisplayText(realmText)
 
@@ -147,7 +146,12 @@ end
 -- ---------------------------------------------------------
 local function RGBToHex(r, g, b)
   if not r or not g or not b then return nil end
-  return format("%02x%02x%02x", min(255, floor(r * 255 + 0.5)), min(255, floor(g * 255 + 0.5)), min(255, floor(b * 255 + 0.5)))
+  return format(
+    "%02x%02x%02x",
+    min(255, floor(r * 255 + 0.5)),
+    min(255, floor(g * 255 + 0.5)),
+    min(255, floor(b * 255 + 0.5))
+  )
 end
 
 local function WrapColor(text, r, g, b)
@@ -168,19 +172,19 @@ end
 local function GetClassColorFromToken(token)
   if not token or token == "" then return nil end
   local colorObj = C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(token)
-  if colorObj and colorObj.r and colorObj.g and colorObj.b then 
-    return colorObj.r, colorObj.g, colorObj.b 
+  if colorObj and colorObj.r and colorObj.g and colorObj.b then
+    return colorObj.r, colorObj.g, colorObj.b
   end
   if CUSTOM_CLASS_COLORS then
     local custom = CUSTOM_CLASS_COLORS[token]
-    if custom and custom.r and custom.g and custom.b then 
-      return custom.r, custom.g, custom.b 
+    if custom and custom.r and custom.g and custom.b then
+      return custom.r, custom.g, custom.b
     end
   end
   if RAID_CLASS_COLORS then
     local color = RAID_CLASS_COLORS[token]
-    if color and color.r and color.g and color.b then 
-      return color.r, color.g, color.b 
+    if color and color.r and color.g and color.b then
+      return color.r, color.g, color.b
     end
   end
   return nil
@@ -189,15 +193,15 @@ end
 local localizedClassMap = {}
 if LOCALIZED_CLASS_NAMES_MALE then
   for token, name in pairs(LOCALIZED_CLASS_NAMES_MALE) do
-    if type(name) == "string" and name ~= "" then 
-      localizedClassMap[name] = token 
+    if type(name) == "string" and name ~= "" then
+      localizedClassMap[name] = token
     end
   end
 end
 if LOCALIZED_CLASS_NAMES_FEMALE then
   for token, name in pairs(LOCALIZED_CLASS_NAMES_FEMALE) do
-    if type(name) == "string" and name ~= "" and not localizedClassMap[name] then 
-      localizedClassMap[name] = token 
+    if type(name) == "string" and name ~= "" and not localizedClassMap[name] then
+      localizedClassMap[name] = token
     end
   end
 end
@@ -213,8 +217,8 @@ local function ResolveClassToken(classToken, classID, localizedName)
 
   if classID and C_CreatureInfo and C_CreatureInfo.GetClassInfo then
     local info = C_CreatureInfo.GetClassInfo(classID)
-    if info and info.classFile and GetClassColorFromToken(info.classFile) then 
-      return info.classFile 
+    if info and info.classFile and GetClassColorFromToken(info.classFile) then
+      return info.classFile
     end
   end
 
@@ -255,14 +259,14 @@ local factionLookup = {}
 local function RegisterFactionKeys(faction, ...)
   for i = 1, select("#", ...) do
     local value = select(i, ...)
-    if type(value) == "string" and value ~= "" then 
-      factionLookup[value:lower()] = faction 
+    if type(value) == "string" and value ~= "" then
+      factionLookup[value:lower()] = faction
     end
   end
 end
-RegisterFactionKeys("Alliance", "Alliance", ALLIANCE, FACTION_ALLIANCE, 
+RegisterFactionKeys("Alliance", "Alliance", ALLIANCE, FACTION_ALLIANCE,
   PLAYER_FACTION_GROUP and PLAYER_FACTION_GROUP[1])
-RegisterFactionKeys("Horde", "Horde", HORDE, FACTION_HORDE, 
+RegisterFactionKeys("Horde", "Horde", HORDE, FACTION_HORDE,
   PLAYER_FACTION_GROUP and PLAYER_FACTION_GROUP[0])
 
 local function NormalizeFactionName(name)
@@ -358,7 +362,7 @@ local CLIENT_COLORS = {
 
 local function ColorClientText(text, clientProgram)
   if not text or text == "" then return text end
-  local color = CLIENT_COLORS[clientProgram] or 
+  local color = CLIENT_COLORS[clientProgram] or
     CLIENT_COLORS[clientProgram and clientProgram:upper()]
   if color then return WrapColor(text, color.r, color.g, color.b) end
   return text
@@ -505,8 +509,8 @@ local function DecorateWoWFriend(button)
   end
 
   local displayName = nameColored
-  if levelText and levelText ~= "" then 
-    displayName = ("%s %s"):format(nameColored, levelText) 
+  if levelText and levelText ~= "" then
+    displayName = ("%s %s"):format(nameColored, levelText)
   end
 
   nameFont:SetText(displayName)
@@ -581,10 +585,10 @@ local function DecorateBNetFriend(button)
   end
   SetStatusIcon(button, status)
 
-  local realID = accountInfo.accountName or 
+  local realID = accountInfo.accountName or
     (accountInfo.battleTag and accountInfo.battleTag:match("^[^#]+"))
   local displayName = realID or ""
-  local infoText = ""
+  local infoText
   local factionName = nil
 
   if gameInfo and gameInfo.clientProgram == BNET_CLIENT_WOW then
@@ -659,7 +663,7 @@ end
 -- ---------------------------------------------------------
 local function UpdateFriendButton(button)
   if not button or not button.buttonType then return end
-  
+
   local db = GetDB()
   if not (ETBC.db.profile.general.enabled and db.enabled) then
     if button._etbcFactionIcon then button._etbcFactionIcon:Hide() end
@@ -731,7 +735,7 @@ function mod:Refresh()
   end
 end
 
-function mod:EnsureHook()
+function mod.EnsureHook(_)
   if hooked then return true end
   if type(FriendsFrame_UpdateFriendButton) ~= "function" then return false end
   hooksecurefunc("FriendsFrame_UpdateFriendButton", UpdateFriendButton)

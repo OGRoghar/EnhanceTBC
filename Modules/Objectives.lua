@@ -2,8 +2,7 @@
 -- EnhanceTBC - Quest / Objective Helper (TBC WatchFrame / ObjectiveTracker)
 -- Lightweight: width/scale/background + fade/hide in combat + auto-collapse completed quests.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Objectives = mod
@@ -45,7 +44,7 @@ local function EnsureDriver()
   driver = CreateFrame("Frame", "EnhanceTBC_ObjectivesDriver", UIParent)
 end
 
-local function VisibilityAllowed(db)
+local function VisibilityAllowed(_db)
   local vis = ETBC.Modules and ETBC.Modules.Visibility
   if vis and vis.Allowed then
     return vis:Allowed("objectives")
@@ -95,7 +94,7 @@ end
 
 local function SetBackdrop(frame, bgA, borderA)
   if not frame then return end
-  
+
   -- Create backdrop frame if it doesn't exist
   if not frame._etbcBG then
     frame._etbcBG = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -112,7 +111,7 @@ local function SetBackdrop(frame, bgA, borderA)
       })
     end
   end
-  
+
   -- Update colors (allow re-application even if backdrop exists)
   local bg = frame._etbcBG
   if bg and bg.SetBackdropColor and bg.SetBackdropBorderColor then

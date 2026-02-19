@@ -2,7 +2,7 @@
 -- EnhanceTBC - Tooltip enhancements (safe on TBC Anniversary client 20505)
 -- Fix: avoid Texture:SetGradientAlpha (not available on this client). Use solid tint fallback.
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = ETBC.Modules.Tooltip or {}
 ETBC.Modules.Tooltip = mod
@@ -68,8 +68,6 @@ local function ApplyStyleToTooltip(tip)
   local db = GetDB()
   if not db or not db.enabled then return end
   if not tip or not tip.GetName then return end
-
-  local name = tip:GetName()
 
   -- Backdrop (using db.skin.enabled and db.skin.bg/border)
   if db.skin and db.skin.enabled then
@@ -222,16 +220,16 @@ end
 -- Extract Spell ID from tooltip (TBC Anniversary client)
 local function ExtractSpellID(tooltip)
   if not tooltip or not tooltip.GetSpell then return nil end
-  
+
   -- Try GetSpell which may return spellID on TBC Anniversary
-  local name, rank, spellID = tooltip:GetSpell()
+  local name, _, spellID = tooltip:GetSpell()
   if spellID then return spellID end
   if not name then return nil end
-  
+
   -- Fallback: try to extract from tooltip hyperlinks
   local tooltipName = tooltip:GetName()
   if not tooltipName then return nil end
-  
+
   for i = 1, tooltip:NumLines() do
     local line = _G[tooltipName.."TextLeft"..i]
     if line then
@@ -242,7 +240,7 @@ local function ExtractSpellID(tooltip)
       end
     end
   end
-  
+
   return nil
 end
 
@@ -251,29 +249,29 @@ local function ExtractNPCID(unit)
   if not unit then return nil end
   local guid = UnitGUID(unit)
   if not guid then return nil end
-  
+
   -- TBC Anniversary uses modern GUID format: "Creature-0-<server>-<instance>-<zone>-<npcID>-<spawnUID>"
   -- strsplit returns: unitType, "0", server, instance, zone, npcID, spawnUID
   local parts = {strsplit("-", guid)}
   local unitType = parts[1]
   local npcID = parts[6]
-  
+
   -- Verify we have enough parts and correct type
   if #parts >= 6 and unitType and (unitType == "Creature" or unitType == "Vehicle") and npcID then
     return tonumber(npcID)
   end
-  
+
   return nil
 end
 
 -- Extract Quest ID from hyperlink in tooltip
 local function ExtractQuestID(tooltip)
   if not tooltip then return nil end
-  
+
   -- Check tooltip name for quest hyperlinks
   local tooltipName = tooltip:GetName()
   if not tooltipName then return nil end
-  
+
   -- Scan all tooltip lines for quest hyperlinks
   for i = 1, tooltip:NumLines() do
     local line = _G[tooltipName.."TextLeft"..i]
@@ -285,7 +283,7 @@ local function ExtractQuestID(tooltip)
       end
     end
   end
-  
+
   return nil
 end
 
@@ -446,9 +444,17 @@ local function UpdateStatusBarText(statusbar, unit)
   end
 
   if unit_health >= 1000000 then
-    statusbar.unit_health_text:SetText(string.format("%.1fM", unit_health / 1000000) .. "/" .. string.format("%.1fM", unit_health_max / 1000000))
+    statusbar.unit_health_text:SetText(
+      string.format("%.1fM", unit_health / 1000000)
+        .. "/"
+        .. string.format("%.1fM", unit_health_max / 1000000)
+    )
   elseif unit_health >= 1000 then
-    statusbar.unit_health_text:SetText(string.format("%.1fK", unit_health / 1000) .. "/" .. string.format("%.1fK", unit_health_max / 1000))
+    statusbar.unit_health_text:SetText(
+      string.format("%.1fK", unit_health / 1000)
+        .. "/"
+        .. string.format("%.1fK", unit_health_max / 1000)
+    )
   else
     statusbar.unit_health_text:SetText(unit_health .. "/" .. unit_health_max)
   end
@@ -494,7 +500,7 @@ local function OnTooltipSetItem(tooltip)
   if not db or not db.enabled then return end
 
   ApplyStyleToTooltip(tooltip)
-  
+
   local _, itemLink = tooltip:GetItem()
   local itemID = ExtractItemID(itemLink)
   if itemID and db.showItemId then
@@ -512,7 +518,7 @@ local function OnTooltipSetSpell(tooltip)
   if not db or not db.enabled or not db.showSpellId then return end
 
   ApplyStyleToTooltip(tooltip)
-  
+
   local spellID = ExtractSpellID(tooltip)
   if spellID then
     AddIDLine(tooltip, "Spell ID: ", spellID, db.idColor or DEFAULT_ID_COLOR)
@@ -525,7 +531,7 @@ local function OnTooltipSetUnit(tooltip)
   if not db or not db.enabled then return end
 
   ApplyStyleToTooltip(tooltip)
-  
+
   local _, unit = tooltip:GetUnit()
   if not unit then return end
 
@@ -535,7 +541,7 @@ local function OnTooltipSetUnit(tooltip)
   AddTargetLine(tooltip, unit)
   SetStatusBarStyle(GameTooltipStatusBar, unit)
   UpdateStatusBarText(GameTooltipStatusBar, unit)
-  
+
   -- Add NPC ID if enabled
   if db.showNpcId then
     local npcID = ExtractNPCID(unit)
@@ -543,7 +549,7 @@ local function OnTooltipSetUnit(tooltip)
       AddIDLine(tooltip, "NPC ID: ", npcID, db.idColor or DEFAULT_ID_COLOR)
     end
   end
-  
+
   -- Check for quest ID in the tooltip
   if db.showQuestId then
     local questID = ExtractQuestID(tooltip)
@@ -567,7 +573,7 @@ end
 -- ---------------------------------------------------------
 -- Public Apply (called by ApplyBus)
 -- ---------------------------------------------------------
-function mod:Apply()
+function mod.Apply(_)
   local db = GetDB()
   if not db then return end
 
@@ -587,7 +593,10 @@ function mod:Apply()
       ApplyStyleToTooltip(tip)
     end
 
-    local tips = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, FriendsTooltip, PartyMemberBuffTooltip }
+    local tips = {
+      GameTooltip, ItemRefTooltip, ShoppingTooltip1,
+      ShoppingTooltip2, FriendsTooltip, PartyMemberBuffTooltip,
+    }
     for _, tip in pairs(tips) do
       if tip and tip.HookScript then
         tip:HookScript("OnShow", OnTooltipSet)
@@ -637,10 +646,10 @@ function mod:Apply()
     if GameTooltip then
       -- Hook OnTooltipSetItem for item IDs
       GameTooltip:HookScript("OnTooltipSetItem", OnTooltipSetItem)
-      
+
       -- Hook OnTooltipSetSpell for spell IDs
       GameTooltip:HookScript("OnTooltipSetSpell", OnTooltipSetSpell)
-      
+
       -- Hook OnTooltipSetUnit for NPC IDs
       GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit)
 
@@ -668,7 +677,10 @@ function mod:Apply()
   if ShoppingTooltip1 and ShoppingTooltip1:IsShown() then ApplyStyleToTooltip(ShoppingTooltip1) end
   if ShoppingTooltip2 and ShoppingTooltip2:IsShown() then ApplyStyleToTooltip(ShoppingTooltip2) end
 
-  local tips = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, FriendsTooltip, PartyMemberBuffTooltip }
+  local tips = {
+    GameTooltip, ItemRefTooltip, ShoppingTooltip1,
+    ShoppingTooltip2, FriendsTooltip, PartyMemberBuffTooltip,
+  }
   for _, tip in pairs(tips) do
     if tip then
       ApplyTooltipBackdrop(tip)
@@ -678,7 +690,8 @@ function mod:Apply()
   end
 
   if GameTooltip and GameTooltipStatusBar then
-    local unit = select(2, GameTooltip:GetUnit()) or (UnitExists("mouseover") and "mouseover")
+    local unit = select(2, GameTooltip:GetUnit())
+      or (UnitExists("mouseover") and "mouseover")
     if unit then
       SetStatusBarStyle(GameTooltipStatusBar, unit)
       UpdateStatusBarText(GameTooltipStatusBar, unit)
@@ -689,7 +702,7 @@ end
 -- ---------------------------------------------------------
 -- Enable/Disable
 -- ---------------------------------------------------------
-function mod:SetEnabled(v)
+function mod.SetEnabled(_, v)
   local db = GetDB()
   if not db then return end
   db.enabled = v and true or false

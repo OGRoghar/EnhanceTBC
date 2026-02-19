@@ -1,6 +1,5 @@
 -- Modules/Sound.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Sound = mod
@@ -86,7 +85,7 @@ local function ApplyCVars(db)
   SetCVarSafe("VoiceChatMode", db.pushToTalk and 1 or 0) -- 1 often push-to-talk
 end
 
-local function SnapshotForCombat(db)
+local function SnapshotForCombat()
   prev.musicMute = (GetCVar("Sound_EnableMusic") == "0")
   prev.ambienceMute = (GetCVar("Sound_EnableAmbience") == "0")
   prev.musicVolume = tonumber(GetCVar("Sound_MusicVolume") or "0.7") or 0.7
@@ -133,7 +132,7 @@ local function OnEnterCombat()
   if not db.autoMuteInCombat then return end
 
   inCombat = true
-  SnapshotForCombat(db)
+  SnapshotForCombat()
   ApplyCombatMute(db)
 end
 

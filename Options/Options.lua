@@ -1,8 +1,7 @@
 -- Options/Options.lua
 -- EnhanceTBC - builds the AceConfig options table from SettingsRegistry groups.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 
 local function SafeCall(fn)
   if type(fn) ~= "function" then return false, nil, "not a function" end
@@ -11,7 +10,7 @@ local function SafeCall(fn)
   return false, nil, tostring(v)
 end
 
-function ETBC:BuildOptions()
+function ETBC.BuildOptions(_)
   local opts = {
     type = "group",
     name = "EnhanceTBC",
@@ -31,7 +30,8 @@ function ETBC:BuildOptions()
           header = { type = "header", name = "EnhanceTBC", order = 1 },
           desc = {
             type = "description",
-            name = "QoL suite for TBC Anniversary.\n\nUse /etbc for the custom config window.\nUse ESC → Options → AddOns for Blizzard panel.",
+            name = "QoL suite for TBC Anniversary.\n\nUse /etbc for the custom config window.\n"
+              .. "Use ESC → Options → AddOns for Blizzard panel.",
             order = 2,
           },
         },
@@ -58,10 +58,7 @@ function ETBC:BuildOptions()
       local key = tostring(g.key)
       local name = tostring(g.name)
 
-      if seen[key] then
-        -- SettingsRegistry should keep keys unique, but if duplicate registrations
-        -- happen we skip extra entries to keep options deterministic.
-      else
+      if not seen[key] then
         seen[key] = true
 
         opts.args.modules.args[key] = {

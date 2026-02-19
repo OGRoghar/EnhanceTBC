@@ -1,6 +1,5 @@
 -- Settings/Settings_General.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function EnsureDefaults()
   if not ETBC.db or not ETBC.db.profile then return end
   ETBC.db.profile.general = ETBC.db.profile.general or {}
@@ -17,14 +16,15 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
         name = "EnhanceTBC Settings",
         order = 0,
       },
-      
+
       liveUpdateInfo = {
         type = "description",
-        name = "|cff00ff00✓ Live Updates:|r Most settings apply immediately without requiring a /reload.\n|cffffaa00Note:|r Some CVars and certain UI changes may require a reload to take full effect.",
+        name = "|cff00ff00✓ Live Updates:|r Most settings apply immediately without requiring a /reload.\n"
+          .. "|cffffaa00Note:|r Some CVars and certain UI changes may require a reload to take full effect.",
         order = 0.5,
         width = "full",
       },
-      
+
       enabled = {
         type = "toggle",
         name = "Enable EnhanceTBC",
@@ -55,9 +55,6 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
             set = function(_, v)
               ETBC.db.profile.general.ui.theme = v
               ETBC.ApplyBus:Notify("general")
-              if ETBC.UI and ETBC.UI.Create then
-                -- refresh look next open (safe)
-              end
             end,
           },
           scale = {
@@ -69,11 +66,8 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
             set = function(_, v)
               ETBC.db.profile.general.ui.scale = v
               ETBC.ApplyBus:Notify("general")
-              if ETBC.UI and ETBC.UI.Toggle then
-                -- apply to current frame if open
-                if ETBC.UI and ETBC.UI.frame and ETBC.UI.frame.frame then
-                  ETBC.UI.frame.frame:SetScale(v)
-                end
+              if ETBC.UI and ETBC.UI.frame and ETBC.UI.frame.frame then
+                ETBC.UI.frame.frame:SetScale(v)
               end
             end,
           },

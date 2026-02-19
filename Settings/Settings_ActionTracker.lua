@@ -1,6 +1,5 @@
 -- Settings/Settings_ActionTracker.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local LSM = ETBC.media
 
 local function OutlineValues()
@@ -229,7 +228,10 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
             name = "Class Color Name",
             order = 8,
             get = function() return db.nameText.classColor end,
-            set = function(_, v) db.nameText.classColor = v and true or false; ETBC.ApplyBus:Notify("actiontracker") end,
+            set = function(_, v)
+              db.nameText.classColor = v and true or false
+              ETBC.ApplyBus:Notify("actiontracker")
+            end,
             disabled = function() return not db.showName end,
           },
           nameColor = {

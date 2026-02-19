@@ -2,8 +2,7 @@
 -- EnhanceTBC - UnitFrame Micro Enhancer (Blizzard frames)
 -- Fix: Ensure font is set before any SetText calls to avoid "Font not set".
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.UnitFrames = mod
@@ -419,8 +418,12 @@ local function ApplyBlizzardStatusText(db, enable)
   end
 
   if blizzStatusText then
-    if blizzStatusText.statusTextDisplay ~= nil then pcall(SetCVar, "statusTextDisplay", blizzStatusText.statusTextDisplay) end
-    if blizzStatusText.statusTextPercentage ~= nil then pcall(SetCVar, "statusTextPercentage", blizzStatusText.statusTextPercentage) end
+    if blizzStatusText.statusTextDisplay ~= nil then
+      pcall(SetCVar, "statusTextDisplay", blizzStatusText.statusTextDisplay)
+    end
+    if blizzStatusText.statusTextPercentage ~= nil then
+      pcall(SetCVar, "statusTextPercentage", blizzStatusText.statusTextPercentage)
+    end
     if blizzStatusText.statusText ~= nil then pcall(SetCVar, "statusText", blizzStatusText.statusText) end
     if blizzStatusText.statusTextMana ~= nil then pcall(SetCVar, "statusTextMana", blizzStatusText.statusTextMana) end
     blizzStatusText = nil

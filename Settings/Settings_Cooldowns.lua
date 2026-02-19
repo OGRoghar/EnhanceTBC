@@ -1,8 +1,7 @@
 -- Settings/Settings_Cooldowns.lua
 -- EnhanceTBC - Cooldown Text Engine settings (OmniCC-lite)
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.cooldowns = ETBC.db.profile.cooldowns or {}
   local db = ETBC.db.profile.cooldowns
@@ -20,7 +19,8 @@ local function GetDB()
   if db.hideWhenGCD == nil then db.hideWhenGCD = true end
   if db.hideWhenNoDuration == nil then db.hideWhenNoDuration = true end
   if db.hideWhenPaused == nil then db.hideWhenPaused = true end
-  if db.showSwipe == nil then db.showSwipe = true end -- does not change cooldown behavior, just hides Blizzard swipe if false
+  if db.showSwipe == nil then db.showSwipe = true end
+  -- does not change cooldown behavior, just hides Blizzard swipe if false
 
   -- Formatting
   if db.mmssThreshold == nil then db.mmssThreshold = 60 end

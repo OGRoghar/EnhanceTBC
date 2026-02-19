@@ -1,6 +1,5 @@
 -- Core/MoverUI.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local M = ETBC.Mover
 local UI = {}
 ETBC.MoverUI = UI
@@ -14,7 +13,10 @@ local escWatcher
 local function EnsureOverlay()
   if overlay then return end
 
-  overlay = CreateFrame("Frame", "EnhanceTBC_MoverOverlay", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  overlay = CreateFrame(
+    "Frame", "EnhanceTBC_MoverOverlay", UIParent,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   overlay:SetAllPoints(UIParent)
   overlay:SetFrameStrata("DIALOG")
   overlay:Hide()
@@ -243,7 +245,7 @@ local function RefreshHandles(db)
   end
 end
 
-function UI:Apply()
+function UI.Apply(_)
   EnsureOverlay()
 
   local p = ETBC.db.profile
@@ -258,7 +260,10 @@ function UI:Apply()
 
   local masterOn = db.unlocked and db.moveMode
   if overlay.status then
-    overlay.status:SetText(masterOn and "Master Move Mode: ON  (/etbc moveall)" or "Master Move Mode: OFF  (/etbc moveall)")
+    overlay.status:SetText(
+      masterOn and "Master Move Mode: ON  (/etbc moveall)"
+        or "Master Move Mode: OFF  (/etbc moveall)"
+    )
   end
 
   overlay:Show()

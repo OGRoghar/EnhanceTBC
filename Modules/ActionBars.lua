@@ -2,8 +2,7 @@
 -- EnhanceTBC - Actionbar Micro Tweaks (Blizzard bars)
 -- Lightweight: mostly layout + text toggles + event-driven alpha.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.ActionBars = mod
@@ -108,7 +107,7 @@ local function StyleHotkey(btn)
   end
 end
 
-local function LayoutBar(bar, mode)
+local function LayoutBar(bar, _mode)
   local db = GetDB()
   if not bar then return end
 

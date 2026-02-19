@@ -7,8 +7,7 @@
 -- - It also supports legacy tables where get/set expect the option table itself.
 -- - Groups are sourced from ETBC.SettingsRegistry:GetGroups()
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.UI = ETBC.UI or {}
 local UI = ETBC.UI
 
@@ -25,7 +24,7 @@ if not StaticPopupDialogs.ETBC_EXEC_CONFIRM then
     text = "%s",
     button1 = YES,
     button2 = NO,
-    OnAccept = function(self, data)
+    OnAccept = function(_, data)
       if data and type(data.exec) == "function" then
         pcall(data.exec)
       end
@@ -703,7 +702,7 @@ local function ClearPreviewModes()
   DisablePreview("combattext")
 end
 
-function ConfigWindow:Close()
+function ConfigWindow.Close(_)
   if state.closing then return end
   if not state.win then return end
   state.closing = true
@@ -952,7 +951,7 @@ local function BuildWindow()
   win.frame:HookScript("OnMouseUp", function() SaveWindow() end)
 end
 
-function ConfigWindow:Open()
+function ConfigWindow.Open(_)
   if state.win and state.win.frame then
     state.win.frame:Show()
     return

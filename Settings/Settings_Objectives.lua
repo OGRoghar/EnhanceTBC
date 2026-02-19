@@ -1,8 +1,7 @@
 -- Settings/Settings_Objectives.lua
 -- EnhanceTBC - Quest / Objective Helper settings (TBC WatchFrame / ObjectiveTracker)
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.objectives = ETBC.db.profile.objectives or {}
   local db = ETBC.db.profile.objectives

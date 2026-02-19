@@ -1,8 +1,7 @@
 -- Modules/Mouse.lua
 -- EnhanceTBC - CursorTrail-style cursor + trail (2D textures)
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Mouse = mod
@@ -196,7 +195,7 @@ local function Spawn2DTrailAt(x, y, db)
   table.insert(trailActive, f)
 end
 
-local function Tick(elapsed)
+local function Tick()
   local db = GetDB()
   if not db.enabled then return end
 
@@ -274,12 +273,8 @@ local function EnableUpdates()
 
   if not driver._etbcTicking then
     driver._etbcTicking = true
-    local lastT = GetTime()
     driver:SetScript("OnUpdate", function()
-      local now = GetTime()
-      local elapsed = now - lastT
-      lastT = now
-      Tick(elapsed)
+      Tick()
     end)
   end
 end
@@ -342,13 +337,13 @@ local function Apply()
   if anyActive then EnableUpdates() else DisableUpdates() end
 end
 
-function mod:SetEnabled(v)
+function mod.SetEnabled(_, v)
   local db = GetDB()
   db.enabled = not not v
   Apply()
 end
 
-function mod:Apply() Apply() end
+function mod.Apply(_) Apply() end
 
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then
   ETBC.ApplyBus:Register("mouse", Apply)

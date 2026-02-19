@@ -5,8 +5,7 @@
 -- and provides helpers modules can call.
 -- =========================================================
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 if not ETBC then return end
 
 ETBC.Theme = ETBC.Theme or {}
@@ -42,19 +41,19 @@ local function EnsureThemeDB()
     return db
 end
 
-function T:GetDB()
+function T.GetDB(_)
     return EnsureThemeDB()
 end
 
 -- ---------------------------------------------------------
 -- Media lists (for dropdowns)
 -- ---------------------------------------------------------
-function T:GetFontList()
+function T.GetFontList(_)
     if not LSM then return {} end
     return LSM:HashTable("font")
 end
 
-function T:GetStatusbarList()
+function T.GetStatusbarList(_)
     if not LSM then return {} end
     return LSM:HashTable("statusbar")
 end
@@ -120,7 +119,7 @@ function T:ApplyStatusBar(bar, textureKey)
     bar:SetStatusBarTexture(tex)
 end
 
-function T:ApplyAlpha(frame, alpha)
+function T.ApplyAlpha(_, frame, alpha)
     if not frame or not frame.SetAlpha then return end
     local db = EnsureThemeDB()
     local a = tonumber(alpha or (db and db.alpha)) or 1
@@ -130,7 +129,7 @@ function T:ApplyAlpha(frame, alpha)
 end
 
 -- Colors
-function T:GetColor(name)
+function T.GetColor(_, name)
     local db = EnsureThemeDB()
     if not db or not db.colors then return 1, 1, 1, 1 end
     local c = db.colors[name]
@@ -138,13 +137,13 @@ function T:GetColor(name)
     return c.r or 1, c.g or 1, c.b or 1, c.a or 1
 end
 
-function T:SetColor(name, r, g, b, a)
+function T.SetColor(_, name, r, g, b, a)
     local db = EnsureThemeDB()
     if not db then return end
     db.colors = db.colors or {}
     db.colors[name] = db.colors[name] or {}
     local c = db.colors[name]
-    
+
     -- Validate and clamp color values to 0-1 range
     local function clamp(v, lo, hi)
         v = tonumber(v) or 0
@@ -152,7 +151,7 @@ function T:SetColor(name, r, g, b, a)
         if v > hi then return hi end
         return v
     end
-    
+
     if ETBC.Compat and ETBC.Compat.Clamp then
         c.r = ETBC.Compat.Clamp(tonumber(r) or 0, 0, 1)
         c.g = ETBC.Compat.Clamp(tonumber(g) or 0, 0, 1)
@@ -196,7 +195,7 @@ for name, pal in pairs(DEFAULT_PALETTES) do
     end
 end
 
-function T:Get()
+function T.Get(_)
     local p = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.ui
     local key = (p and p.theme) or "WarcraftGreen"
     return T.Palettes[key] or T.Palettes.WarcraftGreen

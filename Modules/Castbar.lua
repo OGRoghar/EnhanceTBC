@@ -3,7 +3,7 @@
 -- Fix: prevent "double layer" by anchoring overlays to the real statusbar texture
 -- and using OVERLAY layer + insets.
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Castbar = mod
@@ -430,12 +430,7 @@ local function ApplyAlpha(bar)
     return
   end
 
-  local a = 1
-  if db.onlyInCombat then
-    a = InCombat() and (db.combatAlpha or 1) or (db.oocAlpha or 0.2)
-  else
-    a = 1
-  end
+  local a = db.onlyInCombat and (InCombat() and (db.combatAlpha or 1) or (db.oocAlpha or 0.2)) or 1
 
   if bar and bar.SetAlpha then bar:SetAlpha(a) end
 end
@@ -706,7 +701,8 @@ local function EnsureHooks()
       return
     end
 
-    if event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
+    if event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_FAILED"
+      or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
       local pb = _G.PlayerCastingBarFrame or _G.CastingBarFrame
       if pb then
         pb._etbcLatencySeconds = nil

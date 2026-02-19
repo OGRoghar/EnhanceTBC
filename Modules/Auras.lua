@@ -1,6 +1,5 @@
 -- Modules/Auras.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Auras = mod
@@ -296,7 +295,8 @@ local function ApplyVisuals(icon, common, layout, data)
     local c = common.border.color
     local br, bg, bb, ba = c.r, c.g, c.b, (c.a or 1)
 
-    if common.border.debuffTypeColors and data.kind == "DEBUFF" and data.debuffType and DEBUFF_COLORS[data.debuffType] then
+    if common.border.debuffTypeColors and data.kind == "DEBUFF"
+      and data.debuffType and DEBUFF_COLORS[data.debuffType] then
       local dc = DEBUFF_COLORS[data.debuffType]
       br, bg, bb, ba = dc.r, dc.g, dc.b, (dc.a or 1)
     end

@@ -1,6 +1,5 @@
 -- Settings/Settings_CombatText.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local LSM = ETBC.media
 
 local function FontValues()
@@ -72,14 +71,20 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
             desc = "Prevents double combat text (Blizzard + addon).",
             order = 1,
             get = function() return db.blizzard.disableBlizzardFCT end,
-            set = function(_, v) db.blizzard.disableBlizzardFCT = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+            set = function(_, v)
+              db.blizzard.disableBlizzardFCT = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
           },
           restoreOnDisable = {
             type = "toggle",
             name = "Restore Blizzard settings when disabled",
             order = 2,
             get = function() return db.blizzard.restoreOnDisable end,
-            set = function(_, v) db.blizzard.restoreOnDisable = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+            set = function(_, v)
+              db.blizzard.restoreOnDisable = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
             disabled = function() return not db.blizzard.disableBlizzardFCT end,
           },
         },
@@ -123,14 +128,63 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
         order = 20,
         inline = true,
         args = {
-          showDamage = { type="toggle", name="Damage", order=1, get=function() return db.showDamage end, set=function(_,v) db.showDamage=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
-          showHeals  = { type="toggle", name="Heals",  order=2, get=function() return db.showHeals end,  set=function(_,v) db.showHeals=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
-          showMisses = { type="toggle", name="Miss/Dodge/Parry", order=3, get=function() return db.showMisses end, set=function(_,v) db.showMisses=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
-          showInterrupts = { type="toggle", name="Interrupts", order=4, get=function() return db.showInterrupts end, set=function(_,v) db.showInterrupts=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
-          showDispels = { type="toggle", name="Dispels/Stolen", order=5, get=function() return db.showDispels end, set=function(_,v) db.showDispels=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
+          showDamage = {
+            type = "toggle", name = "Damage", order = 1,
+            get = function() return db.showDamage end,
+            set = function(_, v)
+              db.showDamage = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
+          },
+          showHeals = {
+            type = "toggle", name = "Heals", order = 2,
+            get = function() return db.showHeals end,
+            set = function(_, v)
+              db.showHeals = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
+          },
+          showMisses = {
+            type = "toggle", name = "Miss/Dodge/Parry", order = 3,
+            get = function() return db.showMisses end,
+            set = function(_, v)
+              db.showMisses = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
+          },
+          showInterrupts = {
+            type = "toggle", name = "Interrupts", order = 4,
+            get = function() return db.showInterrupts end,
+            set = function(_, v)
+              db.showInterrupts = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
+          },
+          showDispels = {
+            type = "toggle", name = "Dispels/Stolen", order = 5,
+            get = function() return db.showDispels end,
+            set = function(_, v)
+              db.showDispels = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
+          },
 
-          showSpellName = { type="toggle", name="Show Spell Name", order=6, get=function() return db.showSpellName end, set=function(_,v) db.showSpellName=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
-          showOverheal  = { type="toggle", name="Show Overheal Tag", order=7, get=function() return db.showOverheal end,  set=function(_,v) db.showOverheal=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
+          showSpellName = {
+            type = "toggle", name = "Show Spell Name", order = 6,
+            get = function() return db.showSpellName end,
+            set = function(_, v)
+              db.showSpellName = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
+          },
+          showOverheal = {
+            type = "toggle", name = "Show Overheal Tag", order = 7,
+            get = function() return db.showOverheal end,
+            set = function(_, v)
+              db.showOverheal = v and true or false
+              ETBC.ApplyBus:Notify("combattext")
+            end,
+          },
         },
       },
 
@@ -167,10 +221,30 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
             get = function() return db.floatDirection end,
             set = function(_, v) db.floatDirection = v; ETBC.ApplyBus:Notify("combattext") end,
           },
-          floatDistance = { type="range", name="Float Distance", order=2, min=10, max=180, step=1, get=function() return db.floatDistance end, set=function(_,v) db.floatDistance=v; ETBC.ApplyBus:Notify("combattext") end },
-          duration      = { type="range", name="Duration (sec)", order=3, min=0.6, max=3.0, step=0.05, get=function() return db.duration end, set=function(_,v) db.duration=v; ETBC.ApplyBus:Notify("combattext") end },
-          fadeStart     = { type="range", name="Fade Start (sec)", order=4, min=0.1, max=2.5, step=0.05, get=function() return db.fadeStart end, set=function(_,v) db.fadeStart=v; ETBC.ApplyBus:Notify("combattext") end },
-          randomX       = { type="range", name="Horizontal Spread", order=5, min=0, max=120, step=1, get=function() return db.randomX end, set=function(_,v) db.randomX=v; ETBC.ApplyBus:Notify("combattext") end },
+          floatDistance = {
+            type = "range", name = "Float Distance", order = 2,
+            min = 10, max = 180, step = 1,
+            get = function() return db.floatDistance end,
+            set = function(_, v) db.floatDistance = v; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          duration = {
+            type = "range", name = "Duration (sec)", order = 3,
+            min = 0.6, max = 3.0, step = 0.05,
+            get = function() return db.duration end,
+            set = function(_, v) db.duration = v; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          fadeStart = {
+            type = "range", name = "Fade Start (sec)", order = 4,
+            min = 0.1, max = 2.5, step = 0.05,
+            get = function() return db.fadeStart end,
+            set = function(_, v) db.fadeStart = v; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          randomX = {
+            type = "range", name = "Horizontal Spread", order = 5,
+            min = 0, max = 120, step = 1,
+            get = function() return db.randomX end,
+            set = function(_, v) db.randomX = v; ETBC.ApplyBus:Notify("combattext") end,
+          },
         },
       },
 
@@ -180,19 +254,53 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
         order = 50,
         inline = true,
         args = {
-          font = { type="select", name="Font", order=1, values=FontValues, get=function() return db.font end, set=function(_,v) db.font=v; ETBC.ApplyBus:Notify("combattext") end },
-          size = { type="range", name="Size", order=2, min=10, max=48, step=1, get=function() return db.size end, set=function(_,v) db.size=v; ETBC.ApplyBus:Notify("combattext") end },
-          outline = { type="select", name="Outline", order=3, values=OutlineValues, get=function() return db.outline end, set=function(_,v) db.outline=v; ETBC.ApplyBus:Notify("combattext") end },
-          shadow = { type="toggle", name="Shadow", order=4, get=function() return db.shadow end, set=function(_,v) db.shadow=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
+          font = {
+            type = "select", name = "Font", order = 1, values = FontValues,
+            get = function() return db.font end,
+            set = function(_, v) db.font = v; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          size = {
+            type = "range", name = "Size", order = 2, min = 10, max = 48, step = 1,
+            get = function() return db.size end,
+            set = function(_, v) db.size = v; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          outline = {
+            type = "select", name = "Outline", order = 3, values = OutlineValues,
+            get = function() return db.outline end,
+            set = function(_, v) db.outline = v; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          shadow = {
+            type = "toggle", name = "Shadow", order = 4,
+            get = function() return db.shadow end,
+            set = function(_, v) db.shadow = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+          },
 
-          classColor = { type="toggle", name="Use Class Color", order=5, get=function() return db.classColor end, set=function(_,v) db.classColor=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
-          useDamageColors = { type="toggle", name="Use Damage/Heal Colors", order=6, get=function() return db.useDamageColors end, set=function(_,v) db.useDamageColors=v and true or false; ETBC.ApplyBus:Notify("combattext") end, disabled=function() return db.classColor end },
-          useSchoolColors = { type="toggle", name="Use School Colors", order=7, get=function() return db.useSchoolColors end, set=function(_,v) db.useSchoolColors=v and true or false; ETBC.ApplyBus:Notify("combattext") end, disabled=function() return db.classColor end },
+          classColor = {
+            type = "toggle", name = "Use Class Color", order = 5,
+            get = function() return db.classColor end,
+            set = function(_, v) db.classColor = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          useDamageColors = {
+            type = "toggle", name = "Use Damage/Heal Colors", order = 6,
+            get = function() return db.useDamageColors end,
+            set = function(_, v) db.useDamageColors = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+            disabled = function() return db.classColor end,
+          },
+          useSchoolColors = {
+            type = "toggle", name = "Use School Colors", order = 7,
+            get = function() return db.useSchoolColors end,
+            set = function(_, v) db.useSchoolColors = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+            disabled = function() return db.classColor end,
+          },
 
           overrideColor = {
             type="color", name="Override Color", order=8, hasAlpha=true,
             get=function() local c=db.overrideColor; return c.r,c.g,c.b,(c.a or 1) end,
-            set=function(_,r,g,b,a) local c=db.overrideColor; c.r,c.g,c.b,c.a=r,g,b,a; ETBC.ApplyBus:Notify("combattext") end,
+            set=function(_,r,g,b,a)
+              local c=db.overrideColor
+              c.r,c.g,c.b,c.a=r,g,b,a
+              ETBC.ApplyBus:Notify("combattext")
+            end,
             disabled=function() return db.classColor or db.useDamageColors or db.useSchoolColors end,
           },
         },
@@ -204,13 +312,32 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
         order = 60,
         inline = true,
         args = {
-          enabled = { type="toggle", name="Enable", order=1, get=function() return db.crit.enabled end, set=function(_,v) db.crit.enabled=v and true or false; ETBC.ApplyBus:Notify("combattext") end },
-          scale = { type="range", name="Scale", order=2, min=1.0, max=2.5, step=0.01, get=function() return db.crit.scale end, set=function(_,v) db.crit.scale=v; ETBC.ApplyBus:Notify("combattext") end, disabled=function() return not db.crit.enabled end },
-          useCritColor = { type="toggle", name="Use Crit Color", order=3, get=function() return db.crit.useCritColor end, set=function(_,v) db.crit.useCritColor=v and true or false; ETBC.ApplyBus:Notify("combattext") end, disabled=function() return not db.crit.enabled end },
+          enabled = {
+            type = "toggle", name = "Enable", order = 1,
+            get = function() return db.crit.enabled end,
+            set = function(_, v) db.crit.enabled = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+          },
+          scale = {
+            type = "range", name = "Scale", order = 2,
+            min = 1.0, max = 2.5, step = 0.01,
+            get = function() return db.crit.scale end,
+            set = function(_, v) db.crit.scale = v; ETBC.ApplyBus:Notify("combattext") end,
+            disabled = function() return not db.crit.enabled end,
+          },
+          useCritColor = {
+            type = "toggle", name = "Use Crit Color", order = 3,
+            get = function() return db.crit.useCritColor end,
+            set = function(_, v) db.crit.useCritColor = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
+            disabled = function() return not db.crit.enabled end,
+          },
           color = {
             type="color", name="Crit Color", order=4, hasAlpha=true,
             get=function() local c=db.crit.color; return c.r,c.g,c.b,(c.a or 1) end,
-            set=function(_,r,g,b,a) local c=db.crit.color; c.r,c.g,c.b,c.a=r,g,b,a; ETBC.ApplyBus:Notify("combattext") end,
+            set=function(_,r,g,b,a)
+              local c=db.crit.color
+              c.r,c.g,c.b,c.a=r,g,b,a
+              ETBC.ApplyBus:Notify("combattext")
+            end,
             disabled=function() return (not db.crit.enabled) or (not db.crit.useCritColor) end,
           },
         },

@@ -1,8 +1,7 @@
 -- Settings/Settings_UnitFrames.lua
 -- EnhanceTBC - UnitFrame Micro Enhancer settings (Blizzard frames)
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.unitframes = ETBC.db.profile.unitframes or {}
   local db = ETBC.db.profile.unitframes
@@ -139,7 +138,9 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         desc = "Choose percent, full values, or both.",
         order = 22, width = "full",
         disabled = function() return not db.enabled end,
-        values = function() return { NONE = "None", PERCENT = "Percent", VALUE = "Value", BOTH = "Value + Percent" } end,
+        values = function()
+          return { NONE = "None", PERCENT = "Percent", VALUE = "Value", BOTH = "Value + Percent" }
+        end,
         get = function() return db.healthTextMode or "PERCENT" end,
         set = function(_, v) db.healthTextMode = v; ETBC.ApplyBus:Notify("unitframes") end,
       },
@@ -150,7 +151,9 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
         desc = "Shows power as percent, value, or both.",
         order = 23, width = "full",
         disabled = function() return not db.enabled end,
-        values = function() return { NONE = "None", PERCENT = "Percent", VALUE = "Value", BOTH = "Value + Percent" } end,
+        values = function()
+          return { NONE = "None", PERCENT = "Percent", VALUE = "Value", BOTH = "Value + Percent" }
+        end,
         get = function() return db.powerTextMode or "NONE" end,
         set = function(_, v) db.powerTextMode = v; ETBC.ApplyBus:Notify("unitframes") end,
       },

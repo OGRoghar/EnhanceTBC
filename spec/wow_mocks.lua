@@ -54,7 +54,7 @@ _G.IsAltKeyDown = function() return false end
 _G.InCombatLockdown = function() return false end
 
 _G.DEFAULT_CHAT_FRAME = {
-  AddMessage = function(msg) 
+  AddMessage = function(msg)
     -- Silent in tests
   end
 }

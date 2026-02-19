@@ -1,10 +1,9 @@
 -- Core/Print.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
-function ETBC:Print(msg)
+local _, ETBC = ...
+function ETBC.Print(_, msg)
   local ok, str = pcall(tostring, msg)
   str = ok and str or "<?>"
-  
+
   if DEFAULT_CHAT_FRAME then
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99EnhanceTBC|r: " .. str)
   else

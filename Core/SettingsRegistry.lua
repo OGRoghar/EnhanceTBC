@@ -1,8 +1,7 @@
 -- Core/SettingsRegistry.lua
 -- Central registry of settings groups for the config window / options builder
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.SettingsRegistry = ETBC.SettingsRegistry or {}
 
 local reg = {
@@ -10,7 +9,7 @@ local reg = {
   byKey = {},      -- key -> group
 }
 
-function ETBC.SettingsRegistry:RegisterGroup(key, group)
+function ETBC.SettingsRegistry.RegisterGroup(_, key, group)
   if type(key) ~= "string" or type(group) ~= "table" then return end
 
   local existing = reg.byKey[key]
@@ -42,7 +41,7 @@ function ETBC.SettingsRegistry:RegisterGroup(key, group)
   end
 end
 
-function ETBC.SettingsRegistry:GetGroups()
+function ETBC.SettingsRegistry.GetGroups(_)
   local out = {}
   for i = 1, #reg.groups do
     out[i] = reg.groups[i]
@@ -50,6 +49,6 @@ function ETBC.SettingsRegistry:GetGroups()
   return out
 end
 
-function ETBC.SettingsRegistry:Get(key)
+function ETBC.SettingsRegistry.Get(_, key)
   return reg.byKey[key]
 end

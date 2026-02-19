@@ -1,7 +1,7 @@
 -- Settings/Settings_MinimapPlus.lua
 -- AceConfig options for Modules/MinimapPlus.lua
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 ETBC.Settings = ETBC.Settings or {}
 
 local function EnsureDefaults()

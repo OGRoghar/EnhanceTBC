@@ -1,8 +1,7 @@
 -- Settings/Settings_Mouse.lua
 -- EnhanceTBC - CursorTrail-style options (2D cursor + trail)
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 
 local function EnsureDB()
   if not ETBC.db or not ETBC.db.profile then

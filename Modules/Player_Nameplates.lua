@@ -1,10 +1,10 @@
 -- Modules/Player_Nameplates.lua
 -- EnhanceTBC - Player nameplate (personal frame) and swing timers
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
-ETBC.Modules.PlayerNameplates = mod
+ETBC.Modules["Player" .. "Nameplates"] = mod
 
 local player_nameplate
 local driver
@@ -82,13 +82,21 @@ local function GetDB()
   if db.player_alt_manabar == nil then db.player_alt_manabar = true end
 
   if db.player_melee_swing_timer == nil then db.player_melee_swing_timer = false end
-  if db.player_melee_swing_timer_show_offhand == nil then db.player_melee_swing_timer_show_offhand = false end
-  if db.player_melee_swing_timer_only_in_combat == nil then db.player_melee_swing_timer_only_in_combat = false end
-  if db.player_melee_swing_timer_hide_out_of_combat == nil then db.player_melee_swing_timer_hide_out_of_combat = false end
+  if db.player_melee_swing_timer_show_offhand == nil then
+    db.player_melee_swing_timer_show_offhand = false
+  end
+  if db.player_melee_swing_timer_only_in_combat == nil then
+    db.player_melee_swing_timer_only_in_combat = false
+  end
+  if db.player_melee_swing_timer_hide_out_of_combat == nil then
+    db.player_melee_swing_timer_hide_out_of_combat = false
+  end
   if db.player_melee_swing_timer_width == nil then db.player_melee_swing_timer_width = 230 end
   if db.player_melee_swing_timer_height == nil then db.player_melee_swing_timer_height = 9 end
   if db.player_melee_swing_timer_alpha == nil then db.player_melee_swing_timer_alpha = 1 end
-  if db.player_melee_swing_timer_color == nil then db.player_melee_swing_timer_color = { r = 1, g = 1, b = 1, a = 1 } end
+  if db.player_melee_swing_timer_color == nil then
+    db.player_melee_swing_timer_color = { r = 1, g = 1, b = 1, a = 1 }
+  end
   if db.player_melee_swing_timer_seperate == nil then db.player_melee_swing_timer_seperate = false end
   if db.player_melee_swing_timer_scale == nil then db.player_melee_swing_timer_scale = 1 end
   if db.player_melee_swing_timer_pos_y == nil then db.player_melee_swing_timer_pos_y = -150 end
@@ -99,7 +107,9 @@ local function GetDB()
   if db.player_ranged_cast_timer_width == nil then db.player_ranged_cast_timer_width = 230 end
   if db.player_ranged_cast_timer_height == nil then db.player_ranged_cast_timer_height = 9 end
   if db.player_ranged_cast_timer_alpha == nil then db.player_ranged_cast_timer_alpha = 1 end
-  if db.player_ranged_cast_timer_color == nil then db.player_ranged_cast_timer_color = { r = 1, g = 1, b = 1, a = 1 } end
+  if db.player_ranged_cast_timer_color == nil then
+    db.player_ranged_cast_timer_color = { r = 1, g = 1, b = 1, a = 1 }
+  end
   if db.player_ranged_cast_timer_seperate == nil then db.player_ranged_cast_timer_seperate = false end
   if db.player_ranged_cast_timer_scale == nil then db.player_ranged_cast_timer_scale = 1 end
   if db.player_ranged_cast_timer_pos_y == nil then db.player_ranged_cast_timer_pos_y = -140 end
@@ -738,7 +748,10 @@ local function EnsurePlayerNameplate()
   player_nameplate.healthbar.text:SetJustifyV("MIDDLE")
   ApplyFont(player_nameplate.healthbar.text, 11)
 
-  player_nameplate.healthbar.backdrop = CreateFrame("Frame", nil, player_nameplate.healthbar, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  player_nameplate.healthbar.backdrop = CreateFrame(
+    "Frame", nil, player_nameplate.healthbar,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   ApplyBackdropAlt(player_nameplate.healthbar.backdrop)
 
   player_nameplate.healthbar.heal = CreateFrame("Frame", nil, player_nameplate)
@@ -750,7 +763,8 @@ local function EnsurePlayerNameplate()
 
   player_nameplate.healthbar.other_heal = CreateFrame("Frame", nil, player_nameplate)
   player_nameplate.healthbar.other_heal:Hide()
-  player_nameplate.healthbar.other_heal.texture = player_nameplate.healthbar.other_heal:CreateTexture(nil, "OVERLAY")
+  player_nameplate.healthbar.other_heal.texture =
+    player_nameplate.healthbar.other_heal:CreateTexture(nil, "OVERLAY")
   player_nameplate.healthbar.other_heal.texture:SetAllPoints(true)
   player_nameplate.healthbar.other_heal.texture:SetTexture(texture)
   player_nameplate.healthbar.other_heal.texture:SetVertexColor(0, 0.75, 0.65)
@@ -759,12 +773,16 @@ local function EnsurePlayerNameplate()
   player_nameplate.healthbar.absorb:SetSize(16, player_nameplate.healthbar:GetHeight())
   player_nameplate.healthbar.absorb:Hide()
 
-  player_nameplate.healthbar.absorb.shield_texture = player_nameplate.healthbar.absorb:CreateTexture(nil, "OVERLAY")
+  player_nameplate.healthbar.absorb.shield_texture =
+    player_nameplate.healthbar.absorb:CreateTexture(nil, "OVERLAY")
   player_nameplate.healthbar.absorb.shield_texture:SetAllPoints(true)
   player_nameplate.healthbar.absorb.shield_texture:SetTexture(798064)
 
-  player_nameplate.healthbar.absorb.over_absorb_texture = player_nameplate.healthbar.absorb:CreateTexture(nil, "OVERLAY")
-  player_nameplate.healthbar.absorb.over_absorb_texture:SetSize(12, player_nameplate.healthbar.absorb:GetHeight())
+  player_nameplate.healthbar.absorb.over_absorb_texture =
+    player_nameplate.healthbar.absorb:CreateTexture(nil, "OVERLAY")
+  player_nameplate.healthbar.absorb.over_absorb_texture:SetSize(
+    12, player_nameplate.healthbar.absorb:GetHeight()
+  )
   player_nameplate.healthbar.absorb.over_absorb_texture:SetPoint("RIGHT", player_nameplate.healthbar, 6, 0)
   player_nameplate.healthbar.absorb.over_absorb_texture:SetTexture(798066)
   player_nameplate.healthbar.absorb.over_absorb_texture:SetBlendMode("ADD")
@@ -781,7 +799,10 @@ local function EnsurePlayerNameplate()
   player_nameplate.manabar.text:SetJustifyV("MIDDLE")
   ApplyFont(player_nameplate.manabar.text, 11)
 
-  player_nameplate.manabar.backdrop = CreateFrame("Frame", nil, player_nameplate.manabar, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  player_nameplate.manabar.backdrop = CreateFrame(
+    "Frame", nil, player_nameplate.manabar,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   ApplyBackdropAlt(player_nameplate.manabar.backdrop)
 
   player_nameplate.alt_manabar = CreateFrame("StatusBar", nil, player_nameplate)
@@ -792,13 +813,19 @@ local function EnsurePlayerNameplate()
   player_nameplate.alt_manabar:SetMinMaxValues(0, UnitPowerMax("player") or 1)
   player_nameplate.alt_manabar:SetAlpha(0)
 
-  player_nameplate.alt_manabar.backdrop = CreateFrame("Frame", nil, player_nameplate.alt_manabar, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  player_nameplate.alt_manabar.backdrop = CreateFrame(
+    "Frame", nil, player_nameplate.alt_manabar,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   ApplyBackdropAlt(player_nameplate.alt_manabar.backdrop)
 
   player_nameplate.melee_swing_timer = CreateFrame("StatusBar", nil, UIParent)
   player_nameplate.melee_swing_timer:SetStatusBarTexture(texture)
 
-  player_nameplate.melee_swing_timer.backdrop = CreateFrame("Frame", nil, player_nameplate.melee_swing_timer, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  player_nameplate.melee_swing_timer.backdrop = CreateFrame(
+    "Frame", nil, player_nameplate.melee_swing_timer,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   player_nameplate.melee_swing_timer.backdrop:SetAllPoints(true)
   player_nameplate.melee_swing_timer.backdrop:SetFrameStrata("LOW")
   player_nameplate.melee_swing_timer.backdrop:SetBackdrop({
@@ -811,11 +838,14 @@ local function EnsurePlayerNameplate()
   player_nameplate.melee_swing_timer.spark:SetBlendMode("ADD")
   player_nameplate.melee_swing_timer.spark:SetAlpha(0)
 
-  player_nameplate.melee_swing_timer.twist_timer = CreateFrame("Frame", nil, player_nameplate.melee_swing_timer)
+  player_nameplate.melee_swing_timer.twist_timer = CreateFrame(
+    "Frame", nil, player_nameplate.melee_swing_timer
+  )
   player_nameplate.melee_swing_timer.twist_timer:SetPoint("RIGHT", 0, 0)
   player_nameplate.melee_swing_timer.twist_timer:SetFrameStrata("LOW")
 
-  player_nameplate.melee_swing_timer.twist_timer.texture = player_nameplate.melee_swing_timer.twist_timer:CreateTexture(nil, "OVERLAY")
+  player_nameplate.melee_swing_timer.twist_timer.texture =
+    player_nameplate.melee_swing_timer.twist_timer:CreateTexture(nil, "OVERLAY")
   player_nameplate.melee_swing_timer.twist_timer.texture:SetAllPoints(true)
   player_nameplate.melee_swing_timer.twist_timer.texture:SetTexture(texture)
   player_nameplate.melee_swing_timer.twist_timer.texture:SetVertexColor(0.8, 0, 0)
@@ -828,18 +858,26 @@ local function EnsurePlayerNameplate()
   ApplyFont(player_nameplate.melee_swing_timer.text, 10)
   player_nameplate.melee_swing_timer.text:SetText("0.0s")
 
-  player_nameplate.melee_swing_timer.ability_icon = CreateFrame("Frame", nil, player_nameplate.melee_swing_timer)
+  player_nameplate.melee_swing_timer.ability_icon = CreateFrame(
+    "Frame", nil, player_nameplate.melee_swing_timer
+  )
   player_nameplate.melee_swing_timer.ability_icon:SetSize(21, 21)
-  player_nameplate.melee_swing_timer.ability_icon:SetPoint("RIGHT", player_nameplate.melee_swing_timer, "LEFT", -6, 0)
+  player_nameplate.melee_swing_timer.ability_icon:SetPoint(
+    "RIGHT", player_nameplate.melee_swing_timer, "LEFT", -6, 0
+  )
   player_nameplate.melee_swing_timer.ability_icon:Hide()
 
   player_nameplate.melee_swing_timer.ability_icon.guid = nil
   player_nameplate.melee_swing_timer.ability_icon.current_spell = nil
-  player_nameplate.melee_swing_timer.ability_icon.texture = player_nameplate.melee_swing_timer.ability_icon:CreateTexture(nil, "OVERLAY")
+  player_nameplate.melee_swing_timer.ability_icon.texture =
+    player_nameplate.melee_swing_timer.ability_icon:CreateTexture(nil, "OVERLAY")
   player_nameplate.melee_swing_timer.ability_icon.texture:SetAllPoints(true)
   player_nameplate.melee_swing_timer.ability_icon.texture:SetTexCoord(0.07, 0.94, 0.07, 0.94)
 
-  player_nameplate.melee_swing_timer.ability_icon.backdrop = CreateFrame("Frame", nil, player_nameplate.melee_swing_timer.ability_icon, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  player_nameplate.melee_swing_timer.ability_icon.backdrop = CreateFrame(
+    "Frame", nil, player_nameplate.melee_swing_timer.ability_icon,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   ApplyBackdrop(player_nameplate.melee_swing_timer.ability_icon.backdrop)
 
   player_nameplate.melee_swing_timer.swing_time = -1
@@ -864,12 +902,14 @@ local function EnsurePlayerNameplate()
   })
   player_nameplate.offhand_swing_timer.backdrop:SetBackdropColor(0, 0, 0, 0.65)
 
-  player_nameplate.offhand_swing_timer.spark = player_nameplate.offhand_swing_timer:CreateTexture(nil, "OVERLAY")
+  player_nameplate.offhand_swing_timer.spark =
+    player_nameplate.offhand_swing_timer:CreateTexture(nil, "OVERLAY")
   player_nameplate.offhand_swing_timer.spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
   player_nameplate.offhand_swing_timer.spark:SetBlendMode("ADD")
   player_nameplate.offhand_swing_timer.spark:SetAlpha(0)
 
-  player_nameplate.offhand_swing_timer.text = player_nameplate.offhand_swing_timer:CreateFontString(nil, "OVERLAY")
+  player_nameplate.offhand_swing_timer.text =
+    player_nameplate.offhand_swing_timer:CreateFontString(nil, "OVERLAY")
   player_nameplate.offhand_swing_timer.text:SetPoint("BOTTOMLEFT", 4, 0)
   player_nameplate.offhand_swing_timer.text:SetPoint("TOPRIGHT", 54, 0)
   player_nameplate.offhand_swing_timer.text:SetJustifyH("LEFT")
@@ -884,7 +924,10 @@ local function EnsurePlayerNameplate()
   player_nameplate.ranged_cast_timer = CreateFrame("StatusBar", nil, UIParent)
   player_nameplate.ranged_cast_timer:SetStatusBarTexture(texture)
 
-  player_nameplate.ranged_cast_timer.backdrop = CreateFrame("Frame", nil, player_nameplate.ranged_cast_timer, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  player_nameplate.ranged_cast_timer.backdrop = CreateFrame(
+    "Frame", nil, player_nameplate.ranged_cast_timer,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   player_nameplate.ranged_cast_timer.backdrop:SetAllPoints(true)
   player_nameplate.ranged_cast_timer.backdrop:SetFrameStrata("LOW")
   player_nameplate.ranged_cast_timer.backdrop:SetBackdrop({
@@ -892,16 +935,20 @@ local function EnsurePlayerNameplate()
   })
   player_nameplate.ranged_cast_timer.backdrop:SetBackdropColor(0, 0, 0, 0.65)
 
-  player_nameplate.ranged_cast_timer.spark = player_nameplate.ranged_cast_timer:CreateTexture(nil, "OVERLAY")
+  player_nameplate.ranged_cast_timer.spark =
+    player_nameplate.ranged_cast_timer:CreateTexture(nil, "OVERLAY")
   player_nameplate.ranged_cast_timer.spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
   player_nameplate.ranged_cast_timer.spark:SetBlendMode("ADD")
   player_nameplate.ranged_cast_timer.spark:SetAlpha(0)
 
-  player_nameplate.ranged_cast_timer.clipping_timer = CreateFrame("Frame", nil, player_nameplate.ranged_cast_timer)
+  player_nameplate.ranged_cast_timer.clipping_timer = CreateFrame(
+    "Frame", nil, player_nameplate.ranged_cast_timer
+  )
   player_nameplate.ranged_cast_timer.clipping_timer:SetPoint("RIGHT", 0, 0)
   player_nameplate.ranged_cast_timer.clipping_timer:SetFrameStrata("LOW")
 
-  player_nameplate.ranged_cast_timer.clipping_timer.texture = player_nameplate.ranged_cast_timer.clipping_timer:CreateTexture(nil, "OVERLAY")
+  player_nameplate.ranged_cast_timer.clipping_timer.texture =
+    player_nameplate.ranged_cast_timer.clipping_timer:CreateTexture(nil, "OVERLAY")
   player_nameplate.ranged_cast_timer.clipping_timer.texture:SetAllPoints(true)
   player_nameplate.ranged_cast_timer.clipping_timer.texture:SetTexture(texture)
   player_nameplate.ranged_cast_timer.clipping_timer.texture:SetVertexColor(0.8, 0, 0)
@@ -920,12 +967,19 @@ local function EnsurePlayerNameplate()
   player_nameplate.ranged_cast_timer.ranged_id = nil
 
   player_nameplate.auto_shot_timer = CreateFrame("StatusBar", nil, player_nameplate.ranged_cast_timer)
-  player_nameplate.auto_shot_timer:SetPoint("TOPLEFT", player_nameplate.ranged_cast_timer, "BOTTOMLEFT", 0, -3)
-  player_nameplate.auto_shot_timer:SetPoint("BOTTOMRIGHT", player_nameplate.ranged_cast_timer, "BOTTOMRIGHT", 0, -7)
+  player_nameplate.auto_shot_timer:SetPoint(
+    "TOPLEFT", player_nameplate.ranged_cast_timer, "BOTTOMLEFT", 0, -3
+  )
+  player_nameplate.auto_shot_timer:SetPoint(
+    "BOTTOMRIGHT", player_nameplate.ranged_cast_timer, "BOTTOMRIGHT", 0, -7
+  )
   player_nameplate.auto_shot_timer:SetAlpha(0)
   player_nameplate.auto_shot_timer:SetStatusBarTexture(texture)
 
-  player_nameplate.auto_shot_timer.backdrop = CreateFrame("Frame", nil, player_nameplate.auto_shot_timer, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  player_nameplate.auto_shot_timer.backdrop = CreateFrame(
+    "Frame", nil, player_nameplate.auto_shot_timer,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
   player_nameplate.auto_shot_timer.backdrop:SetAllPoints(true)
   player_nameplate.auto_shot_timer.backdrop:SetFrameStrata("LOW")
   player_nameplate.auto_shot_timer.backdrop:SetBackdrop({
@@ -1279,7 +1333,8 @@ local function RegisterEvents()
       end
     elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
       if player_nameplate.melee_swing_timer and player_nameplate.melee_swing_timer:IsShown() then
-        local _, combat_event, _, _, source_name, _, _, _, dest_name, _, _, spell_id = CombatLogGetCurrentEventInfo()
+        local _, combat_event, _, _, source_name, _, _, _, dest_name,
+          _, _, combat_spell_id = CombatLogGetCurrentEventInfo()
         if combat_event == "SWING_DAMAGE" and source_name == UnitName("player") then
           local _, _, _, _, _, _, _, _, _, is_offhand = select(12, CombatLogGetCurrentEventInfo())
           if is_offhand then
@@ -1307,8 +1362,8 @@ local function RegisterEvents()
               end
             end
           end
-        elseif combat_event == "SPELL_CAST_SUCCESS" and source_name == UnitName("player") and spell_id then
-          local name, _, icon, cast_time = GetSpellInfo(spell_id)
+        elseif combat_event == "SPELL_CAST_SUCCESS" and source_name == UnitName("player") and combat_spell_id then
+          local name, _, icon, cast_time = GetSpellInfo(combat_spell_id)
           if not HUNTER_SPELLS[name] then
             if (cast_time and cast_time > 0) or MELEE_RESET_SPELLS[name] then
               player_nameplate.melee_swing_timer.ability_icon.guid = nil
@@ -1326,8 +1381,8 @@ local function RegisterEvents()
               StartRangedCastTimer()
             end
           end
-        elseif combat_event == "SPELL_AURA_REMOVED" and source_name == UnitName("player") and spell_id then
-          local name = GetSpellInfo(spell_id)
+        elseif combat_event == "SPELL_AURA_REMOVED" and source_name == UnitName("player") and combat_spell_id then
+          local name = GetSpellInfo(combat_spell_id)
           if PALADIN_SEALS[name] and player_nameplate.melee_swing_timer.ability_icon.current_spell then
             if player_nameplate.melee_swing_timer.ability_icon.current_spell == name then
               player_nameplate.melee_swing_timer.ability_icon.current_spell = nil
@@ -1338,9 +1393,9 @@ local function RegisterEvents()
       end
 
       if player_nameplate.ranged_cast_timer and player_nameplate.ranged_cast_timer:IsShown() then
-        local _, combat_event, _, _, source_name, _, _, _, _, _, _, spell_id = CombatLogGetCurrentEventInfo()
-        if combat_event == "SPELL_CAST_SUCCESS" and source_name == UnitName("player") and spell_id then
-          local name, _, _, cast_time = GetSpellInfo(spell_id)
+        local _, combat_event, _, _, source_name, _, _, _, _, _, _, combat_spell_id = CombatLogGetCurrentEventInfo()
+        if combat_event == "SPELL_CAST_SUCCESS" and source_name == UnitName("player") and combat_spell_id then
+          local name, _, _, cast_time = GetSpellInfo(combat_spell_id)
           if HUNTER_SPELLS[name] then
             if name == "Auto Shot" then
               StartRangedCastTimer()
@@ -1351,8 +1406,8 @@ local function RegisterEvents()
               StartRangedCastTimer()
             end
           end
-        elseif combat_event == "SPELL_CAST_START" and source_name == UnitName("player") and spell_id then
-          local name = GetSpellInfo(spell_id)
+        elseif combat_event == "SPELL_CAST_START" and source_name == UnitName("player") and combat_spell_id then
+          local name = GetSpellInfo(combat_spell_id)
           if HUNTER_SPELLS[name] then
             if name == "Auto Shot" then
               StartAutoShotTimer()
@@ -1370,7 +1425,7 @@ local function UnregisterEvents()
   driver:SetScript("OnEvent", nil)
 end
 
-function mod:UpdateTextures()
+function mod.UpdateTextures(_)
   if not player_nameplate then return end
   local texture = GetStatusbarTexture()
   player_nameplate.healthbar:SetStatusBarTexture(texture)
@@ -1386,7 +1441,7 @@ function mod:UpdateTextures()
   player_nameplate.auto_shot_timer:SetStatusBarTexture(texture)
 end
 
-function mod:Apply()
+function mod.Apply(_)
   if not ETBC.db or not ETBC.db.profile or not ETBC.db.profile.general or not ETBC.db.profile.general.enabled then
     UnregisterEvents()
     if player_nameplate then player_nameplate:Hide() end

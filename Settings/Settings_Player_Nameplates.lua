@@ -1,7 +1,7 @@
 -- Settings/Settings_Player_Nameplates.lua
 -- EnhanceTBC - Player nameplate settings
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 
 local function GetDB()
   ETBC.db.profile.player_nameplates = ETBC.db.profile.player_nameplates or {}
@@ -21,13 +21,21 @@ local function GetDB()
   if db.player_alt_manabar == nil then db.player_alt_manabar = true end
 
   if db.player_melee_swing_timer == nil then db.player_melee_swing_timer = false end
-  if db.player_melee_swing_timer_show_offhand == nil then db.player_melee_swing_timer_show_offhand = false end
-  if db.player_melee_swing_timer_only_in_combat == nil then db.player_melee_swing_timer_only_in_combat = false end
-  if db.player_melee_swing_timer_hide_out_of_combat == nil then db.player_melee_swing_timer_hide_out_of_combat = false end
+  if db.player_melee_swing_timer_show_offhand == nil then
+    db.player_melee_swing_timer_show_offhand = false
+  end
+  if db.player_melee_swing_timer_only_in_combat == nil then
+    db.player_melee_swing_timer_only_in_combat = false
+  end
+  if db.player_melee_swing_timer_hide_out_of_combat == nil then
+    db.player_melee_swing_timer_hide_out_of_combat = false
+  end
   if db.player_melee_swing_timer_width == nil then db.player_melee_swing_timer_width = 230 end
   if db.player_melee_swing_timer_height == nil then db.player_melee_swing_timer_height = 9 end
   if db.player_melee_swing_timer_alpha == nil then db.player_melee_swing_timer_alpha = 1 end
-  if db.player_melee_swing_timer_color == nil then db.player_melee_swing_timer_color = { r = 1, g = 1, b = 1, a = 1 } end
+  if db.player_melee_swing_timer_color == nil then
+    db.player_melee_swing_timer_color = { r = 1, g = 1, b = 1, a = 1 }
+  end
   if db.player_melee_swing_timer_seperate == nil then db.player_melee_swing_timer_seperate = false end
   if db.player_melee_swing_timer_scale == nil then db.player_melee_swing_timer_scale = 1 end
   if db.player_melee_swing_timer_pos_y == nil then db.player_melee_swing_timer_pos_y = -150 end
@@ -38,7 +46,9 @@ local function GetDB()
   if db.player_ranged_cast_timer_width == nil then db.player_ranged_cast_timer_width = 230 end
   if db.player_ranged_cast_timer_height == nil then db.player_ranged_cast_timer_height = 9 end
   if db.player_ranged_cast_timer_alpha == nil then db.player_ranged_cast_timer_alpha = 1 end
-  if db.player_ranged_cast_timer_color == nil then db.player_ranged_cast_timer_color = { r = 1, g = 1, b = 1, a = 1 } end
+  if db.player_ranged_cast_timer_color == nil then
+    db.player_ranged_cast_timer_color = { r = 1, g = 1, b = 1, a = 1 }
+  end
   if db.player_ranged_cast_timer_seperate == nil then db.player_ranged_cast_timer_seperate = false end
   if db.player_ranged_cast_timer_scale == nil then db.player_ranged_cast_timer_scale = 1 end
   if db.player_ranged_cast_timer_pos_y == nil then db.player_ranged_cast_timer_pos_y = -140 end
@@ -67,7 +77,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         order = 1,
         width = "full",
         get = function() return db.enabled end,
-        set = function(_, v) db.enabled = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.enabled = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
 
       frameHeader = { type = "header", name = "Frame", order = 10 },
@@ -79,7 +92,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_frame end,
-        set = function(_, v) db.player_nameplate_frame = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_frame = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_scale = {
         type = "range",
@@ -88,7 +104,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 0.5, max = 1.5, step = 0.05,
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_scale end,
-        set = function(_, v) db.player_nameplate_scale = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_scale = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_alpha = {
         type = "range",
@@ -97,7 +116,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 0.1, max = 1, step = 0.05,
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_alpha end,
-        set = function(_, v) db.player_nameplate_alpha = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_alpha = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_width = {
         type = "range",
@@ -106,7 +128,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 80, max = 220, step = 1,
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_width end,
-        set = function(_, v) db.player_nameplate_width = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_width = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_height = {
         type = "range",
@@ -115,7 +140,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 10, max = 32, step = 1,
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_height end,
-        set = function(_, v) db.player_nameplate_height = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_height = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_pos_y = {
         type = "range",
@@ -124,7 +152,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = -300, max = 100, step = 1,
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_pos_y end,
-        set = function(_, v) db.player_nameplate_pos_y = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_pos_y = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_show = {
         type = "toggle",
@@ -133,7 +164,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_show end,
-        set = function(_, v) db.player_nameplate_show = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_show = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_health = {
         type = "toggle",
@@ -142,7 +176,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_health end,
-        set = function(_, v) db.player_nameplate_health = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_health = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_nameplate_text = {
         type = "toggle",
@@ -151,7 +188,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.player_nameplate_text end,
-        set = function(_, v) db.player_nameplate_text = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_nameplate_text = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_alt_manabar = {
         type = "toggle",
@@ -160,7 +200,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.player_alt_manabar end,
-        set = function(_, v) db.player_alt_manabar = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_alt_manabar = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
 
       meleeHeader = { type = "header", name = "Melee Swing Timer", order = 30 },
@@ -172,7 +215,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.player_melee_swing_timer end,
-        set = function(_, v) db.player_melee_swing_timer = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_show_offhand = {
         type = "toggle",
@@ -181,7 +227,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_show_offhand end,
-        set = function(_, v) db.player_melee_swing_timer_show_offhand = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_show_offhand = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_only_in_combat = {
         type = "toggle",
@@ -190,7 +239,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_only_in_combat end,
-        set = function(_, v) db.player_melee_swing_timer_only_in_combat = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_only_in_combat = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_hide_out_of_combat = {
         type = "toggle",
@@ -199,7 +251,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_hide_out_of_combat end,
-        set = function(_, v) db.player_melee_swing_timer_hide_out_of_combat = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_hide_out_of_combat = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_seperate = {
         type = "toggle",
@@ -208,7 +263,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_seperate end,
-        set = function(_, v) db.player_melee_swing_timer_seperate = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_seperate = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_width = {
         type = "range",
@@ -217,7 +275,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 120, max = 320, step = 1,
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_width end,
-        set = function(_, v) db.player_melee_swing_timer_width = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_width = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_height = {
         type = "range",
@@ -226,7 +287,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 6, max = 24, step = 1,
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_height end,
-        set = function(_, v) db.player_melee_swing_timer_height = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_height = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_scale = {
         type = "range",
@@ -235,7 +299,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 0.5, max = 1.5, step = 0.05,
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_scale end,
-        set = function(_, v) db.player_melee_swing_timer_scale = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_scale = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_alpha = {
         type = "range",
@@ -244,7 +311,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = 0.1, max = 1, step = 0.05,
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_alpha end,
-        set = function(_, v) db.player_melee_swing_timer_alpha = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_alpha = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_pos_y = {
         type = "range",
@@ -253,7 +323,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         min = -400, max = 100, step = 1,
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_pos_y end,
-        set = function(_, v) db.player_melee_swing_timer_pos_y = v; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_pos_y = v
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_icon = {
         type = "toggle",
@@ -262,7 +335,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_icon end,
-        set = function(_, v) db.player_melee_swing_timer_icon = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_icon = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_text = {
         type = "toggle",
@@ -271,7 +347,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_melee_swing_timer) end,
         get = function() return db.player_melee_swing_timer_text end,
-        set = function(_, v) db.player_melee_swing_timer_text = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_melee_swing_timer_text = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_melee_swing_timer_color = {
         type = "color",
@@ -299,7 +378,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.player_ranged_cast_timer end,
-        set = function(_, v) db.player_ranged_cast_timer = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_ranged_cast_timer = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_ranged_cast_timer_seperate = {
         type = "toggle",
@@ -308,7 +390,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_ranged_cast_timer) end,
         get = function() return db.player_ranged_cast_timer_seperate end,
-        set = function(_, v) db.player_ranged_cast_timer_seperate = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_ranged_cast_timer_seperate = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_ranged_cast_timer_width = {
         type = "range",
@@ -362,7 +447,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_ranged_cast_timer) end,
         get = function() return db.player_ranged_cast_timer_text end,
-        set = function(_, v) db.player_ranged_cast_timer_text = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_ranged_cast_timer_text = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_auto_shot_timer = {
         type = "toggle",
@@ -371,7 +459,10 @@ ETBC.SettingsRegistry:RegisterGroup("player_nameplates", {
         width = "full",
         disabled = function() return not (db.enabled and db.player_ranged_cast_timer) end,
         get = function() return db.player_auto_shot_timer end,
-        set = function(_, v) db.player_auto_shot_timer = v and true or false; ETBC.ApplyBus:Notify("player_nameplates") end,
+        set = function(_, v)
+          db.player_auto_shot_timer = v and true or false
+          ETBC.ApplyBus:Notify("player_nameplates")
+        end,
       },
       player_ranged_cast_timer_color = {
         type = "color",

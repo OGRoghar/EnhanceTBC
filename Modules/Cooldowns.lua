@@ -3,8 +3,7 @@
 -- Hooks cooldown timer setters and overlays a FontString on the owner frame.
 -- Lightweight: one global OnUpdate that updates tracked cooldowns at an interval.
 
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CooldownText = mod
@@ -93,7 +92,8 @@ local function IsEnhanceTBCIconOwner(owner)
   local parent = owner:GetParent()
   while parent do
     local name = parent.GetName and parent:GetName() or ""
-    if name == "EnhanceTBC_BuffsContainer" or name == "EnhanceTBC_DebuffsContainer" or name == "EnhanceTBC_ActionTrackerContainer" then
+    if name == "EnhanceTBC_BuffsContainer" or name == "EnhanceTBC_DebuffsContainer"
+      or name == "EnhanceTBC_ActionTrackerContainer" then
       return true
     end
     parent = parent.GetParent and parent:GetParent()
@@ -413,7 +413,7 @@ local function HookCooldownSetters()
   hooked = true
 
   if type(_G.CooldownFrame_Set) == "function" then
-    hooksecurefunc("CooldownFrame_Set", function(cooldown, start, duration, enable, forceShowDrawEdge, modRate)
+    hooksecurefunc("CooldownFrame_Set", function(cooldown, start, duration, enable, _forceShowDrawEdge, modRate)
       Track(cooldown, start, duration, enable, modRate)
       needRebuild = true
     end)
@@ -428,7 +428,7 @@ local function HookCooldownSetters()
 
   if _G.Cooldown and _G.Cooldown.SetCooldown and not _G.Cooldown._etbcHooked then
     _G.Cooldown._etbcHooked = true
-    hooksecurefunc(_G.Cooldown, "SetCooldown", function(cooldown, start, duration, enable, forceShowDrawEdge, modRate)
+    hooksecurefunc(_G.Cooldown, "SetCooldown", function(cooldown, start, duration, enable, _forceShowDrawEdge, modRate)
       Track(cooldown, start, duration, enable, modRate)
       needRebuild = true
     end)

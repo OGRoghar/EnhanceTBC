@@ -2,14 +2,13 @@
 -- EnhanceTBC - Nameplate styling and debuff helpers
 -- Based on the provided JUI nameplate logic, adapted for EnhanceTBC.
 
-local ADDON_NAME, ETBC = ...
+local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Nameplates = mod
 
 local driver
 local hooked = false
-local loaded = false
 
 local unit_nameplates = {}
 local duel_unit = nil
@@ -647,7 +646,8 @@ local function SetNameplateHealthBarColor(nameplate, statusbar, unit)
 end
 
 local function SetNameplateAbsorb(nameplate, unit)
-  if unit and UnitExists(unit) and not UnitIsDead(unit) and nameplate and nameplate.UnitFrame then
+  if unit and UnitExists(unit) and not UnitIsDead(unit)
+    and nameplate and nameplate.UnitFrame then
     local nameplate_health_bar = nameplate.UnitFrame.healthBar
     if not nameplate_health_bar or not nameplate_health_bar.absorb then return end
 
@@ -661,7 +661,8 @@ local function SetNameplateAbsorb(nameplate, unit)
       if name then
         local absorb_buff = formatted_absorb_buffs[name]
 
-        if absorb_buff and absorb_buff.track_spell_id and absorb_spell_id and not absorb_buff.track_spell_id[absorb_spell_id] then
+        if absorb_buff and absorb_buff.track_spell_id and absorb_spell_id
+          and not absorb_buff.track_spell_id[absorb_spell_id] then
           absorb_buff = nil
         end
 
@@ -708,8 +709,14 @@ local function SetNameplateSize(nameplate, statusbar, unit)
 
   if not UnitIsUnit("player", unit) then
     if not IsFriendlyNameplate(nameplate, unit) then
-      nameplate.UnitFrame.healthBarWrapper:SetSize(db.enemy_nameplate_width or 109, db.enemy_nameplate_height or 12.5)
-      nameplate.UnitFrame.castBarWrapper:SetSize(db.enemy_nameplate_castbar_width or 109, db.enemy_nameplate_castbar_height or 12.5)
+      nameplate.UnitFrame.healthBarWrapper:SetSize(
+        db.enemy_nameplate_width or 109,
+        db.enemy_nameplate_height or 12.5
+      )
+      nameplate.UnitFrame.castBarWrapper:SetSize(
+        db.enemy_nameplate_castbar_width or 109,
+        db.enemy_nameplate_castbar_height or 12.5
+      )
 
       if statusbar.unit_health_text then
         if db.enemy_nameplate_health_text then statusbar.unit_health_text:Show() end
@@ -721,8 +728,14 @@ local function SetNameplateSize(nameplate, statusbar, unit)
         SetNameplateHealthBarText(statusbar, unit)
       end
     else
-      nameplate.UnitFrame.healthBarWrapper:SetSize(db.friendly_nameplate_width or 42, db.friendly_nameplate_height or 12.5)
-      nameplate.UnitFrame.castBarWrapper:SetSize(db.friendly_nameplate_castbar_width or 42, db.friendly_nameplate_castbar_height or 12.5)
+      nameplate.UnitFrame.healthBarWrapper:SetSize(
+        db.friendly_nameplate_width or 42,
+        db.friendly_nameplate_height or 12.5
+      )
+      nameplate.UnitFrame.castBarWrapper:SetSize(
+        db.friendly_nameplate_castbar_width or 42,
+        db.friendly_nameplate_castbar_height or 12.5
+      )
 
       if statusbar.unit_health_text then
         statusbar.unit_health_text:Hide()
@@ -741,11 +754,19 @@ local function SetNameplateSize(nameplate, statusbar, unit)
   end
 
   nameplate.UnitFrame.healthBar:ClearAllPoints()
-  nameplate.UnitFrame.healthBar:SetPoint("BOTTOMLEFT", nameplate.UnitFrame.healthBarWrapper, "BOTTOMLEFT", 0, 0)
+  nameplate.UnitFrame.healthBar:SetPoint(
+    "BOTTOMLEFT", nameplate.UnitFrame.healthBarWrapper, "BOTTOMLEFT", 0, 0
+  )
   nameplate.UnitFrame.healthBar:SetPoint("TOPRIGHT", nameplate.UnitFrame.healthBarWrapper, "TOPRIGHT", 0, 0)
 
   nameplate.UnitFrame.castBar:ClearAllPoints()
-  nameplate.UnitFrame.castBar:SetPoint("BOTTOMLEFT", nameplate.UnitFrame.castBarWrapper, "BOTTOMLEFT", nameplate.UnitFrame.castBarWrapper:GetHeight() + 0.5, 0)
+  nameplate.UnitFrame.castBar:SetPoint(
+    "BOTTOMLEFT",
+    nameplate.UnitFrame.castBarWrapper,
+    "BOTTOMLEFT",
+    nameplate.UnitFrame.castBarWrapper:GetHeight() + 0.5,
+    0
+  )
   nameplate.UnitFrame.castBar:SetPoint("TOPRIGHT", nameplate.UnitFrame.castBarWrapper, "TOPRIGHT", 0, 0)
 
   nameplate.UnitFrame.castBar.Icon:ClearAllPoints()
@@ -803,13 +824,15 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
     if not db.enemy_nameplate_player_debuffs then return end
 
     for i = 1, 40 do
-      local name, icon, debuff_aura_count, _, debuff_duration, debuff_expiration_time, unit_caster, _, _, debuff_spell_id = UnitAura(unit, i, "HARMFUL")
+      local name, icon, debuff_aura_count, _, debuff_duration,
+        debuff_expiration_time, unit_caster, _, _, debuff_spell_id = UnitAura(unit, i, "HARMFUL")
       if not debuff_duration then debuff_duration = 0 end
 
       if name then
         local player_debuff = formatted_player_debuffs[name]
 
-        if player_debuff and player_debuff.track_spell_id and debuff_spell_id and not player_debuff.track_spell_id[debuff_spell_id] then
+        if player_debuff and player_debuff.track_spell_id and debuff_spell_id
+          and not player_debuff.track_spell_id[debuff_spell_id] then
           player_debuff = nil
         end
 
@@ -838,7 +861,8 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
           if not debuff_frame then
             for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
               if player_debuff_frame.current_debuff then
-                if (debuff_expiration_time - GetTime()) > (player_debuff_frame.cooldown_duration - (GetTime() - player_debuff_frame.cooldown_started)) then
+                if (debuff_expiration_time - GetTime())
+                  > (player_debuff_frame.cooldown_duration - (GetTime() - player_debuff_frame.cooldown_started)) then
                   debuff_frame = player_debuff_frame
                   break
                 end
@@ -858,14 +882,17 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
                 debuff_frame.aura_count_text:SetText("")
               end
 
-              if (debuff_expiration_time - GetTime()) > (debuff_frame.cooldown_duration - (GetTime() - debuff_frame.cooldown_started)) then
-                debuff_frame.cooldown_started = GetTime() - (debuff_duration - (debuff_expiration_time - GetTime()))
+              if (debuff_expiration_time - GetTime())
+                > (debuff_frame.cooldown_duration - (GetTime() - debuff_frame.cooldown_started)) then
+                debuff_frame.cooldown_started = GetTime()
+                  - (debuff_duration - (debuff_expiration_time - GetTime()))
                 debuff_frame.cooldown_duration = debuff_duration
                 debuff_frame.cooldown:SetCooldown(debuff_frame.cooldown_started, debuff_frame.cooldown_duration)
               end
             else
               debuff_frame.current_debuff = player_debuff
-              debuff_frame.cooldown_started = GetTime() - (debuff_duration - (debuff_expiration_time - GetTime()))
+              debuff_frame.cooldown_started = GetTime()
+                - (debuff_duration - (debuff_expiration_time - GetTime()))
               debuff_frame.cooldown_duration = debuff_duration
               debuff_frame:Show()
 
@@ -887,7 +914,9 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
               debuff_frame.cooldown:Show()
             end
           end
-        elseif player_debuff and unit_caster and not UnitIsUnit(unit_caster, "player") and not UnitIsUnit(unit_caster, "pet") then
+        elseif player_debuff and unit_caster
+          and not UnitIsUnit(unit_caster, "player")
+          and not UnitIsUnit(unit_caster, "pet") then
           for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
             if player_debuff_frame.current_debuff then
               if player_debuff.single_debuff and player_debuff.name == player_debuff_frame.current_debuff.name then
@@ -943,7 +972,8 @@ local function SetNameplateUnitDebuff(nameplate, unit)
       return
     end
 
-    if nameplate_debuff.current_debuff and nameplate_debuff.current_debuff.name and not nameplate_debuff.current_debuff.interrupt and
+    if nameplate_debuff.current_debuff and nameplate_debuff.current_debuff.name
+      and not nameplate_debuff.current_debuff.interrupt and
       (not FindAuraByName(nameplate_debuff.current_debuff.name, unit, nameplate_debuff.filter) or
       (nameplate_debuff.cooldown_duration - (GetTime() - nameplate_debuff.cooldown_started)) < 0) then
       nameplate_debuff.current_debuff = nil
@@ -959,13 +989,15 @@ local function SetNameplateUnitDebuff(nameplate, unit)
 
     for _, aura_type in pairs({ "HELPFUL", "HARMFUL" }) do
       for i = 1, 40 do
-        local name, icon, _, _, debuff_duration, debuff_expiration_time, _, _, _, debuff_spell_id = UnitAura(unit, i, aura_type)
+        local name, icon, _, _, debuff_duration, debuff_expiration_time,
+          _, _, _, debuff_spell_id = UnitAura(unit, i, aura_type)
         if not debuff_duration then debuff_duration = 0 end
 
         if name then
           local debuff = formatted_debuffs[name]
 
-          if debuff and debuff.track_spell_id and debuff_spell_id and not debuff.track_spell_id[debuff_spell_id] then
+          if debuff and debuff.track_spell_id and debuff_spell_id
+            and not debuff.track_spell_id[debuff_spell_id] then
             debuff = nil
           end
 
@@ -973,9 +1005,10 @@ local function SetNameplateUnitDebuff(nameplate, unit)
             local show_debuff = false
 
             if nameplate_debuff.current_debuff then
-              if debuff.priority > nameplate_debuff.current_debuff.priority or
-                (debuff.priority == nameplate_debuff.current_debuff.priority and
-                (debuff_expiration_time - GetTime()) > (nameplate_debuff.cooldown_duration - (GetTime() - nameplate_debuff.cooldown_started))) then
+              if debuff.priority > nameplate_debuff.current_debuff.priority
+                or (debuff.priority == nameplate_debuff.current_debuff.priority
+                and (debuff_expiration_time - GetTime())
+                > (nameplate_debuff.cooldown_duration - (GetTime() - nameplate_debuff.cooldown_started))) then
                 show_debuff = true
               end
             else
@@ -984,7 +1017,8 @@ local function SetNameplateUnitDebuff(nameplate, unit)
 
             if show_debuff then
               nameplate_debuff.current_debuff = debuff
-              nameplate_debuff.cooldown_started = GetTime() - (debuff_duration - (debuff_expiration_time - GetTime()))
+              nameplate_debuff.cooldown_started = GetTime()
+                - (debuff_duration - (debuff_expiration_time - GetTime()))
               nameplate_debuff.cooldown_duration = debuff_duration
               nameplate_debuff.filter = aura_type
               nameplate_debuff:Show()
@@ -995,7 +1029,10 @@ local function SetNameplateUnitDebuff(nameplate, unit)
                 nameplate_debuff.texture:SetTexture(debuff.texture)
               end
 
-              nameplate_debuff.cooldown:SetCooldown(nameplate_debuff.cooldown_started, nameplate_debuff.cooldown_duration)
+              nameplate_debuff.cooldown:SetCooldown(
+                nameplate_debuff.cooldown_started,
+                nameplate_debuff.cooldown_duration
+              )
               nameplate_debuff.cooldown:Show()
             end
           end
@@ -1011,7 +1048,8 @@ local function SetNameplateUnitInterrupt()
   local db = GetDB()
   if not db.enemy_nameplate_debuff then return end
 
-  local _, combat_event, _, _, _, _, _, dest_guid, dest_name, dest_flags, _, spell_id = CombatLogGetCurrentEventInfo()
+  local _, combat_event, _, _, _, _, _, dest_guid, dest_name,
+    dest_flags, _, spell_id = CombatLogGetCurrentEventInfo()
 
   if bit.band(dest_flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0
     and (combat_event == "SPELL_INTERRUPT" or combat_event == "SPELL_PERIODIC_INTERRUPT") then
@@ -1035,9 +1073,10 @@ local function SetNameplateUnitInterrupt()
           local show_interrupt = false
 
           if nameplate_debuff.current_debuff then
-            if interrupt.priority > nameplate_debuff.current_debuff.priority or
-              (interrupt.priority == nameplate_debuff.current_debuff.priority and
-              interrupt_duration > (nameplate_debuff.cooldown_duration - (GetTime() - nameplate_debuff.cooldown_started))) then
+            if interrupt.priority > nameplate_debuff.current_debuff.priority
+              or (interrupt.priority == nameplate_debuff.current_debuff.priority
+              and interrupt_duration
+              > (nameplate_debuff.cooldown_duration - (GetTime() - nameplate_debuff.cooldown_started))) then
               show_interrupt = true
             end
           else
@@ -1070,15 +1109,18 @@ local function SetNameplateUnitStance()
   local db = GetDB()
   if not db.enemy_nameplate_stance then return end
 
-  local _, combat_event, _, source_guid, source_name, source_flags, _, _, _, _, _, spell_id = CombatLogGetCurrentEventInfo()
+  local _, combat_event, _, source_guid, source_name, source_flags,
+    _, _, _, _, _, spell_id = CombatLogGetCurrentEventInfo()
 
-  if bit.band(source_flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 and combat_event == "SPELL_CAST_SUCCESS" then
+  if bit.band(source_flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0
+    and combat_event == "SPELL_CAST_SUCCESS" then
     if source_name then
       local nameplate_stance = nil
 
       if unit_nameplates[source_guid] then
         local unit_nameplate_unit_frame = unit_nameplates[source_guid]
-        if not unit_nameplate_unit_frame or IsFriendlyNameplate(unit_nameplate_unit_frame, source_name) then return end
+        if not unit_nameplate_unit_frame
+          or IsFriendlyNameplate(unit_nameplate_unit_frame, source_name) then return end
         nameplate_stance = unit_nameplate_unit_frame.healthBar.unit_stance
       end
 
@@ -1097,13 +1139,17 @@ local function SetNameplateUnitStance()
 end
 
 local function SetNameplatePlayerMindControl()
-  local _, combat_event, _, source_guid, source_name, source_flags, _, dest_guid, dest_name, dest_flags, _, spell_id = CombatLogGetCurrentEventInfo()
+  local _, combat_event, _, _, source_name, _, _, _, dest_name,
+    _, _, spell_id = CombatLogGetCurrentEventInfo()
 
-  if (combat_event == "SPELL_AURA_APPLIED" or combat_event == "SPELL_AURA_REMOVED" or combat_event == "SPELL_AURA_BROKEN")
+  if (combat_event == "SPELL_AURA_APPLIED"
+    or combat_event == "SPELL_AURA_REMOVED"
+    or combat_event == "SPELL_AURA_BROKEN")
     and (source_name == UnitName("player") or dest_name == UnitName("player")) then
     if spell_id then
       local name = GetSpellInfo(spell_id)
-      if name == "Mind Control" or name == "Gnomish Mind Control Cap" or name == "Chains of Kel'Thuzad" then
+      if name == "Mind Control" or name == "Gnomish Mind Control Cap"
+        or name == "Chains of Kel'Thuzad" then
         for unit, unit_nameplate in pairs(unit_nameplates) do
           if unit_nameplate.healthBarWrapper and unit_nameplate.displayedUnit then
             local unit_guid = UnitGUID(unit_nameplate.displayedUnit)
@@ -1117,7 +1163,7 @@ local function SetNameplatePlayerMindControl()
   end
 end
 
-function mod:StyleUnitNameplate(unit)
+function mod.StyleUnitNameplate(_, unit)
   if not unit then return end
 
   local unit_nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
@@ -1135,7 +1181,8 @@ function mod:StyleUnitNameplate(unit)
   end
 
   if unit ~= "player" then
-    if not IsFriendlyNameplate(unit_nameplate, unit) and not unit_nameplate.nameplate_events:IsEventRegistered("UNIT_AURA") then
+    if not IsFriendlyNameplate(unit_nameplate, unit)
+      and not unit_nameplate.nameplate_events:IsEventRegistered("UNIT_AURA") then
       unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_AURA", unit)
       unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_THREAT_LIST_UPDATE", unit)
     end
@@ -1189,17 +1236,27 @@ function mod:StyleUnitNameplate(unit)
     unit_nameplate_health_bar.focus_texture:SetFrameStrata("LOW")
     unit_nameplate_health_bar.focus_texture:Hide()
 
-    unit_nameplate_health_bar.focus_texture.texture_top = unit_nameplate_health_bar.focus_texture:CreateTexture(nil, "OVERLAY")
-    unit_nameplate_health_bar.focus_texture.texture_top:SetPoint("BOTTOMLEFT", unit_nameplate_health_bar, "TOPLEFT", 0, 0)
-    unit_nameplate_health_bar.focus_texture.texture_top:SetPoint("TOPRIGHT", unit_nameplate_health_bar, "TOPRIGHT", 0, 15)
+    unit_nameplate_health_bar.focus_texture.texture_top =
+      unit_nameplate_health_bar.focus_texture:CreateTexture(nil, "OVERLAY")
+    unit_nameplate_health_bar.focus_texture.texture_top:SetPoint(
+      "BOTTOMLEFT", unit_nameplate_health_bar, "TOPLEFT", 0, 0
+    )
+    unit_nameplate_health_bar.focus_texture.texture_top:SetPoint(
+      "TOPRIGHT", unit_nameplate_health_bar, "TOPRIGHT", 0, 15
+    )
     unit_nameplate_health_bar.focus_texture.texture_top:SetTexture(952656)
     unit_nameplate_health_bar.focus_texture.texture_top:SetTexCoord(0.04, 0.74, 0.7, 0.651)
     unit_nameplate_health_bar.focus_texture.texture_top:SetBlendMode("ADD")
     unit_nameplate_health_bar.focus_texture.texture_top:SetVertexColor(0, 1, 0.6)
 
-    unit_nameplate_health_bar.focus_texture.texture_bottom = unit_nameplate_health_bar.focus_texture:CreateTexture(nil, "OVERLAY")
-    unit_nameplate_health_bar.focus_texture.texture_bottom:SetPoint("TOPLEFT", unit_nameplate_health_bar, "BOTTOMLEFT", 0, 0)
-    unit_nameplate_health_bar.focus_texture.texture_bottom:SetPoint("BOTTOMRIGHT", unit_nameplate_health_bar, "BOTTOMRIGHT", 0, -15)
+    unit_nameplate_health_bar.focus_texture.texture_bottom =
+      unit_nameplate_health_bar.focus_texture:CreateTexture(nil, "OVERLAY")
+    unit_nameplate_health_bar.focus_texture.texture_bottom:SetPoint(
+      "TOPLEFT", unit_nameplate_health_bar, "BOTTOMLEFT", 0, 0
+    )
+    unit_nameplate_health_bar.focus_texture.texture_bottom:SetPoint(
+      "BOTTOMRIGHT", unit_nameplate_health_bar, "BOTTOMRIGHT", 0, -15
+    )
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetTexture(952656)
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetTexCoord(0.04, 0.74, 0.651, 0.7)
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetBlendMode("ADD")
@@ -1218,17 +1275,27 @@ function mod:StyleUnitNameplate(unit)
     unit_nameplate_health_bar.unit_health_text = CreateFrame("Frame", nil, unit_nameplate_health_bar)
     unit_nameplate_health_bar.unit_health_text:Hide()
 
-    unit_nameplate_health_bar.unit_health_text.text_left = unit_nameplate_health_bar.unit_health_text:CreateFontString(nil, "OVERLAY")
-    unit_nameplate_health_bar.unit_health_text.text_left:SetPoint("BOTTOMLEFT", unit_nameplate_health_bar, "BOTTOMLEFT", 5, 0)
-    unit_nameplate_health_bar.unit_health_text.text_left:SetPoint("TOPRIGHT", unit_nameplate_health_bar, "TOP", 0, 0)
+    unit_nameplate_health_bar.unit_health_text.text_left =
+      unit_nameplate_health_bar.unit_health_text:CreateFontString(nil, "OVERLAY")
+    unit_nameplate_health_bar.unit_health_text.text_left:SetPoint(
+      "BOTTOMLEFT", unit_nameplate_health_bar, "BOTTOMLEFT", 5, 0
+    )
+    unit_nameplate_health_bar.unit_health_text.text_left:SetPoint(
+      "TOPRIGHT", unit_nameplate_health_bar, "TOP", 0, 0
+    )
     unit_nameplate_health_bar.unit_health_text.text_left:SetJustifyH("LEFT")
     unit_nameplate_health_bar.unit_health_text.text_left:SetJustifyV("MIDDLE")
     unit_nameplate_health_bar.unit_health_text.text_left:SetTextColor(1, 0.82, 0)
     ApplyFont(unit_nameplate_health_bar.unit_health_text.text_left, 9.5)
 
-    unit_nameplate_health_bar.unit_health_text.text_right = unit_nameplate_health_bar.unit_health_text:CreateFontString(nil, "OVERLAY")
-    unit_nameplate_health_bar.unit_health_text.text_right:SetPoint("BOTTOMLEFT", unit_nameplate_health_bar, "BOTTOM", 0, 0)
-    unit_nameplate_health_bar.unit_health_text.text_right:SetPoint("TOPRIGHT", unit_nameplate_health_bar, "TOPRIGHT", -5, 0)
+    unit_nameplate_health_bar.unit_health_text.text_right =
+      unit_nameplate_health_bar.unit_health_text:CreateFontString(nil, "OVERLAY")
+    unit_nameplate_health_bar.unit_health_text.text_right:SetPoint(
+      "BOTTOMLEFT", unit_nameplate_health_bar, "BOTTOM", 0, 0
+    )
+    unit_nameplate_health_bar.unit_health_text.text_right:SetPoint(
+      "TOPRIGHT", unit_nameplate_health_bar, "TOPRIGHT", -5, 0
+    )
     unit_nameplate_health_bar.unit_health_text.text_right:SetJustifyH("RIGHT")
     unit_nameplate_health_bar.unit_health_text.text_right:SetJustifyV("MIDDLE")
     unit_nameplate_health_bar.unit_health_text.text_right:SetTextColor(1, 0.82, 0)
@@ -1238,23 +1305,33 @@ function mod:StyleUnitNameplate(unit)
     unit_nameplate_health_bar.absorb:SetSize(16, unit_nameplate_health_bar:GetHeight())
     unit_nameplate_health_bar.absorb:Hide()
 
-    unit_nameplate_health_bar.absorb.shield_texture = unit_nameplate_health_bar.absorb:CreateTexture(nil, "OVERLAY")
+    unit_nameplate_health_bar.absorb.shield_texture =
+      unit_nameplate_health_bar.absorb:CreateTexture(nil, "OVERLAY")
     unit_nameplate_health_bar.absorb.shield_texture:SetAllPoints(true)
     unit_nameplate_health_bar.absorb.shield_texture:SetTexture(798064)
 
-    unit_nameplate_health_bar.absorb.over_absorb_texture = unit_nameplate_health_bar.absorb:CreateTexture(nil, "OVERLAY")
-    unit_nameplate_health_bar.absorb.over_absorb_texture:SetSize(12, unit_nameplate_health_bar.absorb:GetHeight())
+    unit_nameplate_health_bar.absorb.over_absorb_texture =
+      unit_nameplate_health_bar.absorb:CreateTexture(nil, "OVERLAY")
+    unit_nameplate_health_bar.absorb.over_absorb_texture:SetSize(
+      12, unit_nameplate_health_bar.absorb:GetHeight()
+    )
     unit_nameplate_health_bar.absorb.over_absorb_texture:SetPoint("RIGHT", unit_nameplate_health_bar, 6, 0)
     unit_nameplate_health_bar.absorb.over_absorb_texture:SetTexture(798066)
     unit_nameplate_health_bar.absorb.over_absorb_texture:SetBlendMode("ADD")
 
     unit_nameplate.UnitFrame.castBarWrapper = CreateFrame("Frame", nil, unit_nameplate.UnitFrame)
-    unit_nameplate.UnitFrame.castBarWrapper:SetPoint("TOP", unit_nameplate.UnitFrame.healthBarWrapper, "BOTTOM", 0, -3)
+    unit_nameplate.UnitFrame.castBarWrapper:SetPoint(
+      "TOP", unit_nameplate.UnitFrame.healthBarWrapper, "BOTTOM", 0, -3
+    )
 
-    unit_nameplate_cast_bar.backdrop = CreateFrame("Frame", nil, unit_nameplate_cast_bar, "BackdropTemplate")
+    unit_nameplate_cast_bar.backdrop = CreateFrame(
+      "Frame", nil, unit_nameplate_cast_bar, "BackdropTemplate"
+    )
     ApplyBackdropAlt(unit_nameplate_cast_bar.backdrop)
 
-    unit_nameplate_cast_bar.icon_backdrop = CreateFrame("Frame", nil, unit_nameplate_cast_bar, "BackdropTemplate")
+    unit_nameplate_cast_bar.icon_backdrop = CreateFrame(
+      "Frame", nil, unit_nameplate_cast_bar, "BackdropTemplate"
+    )
     ApplyBackdrop(unit_nameplate_cast_bar.icon_backdrop)
 
     hooksecurefunc(unit_nameplate_cast_bar, "Show", function()
@@ -1269,7 +1346,7 @@ function mod:StyleUnitNameplate(unit)
       unit_nameplate_cast_bar:SetStatusBarColor(0.9, 0.7, 0, 1, "nameplate_cast_bar")
     end)
 
-    hooksecurefunc(unit_nameplate_cast_bar, "SetStatusBarColor", function(_, r, g, b, _, flag)
+    hooksecurefunc(unit_nameplate_cast_bar, "SetStatusBarColor", function(_, _r, g, _b, _, flag)
       if unit_nameplate_cast_bar.notInterruptible and flag ~= "nameplate_cast_bar" then
         unit_nameplate_cast_bar:SetStatusBarColor(0.85, 0.85, 0.85, 1, "nameplate_cast_bar")
       elseif g == 1 and flag ~= "nameplate_cast_bar" then
@@ -1302,19 +1379,25 @@ function mod:StyleUnitNameplate(unit)
     unit_nameplate_health_bar.unit_debuff:SetSize(26, 26)
     unit_nameplate_health_bar.unit_debuff:SetPoint("BOTTOMLEFT", unit_nameplate_health_bar, "BOTTOMRIGHT", 8, 0)
 
-    unit_nameplate_health_bar.unit_debuff.texture = unit_nameplate_health_bar.unit_debuff:CreateTexture(nil, "BACKGROUND")
+    unit_nameplate_health_bar.unit_debuff.texture =
+      unit_nameplate_health_bar.unit_debuff:CreateTexture(nil, "BACKGROUND")
     unit_nameplate_health_bar.unit_debuff.texture:SetAllPoints(true)
     unit_nameplate_health_bar.unit_debuff.texture:SetTexCoord(0.07, 0.94, 0.07, 0.94)
 
-    unit_nameplate_health_bar.unit_debuff.backdrop = CreateFrame("Frame", nil, unit_nameplate_health_bar.unit_debuff, "BackdropTemplate")
+    unit_nameplate_health_bar.unit_debuff.backdrop = CreateFrame(
+      "Frame", nil, unit_nameplate_health_bar.unit_debuff, "BackdropTemplate"
+    )
     ApplyBackdrop(unit_nameplate_health_bar.unit_debuff.backdrop)
 
-    unit_nameplate_health_bar.unit_debuff.cooldown = CreateFrame("Cooldown", nil, unit_nameplate_health_bar.unit_debuff, "CooldownFrameTemplate")
+    unit_nameplate_health_bar.unit_debuff.cooldown = CreateFrame(
+      "Cooldown", nil, unit_nameplate_health_bar.unit_debuff, "CooldownFrameTemplate"
+    )
     unit_nameplate_health_bar.unit_debuff.cooldown:SetReverse(true)
     unit_nameplate_health_bar.unit_debuff.cooldown:Hide()
 
     unit_nameplate_health_bar.unit_debuff.cooldown:HookScript("OnCooldownDone", function()
-      if unit_nameplate_health_bar.unit_debuff.current_debuff and unit_nameplate_health_bar.unit_debuff.current_debuff.interrupt then
+      if unit_nameplate_health_bar.unit_debuff.current_debuff
+        and unit_nameplate_health_bar.unit_debuff.current_debuff.interrupt then
         unit_nameplate_health_bar.unit_debuff.current_debuff = nil
         unit_nameplate_health_bar.unit_debuff.cooldown_started = -1
         unit_nameplate_health_bar.unit_debuff.cooldown_duration = -1
@@ -1332,12 +1415,18 @@ function mod:StyleUnitNameplate(unit)
     unit_nameplate_health_bar.unit_debuff.cooldown_duration = -1
     unit_nameplate_health_bar.unit_debuff.filter = nil
 
-    unit_nameplate_health_bar.player_debuffs = CreateFrame("Frame", nil, unit_nameplate_health_bar)
+    unit_nameplate_health_bar.player_debuffs = CreateFrame(
+      "Frame", nil, unit_nameplate_health_bar
+    )
     unit_nameplate_health_bar.player_debuffs:SetSize(GetDB().enemy_nameplate_width or 109, 18)
-    unit_nameplate_health_bar.player_debuffs:SetPoint("BOTTOMLEFT", unit_nameplate_health_bar, "TOPLEFT", 0, 20)
+    unit_nameplate_health_bar.player_debuffs:SetPoint(
+      "BOTTOMLEFT", unit_nameplate_health_bar, "TOPLEFT", 0, 20
+    )
 
     for _ = 1, max_player_debuffs do
-      local player_debuff = CreateFrame("Frame", nil, unit_nameplate_health_bar.player_debuffs)
+      local player_debuff = CreateFrame(
+        "Frame", nil, unit_nameplate_health_bar.player_debuffs
+      )
       player_debuff:SetSize(20, 16)
       player_debuff:Hide()
 
@@ -1350,7 +1439,9 @@ function mod:StyleUnitNameplate(unit)
       player_debuff.texture:SetAllPoints(true)
       player_debuff.texture:SetTexCoord(0.07, 0.94, 0.07, 0.94)
 
-      player_debuff.backdrop = CreateFrame("Frame", nil, player_debuff, "BackdropTemplate")
+      player_debuff.backdrop = CreateFrame(
+        "Frame", nil, player_debuff, "BackdropTemplate"
+      )
       ApplyBackdrop(player_debuff.backdrop)
 
       player_debuff.aura_count_text = player_debuff:CreateFontString(nil, "OVERLAY")
@@ -1361,7 +1452,9 @@ function mod:StyleUnitNameplate(unit)
       ApplyFont(player_debuff.aura_count_text, 9)
       player_debuff.aura_count_text:SetText("")
 
-      player_debuff.cooldown = CreateFrame("Cooldown", nil, player_debuff, "CooldownFrameTemplate")
+      player_debuff.cooldown = CreateFrame(
+        "Cooldown", nil, player_debuff, "CooldownFrameTemplate"
+      )
       player_debuff.cooldown:SetReverse(true)
       player_debuff.cooldown:Hide()
     end
@@ -1371,11 +1464,14 @@ function mod:StyleUnitNameplate(unit)
     unit_nameplate_health_bar.unit_stance:SetPoint("BOTTOMRIGHT", unit_nameplate_health_bar, "BOTTOMLEFT", -8, 0)
     unit_nameplate_health_bar.unit_stance:Hide()
 
-    unit_nameplate_health_bar.unit_stance.texture = unit_nameplate_health_bar.unit_stance:CreateTexture(nil, "BACKGROUND")
+    unit_nameplate_health_bar.unit_stance.texture =
+      unit_nameplate_health_bar.unit_stance:CreateTexture(nil, "BACKGROUND")
     unit_nameplate_health_bar.unit_stance.texture:SetAllPoints(true)
     unit_nameplate_health_bar.unit_stance.texture:SetTexCoord(0.07, 0.94, 0.07, 0.94)
 
-    unit_nameplate_health_bar.unit_stance.backdrop = CreateFrame("Frame", nil, unit_nameplate_health_bar.unit_stance, "BackdropTemplate")
+    unit_nameplate_health_bar.unit_stance.backdrop = CreateFrame(
+      "Frame", nil, unit_nameplate_health_bar.unit_stance, "BackdropTemplate"
+    )
     ApplyBackdrop(unit_nameplate_health_bar.unit_stance.backdrop)
 
     unit_nameplate.nameplate_events:HookScript("OnEvent", function(_, event)
@@ -1383,7 +1479,8 @@ function mod:StyleUnitNameplate(unit)
         SetNameplateUnitDebuff(unit_nameplate, unit_nameplate.UnitFrame.unit)
         SetNameplatePlayerDebuffs(unit_nameplate, unit_nameplate.UnitFrame.unit)
         SetNameplateAbsorb(unit_nameplate, unit_nameplate.UnitFrame.unit)
-      elseif event == "UNIT_THREAT_LIST_UPDATE" and unit_nameplate.UnitFrame and GetDB().nameplate_unit_target_color then
+      elseif event == "UNIT_THREAT_LIST_UPDATE" and unit_nameplate.UnitFrame
+        and GetDB().nameplate_unit_target_color then
         SetNameplateHealthBarColor(unit_nameplate, unit_nameplate.UnitFrame.healthBar, unit_nameplate.UnitFrame.unit)
       end
     end)
@@ -1495,7 +1592,7 @@ local function SetNameplatePadding()
   end
 end
 
-function mod:UpdateExistingNameplatesSize()
+function mod.UpdateExistingNameplatesSize(_)
   SetNameplatePadding()
 
   for _, unit_nameplate in pairs(unit_nameplates) do
@@ -1511,7 +1608,7 @@ function mod:UpdateExistingNameplatesSize()
   end
 end
 
-function mod:UpdateExistingNameplatesColor()
+function mod.UpdateExistingNameplatesColor(_)
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
       local unit = unit_nameplate.displayedUnit
@@ -1525,7 +1622,7 @@ function mod:UpdateExistingNameplatesColor()
   end
 end
 
-function mod:UpdateExistingNameplatesDebuff()
+function mod.UpdateExistingNameplatesDebuff(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
@@ -1539,7 +1636,7 @@ function mod:UpdateExistingNameplatesDebuff()
   end
 end
 
-function mod:UpdateExistingNameplatesPlayerDebuffs()
+function mod.UpdateExistingNameplatesPlayerDebuffs(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
@@ -1562,7 +1659,7 @@ function mod:UpdateExistingNameplatesPlayerDebuffs()
   end
 end
 
-function mod:UpdateExistingNameplatesStance()
+function mod.UpdateExistingNameplatesStance(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
@@ -1575,7 +1672,7 @@ function mod:UpdateExistingNameplatesStance()
   end
 end
 
-function mod:UpdateExistingNameplatesText()
+function mod.UpdateExistingNameplatesText(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
@@ -1593,7 +1690,7 @@ function mod:UpdateExistingNameplatesText()
   end
 end
 
-function mod:UpdateExistingNameplatesTextures()
+function mod.UpdateExistingNameplatesTextures(_)
   if not GetDB().enabled then return end
   local texture = GetStatusbarTexture()
   for _, unit_nameplate in pairs(unit_nameplates) do
@@ -1690,7 +1787,7 @@ local function ResetNameplates()
   end
 end
 
-function mod:Apply()
+function mod.Apply(_)
   if not ETBC.db or not ETBC.db.profile or not ETBC.db.profile.general or not ETBC.db.profile.general.enabled then
     UnhookEvents()
     ResetNameplates()

@@ -1,6 +1,5 @@
 -- Settings/Settings_Sound.lua
-local ADDON_NAME, ETBC = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("EnhanceTBC")
+local _, ETBC = ...
 local function GetDB()
   ETBC.db.profile.sound = ETBC.db.profile.sound or {}
   local db = ETBC.db.profile.sound
