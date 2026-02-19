@@ -1001,46 +1001,15 @@ function mod:ScanForAddonButtons()
     end
   end
 
-
-  if not mod._sinkDebug then
-    mod._sinkDebug = { candidates = 0, captured = 0, rejected = 0, reasons = {}, capturedNames = {} }
-  end
-  local debugCounts = mod._sinkDebug
-  debugCounts.candidates = 0
-  debugCounts.captured = 0
-  debugCounts.rejected = 0
-  debugCounts.reasons = {}
-  debugCounts.capturedNames = {}
-  local function debugPrint(msg)
-    if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99[SinkScan]|r "..tostring(msg)) end
-  end
-
   local function TryCapture(candidate)
-    debugCounts.candidates = debugCounts.candidates + 1
-    local orig = candidate
     if type(candidate) == "table" and not candidate.GetObjectType and candidate.button then
       candidate = candidate.button
     end
     if mod:LooksLikeMinimapButton(candidate) then
       mod:CaptureSinkButton(candidate)
-      debugCounts.captured = debugCounts.captured + 1
-      local name = candidate and candidate.GetName and candidate:GetName() or tostring(candidate)
-      local parent = candidate and candidate.GetParent and candidate:GetParent() or nil
-      local parentName = parent and parent.GetName and parent:GetName() or tostring(parent)
-      table.insert(debugCounts.capturedNames, name.." (parent: "..parentName..")")
       return true
-    else
-      debugCounts.rejected = debugCounts.rejected + 1
-      local reason = ""
-      if not candidate then reason = "nil" end
-      if candidate and candidate.GetName and not candidate:GetName() then reason = "no name" end
-      if candidate and candidate.IsShown and not candidate:IsShown() then reason = "not shown" end
-      if candidate and candidate.IsProtected and candidate:IsProtected() and InCombatLockdown and InCombatLockdown() then reason = "protected in combat" end
-      if candidate and candidate.GetObjectType and not (candidate:GetObjectType() == "Button" or candidate:GetObjectType() == "CheckButton") then reason = "not button type" end
-      if reason == "" then reason = "other" end
-      debugCounts.reasons[reason] = (debugCounts.reasons[reason] or 0) + 1
-      return false
     end
+    return false
   end
 
   if LDBIcon and LDBIcon.objects and LDBIcon.GetMinimapButton then
@@ -1059,18 +1028,6 @@ function mod:ScanForAddonButtons()
   end
 
   self:LayoutSinkButtons()
-
-  -- Print debug summary
-  debugPrint(("Candidates: %d, Captured: %d, Rejected: %d"):format(debugCounts.candidates, debugCounts.captured, debugCounts.rejected))
-  for reason, count in pairs(debugCounts.reasons) do
-    debugPrint(("Rejected [%s]: %d"):format(reason, count))
-  end
-  if debugCounts.capturedNames and #debugCounts.capturedNames > 0 then
-    debugPrint("Captured buttons:")
-    for _, name in ipairs(debugCounts.capturedNames) do
-      debugPrint("  "..tostring(name))
-    end
-  end
 end
 
 function mod.ApplyWidgetVisibility()
