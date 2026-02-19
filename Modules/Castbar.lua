@@ -56,6 +56,8 @@ local function GetDB()
 
   if db.showChannelTicks == nil then db.showChannelTicks = false end
   if db.skin == nil then db.skin = true end
+  if db.backgroundAlpha == nil then db.backgroundAlpha = 0.22 end
+  if db.borderAlpha == nil then db.borderAlpha = 0.88 end
 
   if db.width == nil then db.width = 195 end
   if db.height == nil then db.height = 18 end
@@ -127,21 +129,49 @@ end
 local function ApplyBackdrop(frame)
   if not frame or not frame.SetBackdrop then return end
   frame:SetBackdrop({
+    bgFile = "Interface\\Buttons\\WHITE8x8",
     edgeFile = "Interface\\Buttons\\WHITE8x8",
     edgeSize = 1,
   })
-  frame:SetBackdropBorderColor(0.04, 0.04, 0.04)
+  frame:SetBackdropColor(0.08, 0.10, 0.12, 0.14)
+  frame:SetBackdropBorderColor(0.42, 0.47, 0.55, 0.90)
 end
 
 local function ApplyBackdropAlt(frame)
   if not frame or not frame.SetBackdrop then return end
   frame:SetBackdrop({
-    bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+    bgFile = "Interface\\Buttons\\WHITE8x8",
     edgeFile = "Interface\\Buttons\\WHITE8x8",
     edgeSize = 1,
   })
-  frame:SetBackdropColor(0, 0, 0, 0.65)
-  frame:SetBackdropBorderColor(0.04, 0.04, 0.04)
+  frame:SetBackdropColor(0.08, 0.10, 0.12, 0.18)
+  frame:SetBackdropBorderColor(0.42, 0.47, 0.55, 0.90)
+end
+
+local function ApplySkinBackdropColors(bar, skin, db)
+  if not (bar and skin and skin.backdrop and skin.backdrop.SetBackdropColor and skin.backdrop.SetBackdropBorderColor) then return end
+  local sr, sg, sb = 0.25, 0.62, 1.0
+  if bar.GetStatusBarColor then
+    local r, g, b = bar:GetStatusBarColor()
+    if r and g and b then
+      sr, sg, sb = r, g, b
+    end
+  end
+
+  local bgAlpha = tonumber(db.backgroundAlpha) or 0.22
+  if bgAlpha < 0 then bgAlpha = 0 elseif bgAlpha > 0.8 then bgAlpha = 0.8 end
+  local borderAlpha = tonumber(db.borderAlpha) or 0.88
+  if borderAlpha < 0 then borderAlpha = 0 elseif borderAlpha > 1 then borderAlpha = 1 end
+
+  local bgR = math.min(1, (sr * 0.35) + 0.10)
+  local bgG = math.min(1, (sg * 0.35) + 0.10)
+  local bgB = math.min(1, (sb * 0.35) + 0.10)
+  local brR = math.min(1, (sr * 0.55) + 0.30)
+  local brG = math.min(1, (sg * 0.55) + 0.30)
+  local brB = math.min(1, (sb * 0.55) + 0.30)
+
+  skin.backdrop:SetBackdropColor(bgR, bgG, bgB, bgAlpha)
+  skin.backdrop:SetBackdropBorderColor(brR, brG, brB, borderAlpha)
 end
 
 local function EnsureSkin(bar)
@@ -215,6 +245,7 @@ local function ApplySkin(bar)
   end
 
   if skin.backdrop then skin.backdrop:Show() end
+  ApplySkinBackdropColors(bar, skin, db)
 
   if bar.Spark then
     bar.Spark:SetDrawLayer("OVERLAY", 1)
