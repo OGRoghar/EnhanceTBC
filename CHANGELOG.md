@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.2.3 - 2026-02-19
+- Added:
+	- Faster auto-loot option in CVars convenience settings.
+	- Optional "type DELETE" confirmation for deleting rare/epic/legendary items.
+	- Per-module reset action in settings groups and `/etbc resetmodule <moduleKey>` slash support.
+	- Structured profile slash commands: `/etbc profile export|import|share`.
+- Changed:
+	- Removed non-functional castbar width/height controls from settings (scale-only sizing).
+	- Removed orphaned quick-loot defaults that were not wired to runtime behavior.
+	- Updated internal instructions to prefer actionable settings and avoid dead controls.
+	- Synced addon metadata version for release readiness.
+
 ## v1.2.2 - 2026-02-18
 - Added:
 	- Windows-friendly local test tasks and a script runner so validation no longer depends on make.

@@ -16,6 +16,11 @@ Built with Ace3 framework, EnhanceTBC provides:
 - Unit frames
 - Various gameplay conveniences
 
+Recent additions include:
+- Faster auto-loot support (configurable in CVars)
+- Optional DELETE-word confirmation for rare/epic/legendary item deletion
+- Per-module settings reset from config UI and slash command
+
 ## Installation
 
 1. Download the addon from GitHub (Code -> Download ZIP) or your preferred release archive.
@@ -33,8 +38,13 @@ Replace the existing `EnhanceTBC` folder with the new version. Settings are stor
 ## Getting Started
 
 - Open settings: `/etbc` or `/etbc config`
-- Move UI elements: `/etbc move` (toggle mover handles)
-- Reset mover positions: `/etbc reset all`
+- Toggle mover mode: `/etbc moveall [on|off|toggle]`
+- Reset full profile: `/etbc reset`
+- Reset one module profile: `/etbc resetmodule <moduleKey>`
+- Profile import/export/share:
+	- `/etbc profile export`
+	- `/etbc profile import <data>`
+	- `/etbc profile share <player>`
 
 Tip: Most changes apply instantly. Some CVars and UI changes may need a `/reload` to fully apply.
 
