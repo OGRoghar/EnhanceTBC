@@ -92,6 +92,16 @@ local function SafeUnitIsUnit(unit, other_unit)
   return UnitIsUnit(unit, other_unit)
 end
 
+local function IsPlaterLoaded()
+  if C_AddOns and C_AddOns.IsAddOnLoaded then
+    return C_AddOns.IsAddOnLoaded("Plater")
+  end
+  if IsAddOnLoaded then
+    return IsAddOnLoaded("Plater")
+  end
+  return false
+end
+
 local function ApplyFont(fs, size)
   if not fs or not fs.SetFont then return end
   if ETBC.Theme and ETBC.Theme.ApplyFontString then
@@ -1202,6 +1212,7 @@ end
 
 function mod.StyleUnitNameplate(_, unit)
   if not unit then return end
+  if IsPlaterLoaded() then return end
 
   local unit_nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
   if not unit_nameplate or not unit_nameplate.UnitFrame then return end
@@ -1603,6 +1614,7 @@ local function RemoveUnitNameplate(unit)
 end
 
 local function SetNameplatePadding()
+  if IsPlaterLoaded() then return end
   if IsSecureUpdateBlocked() then return end
 
   local db = GetDB()
@@ -1839,6 +1851,13 @@ local function ResetNameplates()
 end
 
 function mod.Apply(_)
+  if IsPlaterLoaded() then
+    UnhookEvents()
+    ResetNameplates()
+    loaded = false
+    return
+  end
+
   if not ETBC.db or not ETBC.db.profile or not ETBC.db.profile.general or not ETBC.db.profile.general.enabled then
     UnhookEvents()
     ResetNameplates()
@@ -1878,15 +1897,15 @@ end
 
 -- Safety hooks for health updates
 hooksecurefunc("CompactUnitFrame_UpdateHealth", function(self)
-  if self.healthBar and self.unit and self:GetParent()
-    and self:GetParent().isNamePlate and self:GetParent().modified then
+  if self.healthBar and self.healthBarWrapper and self.unit and self:GetParent()
+    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
     SetNameplateHealthBarText(self.healthBar, self.unit)
   end
 end)
 
 hooksecurefunc("CompactUnitFrame_UpdateHealthColor", function(self)
-  if self.healthBar and self.healthBar.unit_health_text and self.unit and self:GetParent()
-    and self:GetParent().isNamePlate and self:GetParent().modified then
+  if self.healthBar and self.healthBarWrapper and self.healthBar.unit_health_text and self.unit and self:GetParent()
+    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
     SetNameplateHealthBarColor(self:GetParent(), self.healthBar, self.unit)
   end
 end)
