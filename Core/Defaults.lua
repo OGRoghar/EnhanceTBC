@@ -75,10 +75,6 @@ ETBC.defaults = {
         QueueStatusMinimapButton = true,
       },
 
-      quickEnabled = true,
-      defaultLootMethod = "group",
-      defaultLootThreshold = 2,
-
       sinkPoint = "TOPRIGHT",
       sinkRelPoint = "TOPRIGHT",
       sinkX = -200,

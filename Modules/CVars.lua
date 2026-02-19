@@ -7,6 +7,7 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CVars = mod
+local runtimeFrame
 
 -- -----------------------------
 -- DB
@@ -16,7 +17,61 @@ local function GetDB()
   local db = ETBC.db.profile.cvars
   if db.enabled == nil then db.enabled = true end
   if db.showMissing == nil then db.showMissing = false end -- show unsupported/missing CVars for debugging
+  if db.fastAutoLoot == nil then db.fastAutoLoot = true end
+  if db.fastAutoLootClose == nil then db.fastAutoLootClose = true end
   return db
+end
+
+local function IsAutoLootRequested(autoLootFlag)
+  if autoLootFlag ~= nil then
+    return not not autoLootFlag
+  end
+
+  local defaultAutoLoot = false
+  if GetCVarBool then
+    local ok, v = pcall(GetCVarBool, "autoLootDefault")
+    if ok then
+      defaultAutoLoot = v and true or false
+    end
+  else
+    local v = GetCVar and GetCVar("autoLootDefault")
+    defaultAutoLoot = (v == "1" or v == "true")
+  end
+
+  if IsShiftKeyDown and IsShiftKeyDown() then
+    return not defaultAutoLoot
+  end
+  return defaultAutoLoot
+end
+
+local function FastLootAllSlots()
+  local count = (GetNumLootItems and GetNumLootItems()) or 0
+  if count <= 0 then return end
+
+  for i = count, 1, -1 do
+    if not LootSlotHasItem or LootSlotHasItem(i) then
+      pcall(LootSlot, i)
+    end
+  end
+end
+
+local function EnsureRuntimeFrame()
+  if runtimeFrame then return runtimeFrame end
+  runtimeFrame = CreateFrame("Frame", "EnhanceTBC_CVarsRuntimeFrame", UIParent)
+  runtimeFrame:SetScript("OnEvent", function(_, event, autoLootFlag)
+    if event ~= "LOOT_OPENED" then return end
+
+    local db = GetDB()
+    if not db.enabled or not db.fastAutoLoot then return end
+    if not IsAutoLootRequested(autoLootFlag) then return end
+
+    FastLootAllSlots()
+
+    if db.fastAutoLootClose and GetNumLootItems and GetNumLootItems() == 0 and CloseLoot then
+      pcall(CloseLoot)
+    end
+  end)
+  return runtimeFrame
 end
 
 -- -----------------------------
@@ -175,6 +230,12 @@ local CATEGORY_DEFAULTS = {
 function mod.ApplyDefaults(_, categoryKey)
   local list = CATEGORY_DEFAULTS[categoryKey]
   if not list then return end
+
+  if categoryKey == "convenience" then
+    local db = GetDB()
+    db.fastAutoLoot = true
+    db.fastAutoLootClose = true
+  end
 
   for _, d in ipairs(list) do
     -- Discovery-safe reset: only apply if the CVar exists (unless showMissing is enabled)
@@ -386,6 +447,33 @@ function mod.BuildOptions(_)
         perChar = true,
         order = 14,
       }),
+
+      fastAutoLoot = {
+        type = "toggle",
+        name = "Faster Auto Loot",
+        desc = "When auto-loot is active, loots all slots immediately to reduce pickup delay.",
+        width = "full",
+        order = 14.1,
+        disabled = IsDisabled,
+        get = function() return GetDB().fastAutoLoot end,
+        set = function(_, v)
+          GetDB().fastAutoLoot = v and true or false
+          mod:Apply()
+        end,
+      },
+
+      fastAutoLootClose = {
+        type = "toggle",
+        name = "Close Loot Window After Fast Loot",
+        desc = "Automatically closes the loot window when no slots remain after fast auto-loot.",
+        width = "full",
+        order = 14.2,
+        disabled = function() return IsDisabled() or not GetDB().fastAutoLoot end,
+        get = function() return GetDB().fastAutoLootClose end,
+        set = function(_, v)
+          GetDB().fastAutoLootClose = v and true or false
+        end,
+      },
 
       spacer10 = { type = "description", name = " ", order = 15 },
 
@@ -648,7 +736,13 @@ function mod.BuildOptions(_)
 end
 
 function mod.Init(_)
-  -- Options-driven module; nothing required at runtime.
+  local db = GetDB()
+  local frame = EnsureRuntimeFrame()
+  frame:UnregisterAllEvents()
+
+  if db.enabled and db.fastAutoLoot then
+    frame:RegisterEvent("LOOT_OPENED")
+  end
 end
 
 function mod:Apply()
