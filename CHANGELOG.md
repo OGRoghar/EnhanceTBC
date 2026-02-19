@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.2.4 - 2026-02-19
+- Fixed:
+	- Tooltip ApplyBus error when hooking `FriendsTooltip` without `OnTooltipCleared`.
+- Changed:
+	- Removed GCD Bar module and settings.
+	- Removed Player Nameplates module and settings.
+	- Minimap sink now only captures LibDBIcon addon buttons, while Blizzard and non-addon minimap elements stay on the minimap.
+	- Removed sink debug chat spam.
+	- Brightened castbar skin and made backdrop tint track castbar color.
+- Release:
+	- Added CurseForge/GitHub release workflow on version tags.
+	- Added `.pkgmeta` ignore rules for cleaner packaged artifacts.
+
 ## v1.2.3 - 2026-02-19
 - Added:
 	- Faster auto-loot option in CVars convenience settings.
