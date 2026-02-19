@@ -153,11 +153,8 @@ See `Modules/Vendor.lua` for a complete example.
 **CRITICAL**: Do NOT implement width/height resizing for UnitFrames and Castbars
 - Changing dimensions causes texture misalignment with Blizzard frame internals
 - Use `scale` instead of width/height for size adjustments
-- Width/height settings should be disabled with explanatory tooltips:
-```lua
-disabled = function() return true end,
-desc = "Width adjustment disabled - use Scale to resize (Blizzard frame limitations)",
-```
+- Do not expose non-functional width/height controls in Settings or ConfigWindow; remove/hide unusable options entirely
+- If legacy width/height values exist in saved variables, keep DB compatibility but avoid presenting dead UI controls
 
 ### Error Handling
 ```lua
@@ -176,6 +173,7 @@ end
 2. Always include `EnsureDefaults()` function
 3. All option `set` callbacks must call `Apply()`
 4. Use `width = "full"` for toggle options consistently
+5. Do not add always-disabled controls or no-op setters; if a setting cannot work in-game, remove it from the UI
 
 ### Module Files (Modules/*.lua)
 1. Include descriptive header comment explaining features
@@ -317,6 +315,7 @@ chunk(ADDON_NAME, ETBC)  -- Pass varargs to match production pattern
 - **ALWAYS** check for nil when unpacking WoW API returns
 - **ALWAYS** use `not not` to convert WoW boolean returns to true/false
 - **ALWAYS** use HTTPS URLs in rockspec files (never git:// protocol for security)
+- **ALWAYS** keep settings UI actionable; avoid dead controls that are permanently disabled or have no-op `set`
 - File load order is critical - respect the `.toc` order (Core → Settings → Modules → Visibility)
 - The addon namespace is available as both `ETBC` and `EnhanceTBC` globals
 
@@ -373,3 +372,40 @@ end
 -- Get all registered groups
 local groups = ETBC.SettingsRegistry:GetGroups()
 ```
+
+## Lessons Learned (Project-Specific)
+
+### Architecture and Load Order
+- The `.toc` load order is non-negotiable. Core systems must initialize before Settings, and Settings before Modules, or nil access failures occur.
+- `ApplyBus` is the contract between Settings and Modules. Every setting that affects behavior should trigger `ApplyBus:Notify(<moduleKey>)` for live updates.
+- `SettingsRegistry` is the source of truth for config groups; use `RegisterGroup/Get/GetGroups` consistently.
+
+### Settings and UX
+- Keep settings UI actionable. Do not expose controls that are permanently disabled, no-op, or not wired to runtime behavior.
+- For UnitFrames/Castbars, use `scale` instead of width/height controls due to Blizzard frame internals.
+- If legacy saved variables exist for unsupported options, preserve DB compatibility while removing dead controls from Settings/ConfigWindow.
+- Prefer clear slash command grouping (`/etbc profile export|import|share`, `/etbc resetmodule`) and keep legacy aliases working when practical.
+
+### Minimap and Frame Hooking
+- Minimap changes are frequently overwritten by Blizzard/UI updates; defensive re-application and guarded hooks are required.
+- `SetPoint` hook recursion must be protected (lock/guard pattern + `pcall`) to avoid re-entry loops and taint-prone behavior.
+- Visibility toggles that users can change at runtime should be persisted in DB and applied through module `Apply()` rather than direct frame-only toggles.
+- Calendar/time widgets (`GameTimeFrame`, `TimeManagerClockButton`) should be hidden only when square minimap mode requires it and restored otherwise.
+
+### WoW API and Compatibility
+- Treat many WoW API booleans as `1/nil`; normalize with `not not`.
+- Guard API return values and unpacks for nil safety.
+- For container APIs, always use compatibility wrappers (`C_Container` when present, legacy APIs as fallback).
+
+### Reliability and Validation
+- Add focused regression tests when touching shared logic (example: visibility `ALWAYS + invert` behavior).
+- Use the repository scanners before merge:
+  - `tools/scan.ps1` for TOC/linkage/lint consistency.
+  - `tools/wow-api-scan.ps1` for WoW API usage checks.
+  - `tools/run-busted.ps1 -Coverage` for automated tests.
+- Keep fixes root-cause oriented: prefer correcting logic and wiring over masking symptoms in UI.
+
+### Practical Development Workflow
+- Implement/adjust settings and module behavior together (paired changes) so UI options map to real behavior.
+- After refactors, run lint/scans and tests immediately; small style/cleanup changes can reveal hidden logic issues.
+- Keep changes surgical in existing modules, especially complex ones like `MinimapPlus`, to reduce regression risk.
