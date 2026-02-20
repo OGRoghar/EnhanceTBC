@@ -50,7 +50,7 @@ local function GetDB()
   if db.unlocked == nil then db.unlocked = db.moveMode and true or false end
 
   if db.snapToGrid == nil then db.snapToGrid = true end
-  if db.gridSize == nil then db.gridSize = 8 end
+  if db.gridSize == nil then db.gridSize = 50 end
   if db.showGrid == nil then db.showGrid = true end
   if db.gridAlpha == nil then db.gridAlpha = 0.25 end
 
@@ -245,7 +245,7 @@ local function ShowGrid()
   local db = GetDB()
   ClearGrid()
 
-  local grid = tonumber(db.gridSize) or 8
+  local grid = tonumber(db.gridSize) or 50
   if grid < 2 then grid = 2 end
 
   local w = UIParent:GetWidth()
@@ -479,7 +479,7 @@ local function CreateHandle(key, entry)
     local gy = y or 0
 
     if db.snapToGrid then
-      local grid = tonumber(db.gridSize) or 8
+      local grid = tonumber(db.gridSize) or 50
       gx = RoundToGrid(gx, grid)
       gy = RoundToGrid(gy, grid)
     end
@@ -702,7 +702,7 @@ function M:ToggleMasterMove()
 end
 
 function M.GetGridSize(_)
-  return GetDB().gridSize or 8
+  return GetDB().gridSize or 50
 end
 
 function M.SetupChatCommands(_)
@@ -751,7 +751,7 @@ function M.Nudge(_, key, dx, dy)
   local ny = (y or 0) + (dy or 0)
 
   if db.snapToGrid then
-    local grid = tonumber(db.gridSize) or 8
+    local grid = tonumber(db.gridSize) or 50
     nx = RoundToGrid(nx, grid)
     ny = RoundToGrid(ny, grid)
   end

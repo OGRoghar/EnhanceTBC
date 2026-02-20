@@ -11,7 +11,7 @@ local function GetDB()
   if db.moveMode == nil then db.moveMode = false end
 
   if db.snapToGrid == nil then db.snapToGrid = true end
-  if db.gridSize == nil then db.gridSize = 8 end
+  if db.gridSize == nil then db.gridSize = 50 end
   if db.showGrid == nil then db.showGrid = true end
   if db.gridAlpha == nil then db.gridAlpha = 0.25 end
 

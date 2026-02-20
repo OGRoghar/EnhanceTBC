@@ -30,7 +30,8 @@ ETBC.defaults = {
       includeMail = false,
       includeDifficulty = false,
 
-      squareMinimap = false,
+      square_mask = true,
+      squareMinimap = true,
       squareSize = 140,
       customDifficultyIcon = true,
 
@@ -385,7 +386,7 @@ ETBC.defaults = {
     mover = {
       enabled = true,
       moveMode = false,
-      gridSize = 8,
+      gridSize = 50,
       snapToGrid = true,
       showGrid = true,
       showGuides = true,
