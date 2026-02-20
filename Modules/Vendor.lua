@@ -303,19 +303,28 @@ local function StartSellQueue(db, queue, total, sold, skippedHigh)
     return
   end
 
-  local throttle = db.throttle and db.throttle.enabled and C_Timer and C_Timer.NewTicker
-  if throttle then
+  local throttleRequested = db.throttle and db.throttle.enabled
+  if throttleRequested then
     local interval = math.max(0.01, tonumber(db.throttle.interval) or 0.03)
-    sellTicker = C_Timer.NewTicker(interval, PumpSellQueue)
-    PumpSellQueue()
-  else
-    while sellIndex <= #sellQueue do
-      SellOne(sellQueue[sellIndex])
-      sellIndex = sellIndex + 1
+    if ETBC and ETBC.StartRepeatingTimer then
+      sellTicker = ETBC:StartRepeatingTimer(interval, PumpSellQueue)
     end
-    FinishSellSummary()
-    CancelSellTicker()
+    if not sellTicker and C_Timer and C_Timer.NewTicker then
+      sellTicker = C_Timer.NewTicker(interval, PumpSellQueue)
+    end
+    if sellTicker then
+      PumpSellQueue()
+      return
+    end
   end
+
+  -- Fallback path when throttling is disabled or no timer backend exists.
+  while sellIndex <= #sellQueue do
+    SellOne(sellQueue[sellIndex])
+    sellIndex = sellIndex + 1
+  end
+  FinishSellSummary()
+  CancelSellTicker()
 end
 
 local function AutoSellJunk(db)
@@ -336,16 +345,22 @@ local function OnMerchantShow()
   AutoRepair(db)
   AutoSellJunk(db)
 
-  if C_Timer and C_Timer.After then
-    C_Timer.After(0.05, function()
-      if not merchantOpen then return end
-      local db2 = GetDB()
-      local gen2 = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
-      if not (gen2 and db2.enabled) then return end
-      if ShouldBypass(db2) then return end
-      AutoRepair(db2)
-      AutoSellJunk(db2)
-    end)
+  local deferred = function()
+    if not merchantOpen then return end
+    local db2 = GetDB()
+    local gen2 = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+    if not (gen2 and db2.enabled) then return end
+    if ShouldBypass(db2) then return end
+    AutoRepair(db2)
+    AutoSellJunk(db2)
+  end
+
+  if ETBC and ETBC.StartTimer then
+    ETBC:StartTimer(0.05, deferred)
+  elseif C_Timer and C_Timer.After then
+    C_Timer.After(0.05, deferred)
+  else
+    deferred()
   end
 end
 

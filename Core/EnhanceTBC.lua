@@ -133,6 +133,100 @@ local function ResolveProfileKey(self, moduleKey)
   return nil
 end
 
+local function MakeTimerHandle(token, cancelFn)
+  local handle = {
+    _token = token,
+    _cancelFn = cancelFn,
+    _cancelled = false,
+  }
+
+  function handle:Cancel()
+    if self._cancelled then return end
+    self._cancelled = true
+    local fn = self._cancelFn
+    local tok = self._token
+    self._cancelFn = nil
+    self._token = nil
+    if fn and tok ~= nil then
+      pcall(fn, tok)
+    end
+  end
+
+  return handle
+end
+
+function ETBC:StartTimer(delay, fn)
+  if type(fn) ~= "function" then return nil end
+  delay = tonumber(delay) or 0
+  if delay < 0 then delay = 0 end
+
+  if self.ScheduleTimer and self.CancelTimer then
+    local ok, token = pcall(self.ScheduleTimer, self, fn, delay)
+    if ok and token ~= nil then
+      return MakeTimerHandle(token, function(tok)
+        if ETBC.CancelTimer then
+          ETBC:CancelTimer(tok, true)
+        end
+      end)
+    end
+  end
+
+  if C_Timer and C_Timer.NewTimer then
+    local t = C_Timer.NewTimer(delay, fn)
+    return MakeTimerHandle(t, function(tok)
+      if tok and tok.Cancel then
+        tok:Cancel()
+      end
+    end)
+  end
+
+  if C_Timer and C_Timer.After then
+    local cancelled = false
+    C_Timer.After(delay, function()
+      if cancelled then return end
+      fn()
+    end)
+    return {
+      _cancelled = false,
+      Cancel = function(self2)
+        self2._cancelled = true
+        cancelled = true
+      end,
+    }
+  end
+
+  fn()
+  return { Cancel = function() end }
+end
+
+function ETBC:StartRepeatingTimer(interval, fn)
+  if type(fn) ~= "function" then return nil end
+  interval = tonumber(interval) or 0
+  if interval < 0.01 then interval = 0.01 end
+
+  if self.ScheduleRepeatingTimer and self.CancelTimer then
+    local ok, token = pcall(self.ScheduleRepeatingTimer, self, fn, interval)
+    if ok and token ~= nil then
+      return MakeTimerHandle(token, function(tok)
+        if ETBC.CancelTimer then
+          ETBC:CancelTimer(tok, true)
+        end
+      end)
+    end
+  end
+
+  if C_Timer and C_Timer.NewTicker then
+    local t = C_Timer.NewTicker(interval, fn)
+    return MakeTimerHandle(t, function(tok)
+      if tok and tok.Cancel then
+        tok:Cancel()
+      end
+    end)
+  end
+
+  return nil
+end
+
 function ETBC:ResetModuleProfile(moduleKey)
   if not (self and self.db and type(self.db.profile) == "table") then
     return false, "DB not ready"

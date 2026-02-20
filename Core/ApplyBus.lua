@@ -70,18 +70,24 @@ local function ScheduleFlush()
   if flushScheduled or batchDepth > 0 then return end
   flushScheduled = true
 
-  if C_Timer and C_Timer.After then
-    C_Timer.After(0, function()
-      flushScheduled = false
-      if batchDepth == 0 then
-        FlushPending()
-      end
-    end)
+  local run = function()
+    flushScheduled = false
+    if batchDepth == 0 then
+      FlushPending()
+    end
+  end
+
+  if ETBC and ETBC.StartTimer then
+    ETBC:StartTimer(0, run)
     return
   end
 
-  flushScheduled = false
-  FlushPending()
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0, run)
+    return
+  end
+
+  run()
 end
 
 function ETBC.ApplyBus.Register(_, key, fn)

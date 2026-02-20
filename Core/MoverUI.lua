@@ -123,7 +123,9 @@ local function FlashHandleBorder(f)
     end
   end
 
-  if C_Timer and C_Timer.After then
+  if ETBC and ETBC.StartTimer then
+    ETBC:StartTimer(0.12, restore)
+  elseif C_Timer and C_Timer.After then
     C_Timer.After(0.12, restore)
   else
     restore()

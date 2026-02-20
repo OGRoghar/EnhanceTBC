@@ -98,8 +98,7 @@ local function AutoSelectGossip()
   local delay = db.delay or 0
 
   if delay > 0 then
-    C_Timer.After(delay, function()
-      -- Re-find the matching option after delay to ensure index is still valid
+    local applySelection = function()
       local currentIndex, currentText = FindMatchingOption()
       if currentIndex then
         SelectGossipOption(currentIndex)
@@ -108,7 +107,15 @@ local function AutoSelectGossip()
         end
       end
       pendingGossip = false
-    end)
+    end
+
+    if ETBC and ETBC.StartTimer then
+      ETBC:StartTimer(delay, applySelection)
+    elseif C_Timer and C_Timer.After then
+      C_Timer.After(delay, applySelection)
+    else
+      applySelection()
+    end
   else
     SelectGossipOption(optionIndex)
     if ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.debug then

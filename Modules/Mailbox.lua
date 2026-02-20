@@ -226,6 +226,13 @@ local function StartTicker(interval, fn)
   interval = tonumber(interval) or 0.05
   if interval < 0.01 then interval = 0.01 end
 
+  if ETBC and ETBC.StartRepeatingTimer then
+    ticker = ETBC:StartRepeatingTimer(interval, fn)
+    if ticker then
+      return
+    end
+  end
+
   if C_Timer and C_Timer.NewTicker then
     ticker = C_Timer.NewTicker(interval, fn)
     return

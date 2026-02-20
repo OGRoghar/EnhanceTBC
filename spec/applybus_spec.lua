@@ -150,6 +150,23 @@ describe("ApplyBus", function()
       -- Should not error
       ETBC.ApplyBus:Notify("nonexistent")
     end)
+
+    it("should prefer ETBC:StartTimer when available", function()
+      local startTimerCalls = 0
+      ETBC.StartTimer = function(self, delay, fn)
+        startTimerCalls = startTimerCalls + 1
+        assert.equals(0, delay)
+        fn()
+        return { Cancel = function() end }
+      end
+
+      local called = false
+      ETBC.ApplyBus:Register("test", function() called = true end)
+      ETBC.ApplyBus:Notify("test")
+
+      assert.equals(1, startTimerCalls)
+      assert.is_true(called)
+    end)
   end)
 
   describe("NotifyAll", function()

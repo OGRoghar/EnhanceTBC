@@ -240,18 +240,42 @@ local function StopTickers()
   state.sinkScanTicker = nil
 end
 
+local function NewTicker(interval, fn)
+  if ETBC and ETBC.StartRepeatingTimer then
+    local t = ETBC:StartRepeatingTimer(interval, fn)
+    if t then return t end
+  end
+  if C_Timer and C_Timer.NewTicker then
+    return C_Timer.NewTicker(interval, fn)
+  end
+  return nil
+end
+
+local function AfterDelay(delay, fn)
+  if ETBC and ETBC.StartTimer then
+    local t = ETBC:StartTimer(delay, fn)
+    if t then return t end
+  end
+  if C_Timer and C_Timer.After then
+    C_Timer.After(delay, fn)
+    return true
+  end
+  fn()
+  return true
+end
+
 local function StartTickers()
   StopTickers()
   local db = GetDB()
   if not db.enabled then return end
 
   if db.minimap_performance and state.performanceFrame then
-    state.msTicker = C_Timer.NewTicker(30, function()
+    state.msTicker = NewTicker(30, function()
       if state.performanceFrame and state.performanceFrame.updateMsDisplay then
         state.performanceFrame:updateMsDisplay()
       end
     end)
-    state.fpsTicker = C_Timer.NewTicker(1, function()
+    state.fpsTicker = NewTicker(1, function()
       if state.performanceFrame and state.performanceFrame.updateFpsDisplay then
         state.performanceFrame:updateFpsDisplay()
       end
@@ -259,12 +283,12 @@ local function StartTickers()
   end
 
   if db.minimap_icons and state.iconsFrame then
-    state.friendsTicker = C_Timer.NewTicker(5, function()
+    state.friendsTicker = NewTicker(5, function()
       if state.iconsFrame and state.iconsFrame.updateFriendsDisplay then
         state.iconsFrame:updateFriendsDisplay()
       end
     end)
-    state.guildTicker = C_Timer.NewTicker(5, function()
+    state.guildTicker = NewTicker(5, function()
       if state.iconsFrame and state.iconsFrame.updateGuildDisplay then
         state.iconsFrame:updateGuildDisplay()
       end
@@ -274,7 +298,7 @@ local function StartTickers()
   if db.sink_addons and state.sinkFrame then
     local interval = tonumber(db.sink_scan_interval) or 5
     if interval < 1 then interval = 1 end
-    state.sinkScanTicker = C_Timer.NewTicker(interval, function()
+    state.sinkScanTicker = NewTicker(interval, function()
       -- Periodic scans avoid global namespace iteration; full scans are event-driven.
       mod:ScanForAddonButtons(false)
     end)
@@ -875,18 +899,17 @@ function mod.CaptureSinkButton(_self, btn)
   btn:ClearAllPoints()
   if btn.SetParent and state.sinkFrame then
     btn:SetParent(state.sinkFrame)
-    if C_Timer and C_Timer.After then
-      C_Timer.After(0.2, function()
-        if btn.SetParent and state.sinkFrame then
-          btn:SetParent(state.sinkFrame)
-          -- Only keep if parent is correct
-          local repar = (btn.GetParent and btn:GetParent()) or nil
-          if repar ~= state.sinkFrame then
-            state.sinkManaged[btn] = nil
-          end
+    local scheduled = AfterDelay(0.2, function()
+      if btn.SetParent and state.sinkFrame then
+        btn:SetParent(state.sinkFrame)
+        -- Only keep if parent is correct
+        local repar = (btn.GetParent and btn:GetParent()) or nil
+        if repar ~= state.sinkFrame then
+          state.sinkManaged[btn] = nil
         end
-      end)
-    else
+      end
+    end)
+    if not scheduled then
       -- Fallback: check immediately
       local repar = (btn.GetParent and btn:GetParent()) or nil
       if repar ~= state.sinkFrame then

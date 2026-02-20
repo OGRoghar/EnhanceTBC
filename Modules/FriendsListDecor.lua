@@ -444,16 +444,21 @@ end
 
 local function AdjustFavoriteAnchor(button)
   if not button then return end
-  if not C_Timer or not C_Timer.After then
-    AdjustFavoriteAnchorNow(button)
-    return
-  end
   if button._etbcFavoriteAdjustPending then return end
   button._etbcFavoriteAdjustPending = true
-  C_Timer.After(0, function()
+
+  local run = function()
     button._etbcFavoriteAdjustPending = nil
     AdjustFavoriteAnchorNow(button)
-  end)
+  end
+
+  if ETBC and ETBC.StartTimer then
+    ETBC:StartTimer(0, run)
+  elseif C_Timer and C_Timer.After then
+    C_Timer.After(0, run)
+  else
+    run()
+  end
 end
 
 -- ---------------------------------------------------------
@@ -701,13 +706,21 @@ local function AreWoWFriendCountsReady()
 end
 
 local function ScheduleRefreshRetry()
-  if not C_Timer or not C_Timer.After then return end
   if mod._pendingRefreshTimer then return end
   mod._pendingRefreshTimer = true
-  C_Timer.After(0.1, function()
+
+  local run = function()
     mod._pendingRefreshTimer = nil
     mod:Refresh()
-  end)
+  end
+
+  if ETBC and ETBC.StartTimer then
+    ETBC:StartTimer(0.1, run)
+  elseif C_Timer and C_Timer.After then
+    C_Timer.After(0.1, run)
+  else
+    run()
+  end
 end
 
 function mod:Refresh()
