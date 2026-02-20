@@ -1,6 +1,9 @@
 -- Modules/Visibility.lua
+-- Deprecated compatibility shim. Active implementation lives in Visibility/Visibility.lua.
 local _, ETBC = ...
+if not ETBC then return end
 ETBC.Modules = ETBC.Modules or {}
+if ETBC.Modules.Visibility and ETBC.Modules.Visibility.__etbcVisibilityV2 then return end
 local mod = {}
 ETBC.Modules.Visibility = mod
 

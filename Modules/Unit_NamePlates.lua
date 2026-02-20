@@ -835,9 +835,10 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
   if unit and nameplate.UnitFrame then
     local nameplate_player_debuffs = nameplate.UnitFrame.healthBar.player_debuffs
     if not nameplate_player_debuffs then return end
+    local player_debuff_frames = { nameplate_player_debuffs:GetChildren() }
 
     if IsFriendlyNameplate(nameplate, unit) or SafeUnitIsUnit(unit, "player") then
-      for _, player_debuff in pairs({ nameplate_player_debuffs:GetChildren() }) do
+      for _, player_debuff in ipairs(player_debuff_frames) do
         player_debuff.current_debuff = nil
         player_debuff.cooldown_started = -1
         player_debuff.cooldown_duration = -1
@@ -852,7 +853,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
       return
     end
 
-    for _, player_debuff in pairs({ nameplate_player_debuffs:GetChildren() }) do
+    for _, player_debuff in ipairs(player_debuff_frames) do
       if player_debuff.current_debuff and player_debuff.current_debuff.name and
         (not FindAuraByName(player_debuff.current_debuff.name, unit, "HARMFUL") or
         (player_debuff.cooldown_duration - (GetTime() - player_debuff.cooldown_started)) < 0) then
@@ -890,7 +891,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
         ) then
           local debuff_frame = nil
 
-          for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
+          for _, player_debuff_frame in ipairs(player_debuff_frames) do
             if player_debuff_frame.current_debuff then
               if player_debuff.name == player_debuff_frame.current_debuff.name then
                 debuff_frame = player_debuff_frame
@@ -900,7 +901,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
           end
 
           if not debuff_frame then
-            for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
+            for _, player_debuff_frame in ipairs(player_debuff_frames) do
               if not player_debuff_frame.current_debuff then
                 debuff_frame = player_debuff_frame
                 break
@@ -909,7 +910,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
           end
 
           if not debuff_frame then
-            for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
+            for _, player_debuff_frame in ipairs(player_debuff_frames) do
               if player_debuff_frame.current_debuff then
                 if (debuff_expiration_time - GetTime())
                   > (player_debuff_frame.cooldown_duration - (GetTime() - player_debuff_frame.cooldown_started)) then
@@ -967,7 +968,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
         elseif player_debuff and unit_caster
           and not SafeUnitIsUnit(unit_caster, "player")
           and not SafeUnitIsUnit(unit_caster, "pet") then
-          for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
+          for _, player_debuff_frame in ipairs(player_debuff_frames) do
             if player_debuff_frame.current_debuff then
               if player_debuff.single_debuff and player_debuff.name == player_debuff_frame.current_debuff.name then
                 player_debuff_frame.current_debuff = nil
@@ -991,7 +992,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
     end
 
     local x = 0
-    for _, player_debuff in pairs({ nameplate_player_debuffs:GetChildren() }) do
+    for _, player_debuff in ipairs(player_debuff_frames) do
       if player_debuff.current_debuff then
         player_debuff:SetPoint("BOTTOMLEFT", x, 0)
         x = x + player_debuff:GetWidth() + (db.enemy_nameplate_player_debuffs_padding or 4)
@@ -1094,15 +1095,11 @@ local function SetNameplateUnitDebuff(nameplate, unit)
   end
 end
 
-local function SetNameplateUnitInterrupt()
-  local db = GetDB()
+local function SetNameplateUnitInterrupt(db, dest_guid, dest_name, dest_flags, spell_id)
   if not db.enemy_nameplate_debuff then return end
 
-  local _, combat_event, _, _, _, _, _, dest_guid, dest_name,
-    dest_flags, _, spell_id = CombatLogGetCurrentEventInfo()
-
-  if bit.band(dest_flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0
-    and (combat_event == "SPELL_INTERRUPT" or combat_event == "SPELL_PERIODIC_INTERRUPT") then
+  if not dest_flags then return end
+  if bit.band(dest_flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
     if dest_name then
       local nameplate_debuff = nil
 
@@ -1155,15 +1152,11 @@ local function SetNameplateUnitInterrupt()
   end
 end
 
-local function SetNameplateUnitStance()
-  local db = GetDB()
+local function SetNameplateUnitStance(db, source_guid, source_name, source_flags, spell_id)
   if not db.enemy_nameplate_stance then return end
 
-  local _, combat_event, _, source_guid, source_name, source_flags,
-    _, _, _, _, _, spell_id = CombatLogGetCurrentEventInfo()
-
-  if bit.band(source_flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0
-    and combat_event == "SPELL_CAST_SUCCESS" then
+  if not source_flags then return end
+  if bit.band(source_flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
     if source_name then
       local nameplate_stance = nil
 
@@ -1188,26 +1181,30 @@ local function SetNameplateUnitStance()
   end
 end
 
-local function SetNameplatePlayerMindControl()
-  local _, combat_event, _, _, source_name, _, _, _, dest_name,
-    _, _, spell_id = CombatLogGetCurrentEventInfo()
+local function SetNameplatePlayerMindControl(combat_event, source_name, dest_name, spell_id)
+  if combat_event ~= "SPELL_AURA_APPLIED"
+    and combat_event ~= "SPELL_AURA_REMOVED"
+    and combat_event ~= "SPELL_AURA_BROKEN"
+  then
+    return
+  end
 
-  if (combat_event == "SPELL_AURA_APPLIED"
-    or combat_event == "SPELL_AURA_REMOVED"
-    or combat_event == "SPELL_AURA_BROKEN")
-    and (source_name == UnitName("player") or dest_name == UnitName("player")) then
-    if spell_id then
-      local name = GetSpellInfo(spell_id)
-      if name == "Mind Control" or name == "Gnomish Mind Control Cap"
-        or name == "Chains of Kel'Thuzad" then
-        for unit, unit_nameplate in pairs(unit_nameplates) do
-          if unit_nameplate.healthBarWrapper and unit_nameplate.displayedUnit then
-            local unit_guid = UnitGUID(unit_nameplate.displayedUnit)
-            if unit == unit_guid then
-              mod:StyleUnitNameplate(unit_nameplate.displayedUnit)
-            end
-          end
-        end
+  local player_name = UnitName("player")
+  if not player_name or (source_name ~= player_name and dest_name ~= player_name) then return end
+  if not spell_id then return end
+
+  local name = GetSpellInfo(spell_id)
+  if name ~= "Mind Control" and name ~= "Gnomish Mind Control Cap"
+    and name ~= "Chains of Kel'Thuzad"
+  then
+    return
+  end
+
+  for unit, unit_nameplate in pairs(unit_nameplates) do
+    if unit_nameplate.healthBarWrapper and unit_nameplate.displayedUnit then
+      local unit_guid = UnitGUID(unit_nameplate.displayedUnit)
+      if unit == unit_guid then
+        mod:StyleUnitNameplate(unit_nameplate.displayedUnit)
       end
     end
   end
@@ -1599,7 +1596,8 @@ local function RemoveUnitNameplate(unit)
     end
 
     if unit_nameplate_health_bar.player_debuffs then
-      for _, player_debuff in pairs({ unit_nameplate_health_bar.player_debuffs:GetChildren() }) do
+      local player_debuff_frames = { unit_nameplate_health_bar.player_debuffs:GetChildren() }
+      for _, player_debuff in ipairs(player_debuff_frames) do
         player_debuff.current_debuff = nil
         player_debuff.cooldown_started = -1
         player_debuff.cooldown_duration = -1
@@ -1655,9 +1653,9 @@ function mod.UpdateExistingNameplatesSize(_)
     if unit_nameplate.healthBarWrapper then
       local unit = unit_nameplate.displayedUnit
       local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
-      if not nameplate or not nameplate.UnitFrame or nameplate.UnitFrame ~= unit_nameplate then return end
-
-      if UnitExists(unit) and not SafeUnitIsUnit("player", unit) then
+      if nameplate and nameplate.UnitFrame and nameplate.UnitFrame == unit_nameplate
+        and UnitExists(unit) and not SafeUnitIsUnit("player", unit)
+      then
         SetNameplateSize(nameplate, unit_nameplate.healthBar, unit)
       end
     end
@@ -1669,9 +1667,9 @@ function mod.UpdateExistingNameplatesColor(_)
     if unit_nameplate.healthBarWrapper then
       local unit = unit_nameplate.displayedUnit
       local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
-      if not nameplate or not nameplate.UnitFrame or nameplate.UnitFrame ~= unit_nameplate then return end
-
-      if UnitExists(unit) and not SafeUnitIsUnit("player", unit) then
+      if nameplate and nameplate.UnitFrame and nameplate.UnitFrame == unit_nameplate
+        and UnitExists(unit) and not SafeUnitIsUnit("player", unit)
+      then
         SetNameplateHealthBarColor(nameplate, unit_nameplate.healthBar, unit)
       end
     end
@@ -1700,7 +1698,8 @@ function mod.UpdateExistingNameplatesPlayerDebuffs(_)
         unit_nameplate.healthBar.player_debuffs:SetScale(db.enemy_nameplate_player_debuffs_scale or 1)
 
         local x = 0
-        for _, player_debuff in pairs({ unit_nameplate.healthBar.player_debuffs:GetChildren() }) do
+        local player_debuff_frames = { unit_nameplate.healthBar.player_debuffs:GetChildren() }
+        for _, player_debuff in ipairs(player_debuff_frames) do
           if player_debuff.current_debuff then
             player_debuff:SetPoint("BOTTOMLEFT", x, 0)
             x = x + player_debuff:GetWidth() + (db.enemy_nameplate_player_debuffs_padding or 4)
@@ -1810,9 +1809,21 @@ local function HookEvents()
     end
 
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-      SetNameplateUnitInterrupt()
-      SetNameplateUnitStance()
-      SetNameplatePlayerMindControl()
+      local _, combat_event, _, source_guid, source_name, source_flags,
+        _, dest_guid, dest_name, dest_flags, _, spell_id = CombatLogGetCurrentEventInfo()
+      if not combat_event then return end
+
+      local db = GetDB()
+      if combat_event == "SPELL_INTERRUPT" or combat_event == "SPELL_PERIODIC_INTERRUPT" then
+        SetNameplateUnitInterrupt(db, dest_guid, dest_name, dest_flags, spell_id)
+      elseif combat_event == "SPELL_CAST_SUCCESS" then
+        SetNameplateUnitStance(db, source_guid, source_name, source_flags, spell_id)
+      elseif combat_event == "SPELL_AURA_APPLIED"
+        or combat_event == "SPELL_AURA_REMOVED"
+        or combat_event == "SPELL_AURA_BROKEN"
+      then
+        SetNameplatePlayerMindControl(combat_event, source_name, dest_name, spell_id)
+      end
       return
     end
 

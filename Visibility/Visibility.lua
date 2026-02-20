@@ -18,6 +18,7 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Visibility = mod
+mod.__etbcVisibilityV2 = true
 
 ETBC.Visibility = ETBC.Visibility or {}
 local V = ETBC.Visibility

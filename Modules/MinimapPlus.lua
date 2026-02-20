@@ -43,6 +43,9 @@ local state = {
   friendsTicker = nil,
   guildTicker = nil,
   sinkScanTicker = nil,
+  sinkEmptyNotified = false,
+  minimapShapeOverridden = false,
+  originalGetMinimapShape = nil,
 }
 
 local C = C_Container
@@ -117,8 +120,13 @@ local function GetDB()
 
   if db.hideMinimapToggleButton == nil then db.hideMinimapToggleButton = true end
 
-  if db.sink_addons == nil then db.sink_addons = true end
-  if db.autoScan ~= nil then db.sink_addons = db.autoScan and true or false end
+  if db.sink_addons == nil then
+    if db.autoScan ~= nil then
+      db.sink_addons = db.autoScan and true or false
+    else
+      db.sink_addons = true
+    end
+  end
 
   if db.sink_visible == nil and db.sinkEnabled ~= nil then db.sink_visible = db.sinkEnabled end
   if db.sinkEnabled == nil and db.sink_visible ~= nil then db.sinkEnabled = db.sink_visible end
@@ -155,6 +163,34 @@ local function GetDB()
   db.sinkY = db.sink_anchor.y
 
   return db
+end
+
+local function IsFeatureEnabled()
+  local db = GetDB()
+  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  return (generalEnabled and db.enabled) and true or false
+end
+
+local function ApplyMinimapShapeOverride(enabled)
+  if enabled then
+    if not state.minimapShapeOverridden then
+      state.originalGetMinimapShape = _G.GetMinimapShape
+      _G.GetMinimapShape = function()
+        return "SQUARE"
+      end
+      state.minimapShapeOverridden = true
+    end
+    if LDBIcon and LDBIcon.SetButtonRadius then
+      LDBIcon:SetButtonRadius(0)
+    end
+    return
+  end
+
+  if state.minimapShapeOverridden then
+    _G.GetMinimapShape = state.originalGetMinimapShape
+    state.originalGetMinimapShape = nil
+    state.minimapShapeOverridden = false
+  end
 end
 
 local function ApplyFont(fs, size)
@@ -239,7 +275,8 @@ local function StartTickers()
     local interval = tonumber(db.sink_scan_interval) or 5
     if interval < 1 then interval = 1 end
     state.sinkScanTicker = C_Timer.NewTicker(interval, function()
-      mod:ScanForAddonButtons()
+      -- Periodic scans avoid global namespace iteration; full scans are event-driven.
+      mod:ScanForAddonButtons(false)
     end)
   end
 end
@@ -289,7 +326,7 @@ local function EnsureEventFrame()
   state.eventFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
   state.eventFrame:RegisterEvent("PLAYER_GUILD_UPDATE")
   state.eventFrame:SetScript("OnEvent", function(_, event, arg1)
-    if not GetDB().enabled then return end
+    if not IsFeatureEnabled() then return end
 
     if event == "ADDON_LOADED" then
       if arg1 == "Blizzard_TimeManager" then
@@ -299,7 +336,7 @@ local function EnsureEventFrame()
       elseif arg1 == "Blizzard_BattlefieldMap" then
         mod:StyleBattlefieldMinimap()
       end
-      mod:ScanForAddonButtons()
+      mod:ScanForAddonButtons(true)
       return
     end
 
@@ -313,7 +350,7 @@ local function EnsureEventFrame()
       mod:StyleTimeManagerClockButton()
       mod:MoveMinimapLFGButton()
       mod:StyleBattlefieldMinimap()
-      mod:ScanForAddonButtons()
+      mod:ScanForAddonButtons(true)
       return
     end
 
@@ -324,7 +361,7 @@ local function EnsureEventFrame()
 
     if event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_REGEN_ENABLED" or event == "MERCHANT_CLOSED" then
       if state.iconsFrame then state.iconsFrame:updateDurabilityDisplay() end
-      if event == "PLAYER_REGEN_ENABLED" then mod:ScanForAddonButtons() end
+      if event == "PLAYER_REGEN_ENABLED" then mod:ScanForAddonButtons(true) end
       return
     end
 
@@ -340,7 +377,6 @@ local function EnsureEventFrame()
 end
 
 function mod:StyleMinimap()
-  if state.styled then return end
   local db = GetDB()
   if not MinimapCluster or not MinimapCluster.MinimapContainer or not Minimap then return end
 
@@ -354,7 +390,7 @@ function mod:StyleMinimap()
 
   if not state.containerHooked then
     hooksecurefunc(MinimapCluster.MinimapContainer, "SetPoint", function(frame, _, _, _, _, _, flag)
-      if not GetDB().enabled then return end
+      if not IsFeatureEnabled() then return end
       if flag == MINIMAP_CONTAINER_FLAG then return end
       RunSetPointGuard("inContainerHook", function()
         frame:ClearAllPoints()
@@ -437,7 +473,7 @@ function mod:StyleMinimap()
 
     if not state.timeTextureHooked then
       hooksecurefunc(GameTimeTexture, "SetTexCoord", function(_, texMinX)
-        if not GetDB().enabled then return end
+        if not IsFeatureEnabled() then return end
         if not GameTimeFrame.texture then return end
         if texMinX == 0 then
           GameTimeFrame.texture:SetTexCoord(0.26, 0.39, 0.65, 0.91)
@@ -484,14 +520,7 @@ function mod:StyleMinimap()
   self:EnsureSinkFrame()
   EnsureEventFrame()
 
-  if not GetMinimapShape or GetMinimapShape() ~= "SQUARE" then
-    GetMinimapShape = function()
-      return "SQUARE"
-    end
-    if LDBIcon and LDBIcon.SetButtonRadius then
-      LDBIcon:SetButtonRadius(0)
-    end
-  end
+  ApplyMinimapShapeOverride(db.square_mask and IsFeatureEnabled())
 
   state.styled = true
 end
@@ -967,16 +996,19 @@ function mod.LayoutSinkButtons()
 
   if state.sinkFrame.emptyText then
     state.sinkFrame.emptyText:SetShown(count == 0)
-    if count == 0 and DEFAULT_CHAT_FRAME then
+    if count == 0 and not state.sinkEmptyNotified and DEFAULT_CHAT_FRAME then
       DEFAULT_CHAT_FRAME:AddMessage(
         "|cff33ff99EnhanceTBC|r No minimap buttons could be moved to the sink. "
           .. "Some buttons are protected by Blizzard or other addons and cannot be moved."
       )
+      state.sinkEmptyNotified = true
+    elseif count > 0 then
+      state.sinkEmptyNotified = false
     end
   end
 end
 
-function mod:ScanForAddonButtons()
+function mod:ScanForAddonButtons(fullScan)
   local db = GetDB()
   if not (db.enabled and db.sink_addons and state.sinkFrame) then return end
   if InCombatLockdown and InCombatLockdown() then return end
@@ -1024,9 +1056,11 @@ function mod:ScanForAddonButtons()
     end
   end
 
-  for name, obj in pairs(_G) do
-    if type(name) == "string" and name:find("^LibDBIcon10_") then
-      TryCapture(obj)
+  if fullScan ~= false then
+    for name, obj in pairs(_G) do
+      if type(name) == "string" and name:find("^LibDBIcon10_") then
+        TryCapture(obj)
+      end
     end
   end
 
@@ -1035,19 +1069,20 @@ end
 
 function mod.ApplyWidgetVisibility()
   local db = GetDB()
+  local enabled = IsFeatureEnabled()
 
   if state.performanceFrame then
-    state.performanceFrame:SetShown(db.enabled and db.minimap_performance)
+    state.performanceFrame:SetShown(enabled and db.minimap_performance)
   end
   if state.iconsFrame then
-    state.iconsFrame:SetShown(db.enabled and db.minimap_icons)
+    state.iconsFrame:SetShown(enabled and db.minimap_icons)
     state.iconsFrame:ClearAllPoints()
     state.iconsFrame:SetPoint("TOP", 0, 22)
   end
   if state.sinkFrame then
-    state.sinkFrame:SetShown(db.enabled and db.sink_addons and db.sink_visible)
+    state.sinkFrame:SetShown(enabled and db.sink_addons and db.sink_visible)
     if state.sinkDragHandle then
-      state.sinkDragHandle:SetShown(db.enabled and db.sink_addons and db.sink_visible)
+      state.sinkDragHandle:SetShown(enabled and db.sink_addons and db.sink_visible)
     end
     ApplySinkAnchor()
   end
@@ -1055,7 +1090,7 @@ end
 
 function mod.StyleTimeManagerClockButton()
   if not IsAddonLoadedCompat("Blizzard_TimeManager") then return end
-  if not GetDB().enabled then return end
+  if not IsFeatureEnabled() then return end
 
   if TimeManagerClockButton and MinimapZoneText then
     TimeManagerClockButton:SetSize(35, 20)
@@ -1131,7 +1166,7 @@ function mod.MoveQuestWatchFrame()
   frame:SetScale(0.9)
   if not state.questWatchHooked then
     hooksecurefunc(frame, "SetPoint", function(self, posA, anchor, posB, _, _, flag)
-      if not GetDB().enabled then return end
+      if not IsFeatureEnabled() then return end
       if flag == RIGHT_MANAGED_FLAG then return end
       RunSetPointGuard("inRightManagedHook", function()
         self:ClearAllPoints()
@@ -1154,12 +1189,10 @@ end
 
 function mod:Apply()
   local db = GetDB()
-  local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
-  local enabled = generalEnabled and db.enabled
-
-  self:StyleMinimap()
+  local enabled = IsFeatureEnabled()
 
   if not enabled then
+    ApplyMinimapShapeOverride(false)
     StopTickers()
     self:RestoreSinkButtons()
     self:ApplyWidgetVisibility()
@@ -1171,6 +1204,9 @@ function mod:Apply()
     end
     return
   end
+
+  self:StyleMinimap()
+  ApplyMinimapShapeOverride(db.square_mask)
 
   self:CreatePerformanceFrame()
   self:CreateIconsFrame()
@@ -1185,7 +1221,7 @@ function mod:Apply()
   end
 
   if db.sink_addons and db.sink_visible then
-    self:ScanForAddonButtons()
+    self:ScanForAddonButtons(true)
     SetManagedButtonsShown(true)
   elseif db.sink_addons then
     SetManagedButtonsShown(false)
@@ -1216,7 +1252,7 @@ function mod:ToggleSinkVisibility()
   db.sinkEnabled = db.sink_visible
 
   if db.sink_visible then
-    self:ScanForAddonButtons()
+    self:ScanForAddonButtons(true)
     SetManagedButtonsShown(true)
   else
     SetManagedButtonsShown(false)
