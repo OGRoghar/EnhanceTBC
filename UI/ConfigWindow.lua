@@ -1468,9 +1468,10 @@ local function BuildWindow()
   end)
 
   local root
+  local QueueResizeLayout
 
   -- Handle window resize dynamically
-  local function QueueResizeLayout()
+  QueueResizeLayout = function()
     if state.resizeTimer then return end
     state.resizeTimer = NewDebounceTimer(0.06, function()
       state.resizeTimer = nil
@@ -1609,6 +1610,10 @@ local function BuildWindow()
   -- Persist tree width when resized
   tree:SetCallback("OnTreeResize", function(_, _, width)
     db.treewidth = width
+    if tree and tree.localstatus then
+      tree.localstatus.treewidth = width
+    end
+    QueueResizeLayout()
   end)
 
   tree:SetCallback("OnGroupSelected", function(_, _, value)

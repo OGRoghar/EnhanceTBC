@@ -74,7 +74,6 @@ local function GetDB()
   if db.whisperSoundIncoming == nil then db.whisperSoundIncoming = true end
   if db.whisperSoundOutgoing == nil then db.whisperSoundOutgoing = false end
   if db.whisperSoundThrottle == nil then db.whisperSoundThrottle = 1.5 end
-  if db.whisperSoundMedia == nil then db.whisperSoundMedia = "Blizzard TellMessage" end
 
   if db.copyLines == nil then db.copyLines = 200 end
   if db.copyButton == nil then db.copyButton = true end
@@ -512,24 +511,10 @@ local function MaybePlayWhisperSound(event)
   if throttle > 0 and (now - lastWhisperSoundAt) < throttle then return end
   lastWhisperSoundAt = now
 
-  local played = false
-  if db.whisperSoundMedia and ETBC.LSM and ETBC.LSM.Fetch and PlaySoundFile then
-    local ok, soundPath = pcall(ETBC.LSM.Fetch, ETBC.LSM, "sound", db.whisperSoundMedia, true)
-    if ok and soundPath and soundPath ~= "" then
-      local okPlay = pcall(PlaySoundFile, soundPath, "Master")
-      if not okPlay then
-        pcall(PlaySoundFile, soundPath)
-      end
-      played = true
-    end
-  end
-
-  if not played then
-    if SOUNDKIT and SOUNDKIT.TELL_MESSAGE then
-      PlaySound(SOUNDKIT.TELL_MESSAGE)
-    else
-      PlaySound("TellMessage")
-    end
+  if SOUNDKIT and SOUNDKIT.TELL_MESSAGE then
+    PlaySound(SOUNDKIT.TELL_MESSAGE)
+  else
+    PlaySound("TellMessage")
   end
 end
 

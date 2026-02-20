@@ -22,7 +22,6 @@ local function GetDB()
 
   -- Text
   if db.font == nil then db.font = "Friz Quadrata TT" end
-  if db.texture == nil then db.texture = "Blizzard" end
   if db.fontSize == nil then db.fontSize = 12 end
   if db.outline == nil then db.outline = "OUTLINE" end
   if db.shadow == nil then db.shadow = true end
@@ -68,13 +67,6 @@ local function LSM_Fonts()
     ["Skurri"] = "Fonts\\SKURRI.TTF",
     ["Morpheus"] = "Fonts\\MORPHEUS.TTF",
   }
-end
-
-local function LSM_Textures()
-  if ETBC.LSM and ETBC.LSM.HashTable then
-    return ETBC.LSM:HashTable("statusbar")
-  end
-  return { Blizzard = "Interface\\TargetingFrame\\UI-StatusBar" }
 end
 
 ETBC.SettingsRegistry:RegisterGroup("castbar", {
@@ -142,7 +134,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         type = "toggle",
         name = "Use Castbar Skin",
         desc = "Applies the EnhanceTBC castbar skin (backdrop, icon border, hidden spark/flash).",
-        order = 24,
+        order = 23,
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.skin end,
@@ -152,7 +144,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       texture = {
         type = "select",
         name = "Bar texture",
-        order = 24.5,
+        order = 24,
         disabled = function() return not db.enabled end,
         values = LSM_Textures,
         get = function() return db.texture end,
@@ -379,19 +371,6 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         disabled = function() return not (db.enabled and db.fadeOut) end,
         get = function() return db.fadeOutTime end,
         set = function(_, v) db.fadeOutTime = v; ETBC.ApplyBus:Notify("castbar") end,
-      },
-
-      preview = {
-        type = "execute",
-        name = "Show Preview",
-        order = 70,
-        width = "full",
-        disabled = function() return not db.enabled end,
-        func = function()
-          if ETBC.Modules and ETBC.Modules.Castbar and ETBC.Modules.Castbar.ShowPreview then
-            ETBC.Modules.Castbar:ShowPreview(2.0)
-          end
-        end,
       },
     }
   end,

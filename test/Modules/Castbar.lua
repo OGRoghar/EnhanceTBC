@@ -40,7 +40,6 @@ local function GetDB()
   if db.enabled == nil then db.enabled = true end
 
   if db.font == nil then db.font = "Friz Quadrata TT" end
-  if db.texture == nil then db.texture = "Blizzard" end
   if db.fontSize == nil then db.fontSize = 11 end
   if db.outline == nil then db.outline = "OUTLINE" end
   if db.shadow == nil then db.shadow = true end
@@ -437,22 +436,16 @@ local function ApplySizing(bar)
   local db = GetDB()
 
   if not bar._etbcOrig then
-    local tex
-    if bar.GetStatusBarTexture and bar:GetStatusBarTexture() and bar:GetStatusBarTexture().GetTexture then
-      tex = bar:GetStatusBarTexture():GetTexture()
-    end
     bar._etbcOrig = {
       w = bar.GetWidth and bar:GetWidth() or nil,
       h = bar.GetHeight and bar:GetHeight() or nil,
       scale = bar.GetScale and bar:GetScale() or 1,
-      texture = tex,
     }
   end
 
   if not db.enabled then
     if bar.SetScale and bar._etbcOrig.scale then bar:SetScale(bar._etbcOrig.scale) end
     if bar.SetSize and bar._etbcOrig.w and bar._etbcOrig.h then bar:SetSize(bar._etbcOrig.w, bar._etbcOrig.h) end
-    if bar.SetStatusBarTexture and bar._etbcOrig.texture then bar:SetStatusBarTexture(bar._etbcOrig.texture) end
     return
   end
 
@@ -460,16 +453,6 @@ local function ApplySizing(bar)
   -- NOTE: Width/Height resizing disabled - causes size mismatch between frame and internal statusbar texture
   -- Use scale setting instead
   -- if bar.SetSize then bar:SetSize(tonumber(db.width) or 195, tonumber(db.height) or 18) end
-end
-
-local function ApplyTexture(bar)
-  if not (bar and bar.SetStatusBarTexture) then return end
-  local db = GetDB()
-  if not db.enabled then return end
-  local texture = LSM_Fetch("statusbar", db.texture, "Interface\\TargetingFrame\\UI-StatusBar")
-  if texture then
-    bar:SetStatusBarTexture(texture)
-  end
 end
 
 local function ApplyAlpha(bar)
@@ -594,7 +577,6 @@ local function HookBar(bar)
 
   bar:HookScript("OnShow", function()
     ApplySizing(bar)
-    ApplyTexture(bar)
     ApplyAlpha(bar)
     ApplySkin(bar)
     if bar.Text and bar.Text.SetFont then
@@ -613,7 +595,6 @@ local function HookBar(bar)
   end)
 
   ApplySizing(bar)
-  ApplyTexture(bar)
   ApplyAlpha(bar)
   ApplySkin(bar)
 end
@@ -659,80 +640,10 @@ local function Apply()
   for _, bar in ipairs(GetBars()) do
     HookBar(bar)
     ApplySizing(bar)
-    ApplyTexture(bar)
     ApplyAlpha(bar)
     ApplySkin(bar)
     OnBarValueChanged(bar)
   end
-end
-
-local function EnsurePreviewBar()
-  if mod._previewBar then return mod._previewBar end
-  local bar = CreateFrame("StatusBar", "EnhanceTBC_CastbarPreview", UIParent, "BackdropTemplate")
-  bar:SetPoint("CENTER", UIParent, "CENTER", 0, -220)
-  bar:SetMinMaxValues(0, 2)
-  bar:SetValue(0)
-  bar:Hide()
-
-  bar.bg = bar:CreateTexture(nil, "BACKGROUND")
-  bar.bg:SetAllPoints(true)
-  bar.bg:SetTexture("Interface\\Buttons\\WHITE8x8")
-  bar.bg:SetVertexColor(0, 0, 0, 0.35)
-
-  bar.Text = bar:CreateFontString(nil, "OVERLAY")
-  bar.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
-  bar.Text:SetJustifyH("LEFT")
-  bar.Text:SetText("Preview Cast")
-
-  bar._etbcTimeText = bar:CreateFontString(nil, "OVERLAY")
-  bar._etbcTimeText:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
-  bar._etbcTimeText:SetJustifyH("RIGHT")
-
-  ApplyBackdropAlt(bar)
-  mod._previewBar = bar
-  return bar
-end
-
-function mod.ShowPreview(_, duration)
-  local db = GetDB()
-  local bar = EnsurePreviewBar()
-  local d = tonumber(duration) or 2.0
-  if d < 0.5 then d = 0.5 end
-  if d > 8 then d = 8 end
-
-  bar:SetScale(tonumber(db.scale) or 1)
-  bar:SetSize(tonumber(db.width) or 195, tonumber(db.height) or 18)
-  local texture = LSM_Fetch("statusbar", db.texture, "Interface\\TargetingFrame\\UI-StatusBar")
-  if texture then bar:SetStatusBarTexture(texture) end
-
-  local cast = db.castColor or { 0.25, 0.80, 0.25 }
-  bar:SetStatusBarColor(cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25)
-  ApplySkinBackdropColors(bar, { backdrop = bar }, db)
-  StyleFontString(bar.Text)
-  StyleFontString(bar._etbcTimeText)
-
-  bar:SetMinMaxValues(0, d)
-  bar:SetValue(0)
-  bar.Text:SetText("Preview Cast")
-  bar:Show()
-
-  local start = GetTime()
-  bar:SetScript("OnUpdate", function(self)
-    local elapsed = GetTime() - start
-    if elapsed >= d then
-      self:SetScript("OnUpdate", nil)
-      self:Hide()
-      return
-    end
-    self:SetValue(elapsed)
-    if db.showTime then
-      self._etbcTimeText:SetText(FormatTime(elapsed, d, db.timeFormat or "REMAIN", db.decimals))
-      self._etbcTimeText:Show()
-    else
-      self._etbcTimeText:SetText("")
-      self._etbcTimeText:Hide()
-    end
-  end)
 end
 
 local function EnsureHooks()

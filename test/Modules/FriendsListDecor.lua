@@ -70,16 +70,6 @@ local function RestoreNameFont(button)
   if font then fontString:SetFont(font, size, flags) end
 end
 
-local function ResolveNameFontPath(fallback)
-  if ETBC.Theme and ETBC.Theme.FetchFont then
-    local themed = ETBC.Theme:FetchFont()
-    if themed and themed ~= "" then
-      return themed
-    end
-  end
-  return fallback
-end
-
 local function ApplyNameFontOverride(button)
   local fontString = button and button.name
   if not fontString then return end
@@ -88,12 +78,11 @@ local function ApplyNameFontOverride(button)
 
   local desired = GetNameFontSize()
   local font, baselineSize, flags = tUnpack(original)
-  local resolvedFont = ResolveNameFontPath(font)
 
-  if desired > 0 and resolvedFont then
-    fontString:SetFont(resolvedFont, desired, flags)
-  elseif resolvedFont then
-    fontString:SetFont(resolvedFont, baselineSize, flags)
+  if desired > 0 and font then
+    fontString:SetFont(font, desired, flags)
+  elseif font then
+    fontString:SetFont(font, baselineSize, flags)
   end
 end
 

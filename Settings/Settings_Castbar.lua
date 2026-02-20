@@ -142,7 +142,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         type = "toggle",
         name = "Use Castbar Skin",
         desc = "Applies the EnhanceTBC castbar skin (backdrop, icon border, hidden spark/flash).",
-        order = 24,
+        order = 23,
         width = "full",
         disabled = function() return not db.enabled end,
         get = function() return db.skin end,
@@ -152,7 +152,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       texture = {
         type = "select",
         name = "Bar texture",
-        order = 24.5,
+        order = 24,
         disabled = function() return not db.enabled end,
         values = LSM_Textures,
         get = function() return db.texture end,

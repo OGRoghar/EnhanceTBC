@@ -1,12 +1,5 @@
 -- Settings/Settings_ChatIM.lua
 local _, ETBC = ...
-local function LSM_Sounds()
-  if ETBC.LSM and ETBC.LSM.HashTable then
-    return ETBC.LSM:HashTable("sound")
-  end
-  return {}
-end
-
 local function GetDB()
   ETBC.db.profile.chatim = ETBC.db.profile.chatim or {}
   local db = ETBC.db.profile.chatim
@@ -25,7 +18,6 @@ local function GetDB()
   if db.whisperSoundIncoming == nil then db.whisperSoundIncoming = true end
   if db.whisperSoundOutgoing == nil then db.whisperSoundOutgoing = false end
   if db.whisperSoundThrottle == nil then db.whisperSoundThrottle = 1.5 end
-  if db.whisperSoundMedia == nil then db.whisperSoundMedia = "Blizzard TellMessage" end
 
   if db.copyLines == nil then db.copyLines = 200 end
   if db.copyButton == nil then db.copyButton = true end
@@ -158,19 +150,10 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
             set = function(_, v) db.whisperSoundIncoming = v and true or false; ETBC.ApplyBus:Notify("chatim") end,
             disabled = function() return not (db.enabled and db.whisperSound) end,
           },
-          sound = {
-            type = "select",
-            name = "Whisper Sound",
-            order = 3,
-            values = LSM_Sounds,
-            get = function() return db.whisperSoundMedia end,
-            set = function(_, v) db.whisperSoundMedia = v; ETBC.ApplyBus:Notify("chatim") end,
-            disabled = function() return not (db.enabled and db.whisperSound) end,
-          },
           outgoing = {
             type = "toggle",
             name = "Outgoing Whispers",
-            order = 4,
+            order = 3,
             get = function() return db.whisperSoundOutgoing end,
             set = function(_, v) db.whisperSoundOutgoing = v and true or false; ETBC.ApplyBus:Notify("chatim") end,
             disabled = function() return not (db.enabled and db.whisperSound) end,
@@ -178,7 +161,7 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
           throttle = {
             type = "range",
             name = "Throttle (sec)",
-            order = 5,
+            order = 4,
             min = 0, max = 10, step = 0.1,
             get = function() return db.whisperSoundThrottle end,
             set = function(_, v) db.whisperSoundThrottle = v; ETBC.ApplyBus:Notify("chatim") end,

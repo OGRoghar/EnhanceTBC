@@ -883,11 +883,8 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
           player_debuff = nil
         end
 
-        if player_debuff and unit_caster and debuff_expiration_time and (
-          SafeUnitIsUnit(unit_caster, "player")
-          or SafeUnitIsUnit(unit_caster, "pet")
-          or player_debuff.totem_debuff
-        ) then
+        if player_debuff and unit_caster and debuff_expiration_time and
+          (SafeUnitIsUnit(unit_caster, "player") or SafeUnitIsUnit(unit_caster, "pet") or player_debuff.totem_debuff) then
           local debuff_frame = nil
 
           for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
