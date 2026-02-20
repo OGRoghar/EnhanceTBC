@@ -129,6 +129,16 @@ local function IsPlaterLoaded()
   return IsAddonLoaded("Plater")
 end
 
+local PLATER_FORCED_FRIENDLY_CVARS = {
+  nameplateShowFriends = true,
+  nameplateShowFriendlyNPCs = true,
+  nameplateShowFriendlyMinions = true,
+}
+
+local function IsPlaterForcedFriendlyCVar(cvar)
+  return cvar and PLATER_FORCED_FRIENDLY_CVARS[cvar] and true or false
+end
+
 -- -----------------------------
 -- Safe CVar wrappers
 -- -----------------------------
@@ -179,6 +189,8 @@ end
 -- Refresh nudges (safe)
 -- -----------------------------
 local function RefreshNameplates()
+  if IsPlaterLoaded() then return end
+  if InCombatLockdown and InCombatLockdown() then return end
   if NamePlateDriverFrame and NamePlateDriverFrame.UpdateNamePlateOptions then
     NamePlateDriverFrame:UpdateNamePlateOptions()
   end
@@ -311,6 +323,9 @@ local function MakeToggle(args)
     order = args.order,
     disabled = IsDisabled,
     hidden = function()
+      if IsPlaterLoaded() and IsPlaterForcedFriendlyCVar(args.cvar) then
+        return true
+      end
       if type(args.hidden) == "function" then
         return args.hidden()
       end
@@ -318,11 +333,20 @@ local function MakeToggle(args)
       return ShouldHideOptionForCVar(args.cvar)
     end,
     get = function()
+      if IsPlaterLoaded() and IsPlaterForcedFriendlyCVar(args.cvar) then
+        return false
+      end
       return CVarBoolGet(args.cvar)
     end,
     set = function(_, v)
+      if IsPlaterLoaded() and IsPlaterForcedFriendlyCVar(args.cvar) then
+        v = false
+      end
       -- If hidden normally but showMissing is enabled, allow toggling anyway.
       CVarBoolSet(args.cvar, v, args.perChar)
+      if IsPlaterLoaded() and IsPlaterForcedFriendlyCVar(args.cvar) then
+        EnforcePlaterNameplateCVars()
+      end
       if args.onChange then args.onChange(v) end
     end,
   }
