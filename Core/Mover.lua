@@ -26,9 +26,11 @@ local driver
 local gridFrame
 local gridV = {}
 local gridH = {}
+local exitPopup
 
 local registry = {}   -- key -> { frame, opts, handle }
 local handles = {}    -- key -> handle frame
+local autoMoveState = nil
 
 local function EnsureDriver()
   if driver then return end
@@ -97,6 +99,99 @@ local function SetShownCompat(frame, shown)
     if frame.Show then frame:Show() end
   else
     if frame.Hide then frame:Hide() end
+  end
+end
+
+local function SetMoverAssistMode(enabled)
+  local p = ETBC and ETBC.db and ETBC.db.profile
+  if not p then return end
+
+  local bus = ETBC and ETBC.ApplyBus
+  local batched = bus and bus.BeginBatch and bus.EndBatch
+
+  local function Notify(key)
+    if bus and bus.Notify then
+      bus:Notify(key)
+    end
+  end
+
+  local function EnablePreview(state, key, applyKey)
+    local db = p[key]
+    if type(db) ~= "table" or db.preview == nil then return end
+    state.previews[key] = db.preview and true or false
+    if not db.preview then
+      db.preview = true
+      Notify(applyKey or key)
+    end
+  end
+
+  if enabled then
+    local cw = ETBC and ETBC.UI and ETBC.UI.ConfigWindow
+    if cw and cw.Close then
+      cw:Close()
+    end
+
+    autoMoveState = {
+      previews = {},
+      swingLocked = nil,
+    }
+
+    if batched then
+      bus:BeginBatch()
+    end
+
+    EnablePreview(autoMoveState, "auras", "auras")
+    EnablePreview(autoMoveState, "actiontracker", "actiontracker")
+    EnablePreview(autoMoveState, "combattext", "combattext")
+    EnablePreview(autoMoveState, "swingtimer", "swingtimer")
+
+    local swing = p.swingtimer
+    if type(swing) == "table" and swing.locked ~= nil then
+      autoMoveState.swingLocked = swing.locked and true or false
+      if swing.locked then
+        swing.locked = false
+        Notify("swingtimer")
+      end
+    end
+
+    if batched then
+      bus:EndBatch(true)
+    end
+    return
+  end
+
+  local state = autoMoveState
+  autoMoveState = nil
+  if not state then return end
+
+  if batched then
+    bus:BeginBatch()
+  end
+
+  for key, oldValue in pairs(state.previews) do
+    local db = p[key]
+    if type(db) == "table" and db.preview ~= nil then
+      local want = oldValue and true or false
+      if db.preview ~= want then
+        db.preview = want
+        Notify(key)
+      end
+    end
+  end
+
+  if state.swingLocked ~= nil then
+    local swing = p.swingtimer
+    if type(swing) == "table" and swing.locked ~= nil then
+      local want = state.swingLocked and true or false
+      if swing.locked ~= want then
+        swing.locked = want
+        Notify("swingtimer")
+      end
+    end
+  end
+
+  if batched then
+    bus:EndBatch(true)
   end
 end
 
@@ -193,6 +288,75 @@ end
 local function HideGrid()
   if not gridFrame then return end
   gridFrame:Hide()
+end
+
+local function EnsureExitPopup()
+  if exitPopup then return exitPopup end
+
+  local f = CreateFrame(
+    "Frame", "EnhanceTBC_MoverExitPopup", UIParent,
+    BackdropTemplateMixin and "BackdropTemplate" or nil
+  )
+  f:SetFrameStrata("DIALOG")
+  f:SetFrameLevel(200)
+  f:SetClampedToScreen(true)
+  f:SetMovable(true)
+  f:EnableMouse(true)
+  f:RegisterForDrag("RightButton")
+  f:SetSize(180, 40)
+  f:SetPoint("TOP", UIParent, "TOP", 0, -140)
+
+  if f.SetBackdrop then
+    f:SetBackdrop({
+      bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+      tile = true, tileSize = 16, edgeSize = 14,
+      insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    f:SetBackdropColor(0.03, 0.06, 0.03, 0.90)
+    f:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.90)
+  end
+
+  f:SetScript("OnDragStart", function(self)
+    if self.StartMoving then self:StartMoving() end
+  end)
+  f:SetScript("OnDragStop", function(self)
+    if self.StopMovingOrSizing then self:StopMovingOrSizing() end
+  end)
+
+  local btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+  btn:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -8)
+  btn:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
+  btn:SetText("Exit mover mode")
+  btn:SetScript("OnClick", function()
+    M:SetMoveMode(false)
+  end)
+
+  f:SetScript("OnEnter", function(self)
+    if not GameTooltip or not GameTooltip.SetOwner then return end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:AddLine("Exit mover mode", 0.20, 1.00, 0.20)
+    GameTooltip:AddLine("Right-drag to move this popup.", 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  f:SetScript("OnLeave", function()
+    if GameTooltip and GameTooltip.Hide then
+      GameTooltip:Hide()
+    end
+  end)
+
+  f:Hide()
+  exitPopup = f
+  return f
+end
+
+local function UpdateExitPopup()
+  local popup = EnsureExitPopup()
+  local db = GetDB()
+  local generalEnabled = ETBC and ETBC.db and ETBC.db.profile
+    and ETBC.db.profile.general and ETBC.db.profile.general.enabled
+  local shown = generalEnabled and db.enabled and db.moveMode
+  SetShownCompat(popup, shown and true or false)
 end
 
 local function CanMoveNow()
@@ -509,9 +673,20 @@ end
 
 function M.SetMoveMode(_, enabled)
   local db = GetDB()
+  local was = db.moveMode and true or false
   local v = enabled and true or false
+  if v then
+    db.enabled = true
+  end
   db.moveMode = v
   db.unlocked = v
+
+  if (not was) and v then
+    SetMoverAssistMode(true)
+  elseif was and (not v) then
+    SetMoverAssistMode(false)
+  end
+
   ETBC.ApplyBus:Notify("mover")
 end
 
@@ -651,12 +826,15 @@ local function Apply()
     UpdateAllHandles()
 
     if db.moveMode then driver:Show() else driver:Hide() end
+    UpdateExitPopup()
   else
     HideGrid()
     for _, h in pairs(handles) do
       if h then h:Hide() end
     end
     driver:Hide()
+    SetMoverAssistMode(false)
+    UpdateExitPopup()
   end
 end
 
