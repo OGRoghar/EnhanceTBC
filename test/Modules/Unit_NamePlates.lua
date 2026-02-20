@@ -19,6 +19,7 @@ local formatted_player_debuffs = {}
 local formatted_absorb_buffs = {}
 
 local max_player_debuffs = 4
+local ApplyExistingNameplates
 
 local function GetDB()
   ETBC.db.profile.nameplates = ETBC.db.profile.nameplates or {}
@@ -883,8 +884,11 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
           player_debuff = nil
         end
 
-        if player_debuff and unit_caster and debuff_expiration_time and
-          (SafeUnitIsUnit(unit_caster, "player") or SafeUnitIsUnit(unit_caster, "pet") or player_debuff.totem_debuff) then
+        if player_debuff and unit_caster and debuff_expiration_time and (
+          SafeUnitIsUnit(unit_caster, "player")
+          or SafeUnitIsUnit(unit_caster, "pet")
+          or player_debuff.totem_debuff
+        ) then
           local debuff_frame = nil
 
           for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
@@ -1827,7 +1831,7 @@ local function UnhookEvents()
   hooked = false
 end
 
-local function ApplyExistingNameplates()
+ApplyExistingNameplates = function()
   if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
   for _, nameplate in pairs(C_NamePlate.GetNamePlates(false)) do
     if not ShouldIgnoreNameplate(nameplate)
@@ -1897,15 +1901,13 @@ end
 
 -- Safety hooks for health updates
 hooksecurefunc("CompactUnitFrame_UpdateHealth", function(self)
-  if self.healthBar and self.healthBarWrapper and self.unit and self:GetParent()
-    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
+  if self.healthBar and self.unit then
     SetNameplateHealthBarText(self.healthBar, self.unit)
   end
 end)
 
 hooksecurefunc("CompactUnitFrame_UpdateHealthColor", function(self)
-  if self.healthBar and self.healthBarWrapper and self.healthBar.unit_health_text and self.unit and self:GetParent()
-    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
+  if self.healthBar and self.healthBar.unit_health_text and self.unit then
     SetNameplateHealthBarColor(self:GetParent(), self.healthBar, self.unit)
   end
 end)
