@@ -19,7 +19,6 @@ local formatted_player_debuffs = {}
 local formatted_absorb_buffs = {}
 
 local max_player_debuffs = 4
-local ApplyExistingNameplates
 
 local function GetDB()
   ETBC.db.profile.nameplates = ETBC.db.profile.nameplates or {}
@@ -1831,7 +1830,7 @@ local function UnhookEvents()
   hooked = false
 end
 
-ApplyExistingNameplates = function()
+local function ApplyExistingNameplates()
   if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
   for _, nameplate in pairs(C_NamePlate.GetNamePlates(false)) do
     if not ShouldIgnoreNameplate(nameplate)
@@ -1901,13 +1900,15 @@ end
 
 -- Safety hooks for health updates
 hooksecurefunc("CompactUnitFrame_UpdateHealth", function(self)
-  if self.healthBar and self.unit then
+  if self.healthBar and self.healthBarWrapper and self.unit and self:GetParent()
+    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
     SetNameplateHealthBarText(self.healthBar, self.unit)
   end
 end)
 
 hooksecurefunc("CompactUnitFrame_UpdateHealthColor", function(self)
-  if self.healthBar and self.healthBar.unit_health_text and self.unit then
+  if self.healthBar and self.healthBarWrapper and self.healthBar.unit_health_text and self.unit and self:GetParent()
+    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
     SetNameplateHealthBarColor(self:GetParent(), self.healthBar, self.unit)
   end
 end)
