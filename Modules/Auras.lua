@@ -12,11 +12,19 @@ local buffAnchor
 local debuffAnchor
 local buffContainer
 local debuffContainer
+local blizzardAuraSink
+local suppressBlizzardAuras = false
 
 
 local pool = {}
 local activeBuffs = {}
 local activeDebuffs = {}
+local blizzardAuraFrames = {
+  "BuffFrame",
+  "DebuffFrame",
+  "TemporaryEnchantFrame",
+}
+local blizzardAuraState = {}
 
 local updateTicker = 0
 local UPDATE_INTERVAL = 0.10
@@ -99,6 +107,57 @@ local function EnsureFrames()
     debuffContainer:SetSize(1, 1)
   end
 
+  if not blizzardAuraSink then
+    blizzardAuraSink = CreateFrame("Frame", "EnhanceTBC_BlizzardAuraSink", UIParent)
+    blizzardAuraSink:Hide()
+  end
+
+end
+
+local function KeepFrameHiddenWhileSuppressed(frame)
+  if not frame or frame._etbcAurasHideHooked then return end
+  frame._etbcAurasHideHooked = true
+  hooksecurefunc(frame, "Show", function(self)
+    if suppressBlizzardAuras then
+      self:Hide()
+    end
+  end)
+end
+
+local function SetBlizzardAuraFramesSuppressed(suppressed)
+  suppressBlizzardAuras = suppressed and true or false
+  EnsureFrames()
+
+  for i = 1, #blizzardAuraFrames do
+    local frameName = blizzardAuraFrames[i]
+    local frame = _G[frameName]
+    if frame then
+      local state = blizzardAuraState[frameName]
+      if not state then
+        state = {}
+        blizzardAuraState[frameName] = state
+      end
+
+      if suppressed then
+        if not state.parent then
+          state.parent = frame:GetParent()
+          state.alpha = frame:GetAlpha()
+        end
+        KeepFrameHiddenWhileSuppressed(frame)
+        frame:SetParent(blizzardAuraSink)
+        frame:SetAlpha(0)
+        frame:Hide()
+      else
+        if state.parent then
+          frame:SetParent(state.parent)
+          frame:SetAlpha(state.alpha or 1)
+          state.parent = nil
+          state.alpha = nil
+        end
+        frame:Show()
+      end
+    end
+  end
 end
 
 local function RegisterMover(db)
@@ -493,6 +552,7 @@ local function Apply()
 
   local enabled = p.general.enabled and db.enabled
   if not enabled or not VisibilityAllowed(db) then
+    SetBlizzardAuraFramesSuppressed(false)
     driver:UnregisterAllEvents()
     driver:SetScript("OnUpdate", nil)
     ClearActive(activeBuffs)
@@ -505,6 +565,7 @@ local function Apply()
     return
   end
 
+  SetBlizzardAuraFramesSuppressed(true)
   SetShownCompat(buffAnchor, true)
   SetShownCompat(debuffAnchor, true)
   RegisterMover(db)

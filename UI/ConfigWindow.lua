@@ -1468,6 +1468,7 @@ local function BuildWindow()
   end)
 
   local root
+  local tree
   local QueueResizeLayout
   local ApplyTreeWidth
 
@@ -1579,7 +1580,7 @@ local function BuildWindow()
   state.search = search
 
   -- TreeGroup handles BOTH columns
-  local tree = AceGUI:Create("TreeGroup")
+  tree = AceGUI:Create("TreeGroup")
   tree:SetFullWidth(true)
   tree:SetFullHeight(true)
   tree:SetLayout("Fill")
