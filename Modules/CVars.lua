@@ -165,6 +165,7 @@ end
 -- Refresh nudges (safe)
 -- -----------------------------
 local function RefreshNameplates()
+  if InCombatLockdown and InCombatLockdown() then return end
   if NamePlateDriverFrame and NamePlateDriverFrame.UpdateNamePlateOptions then
     NamePlateDriverFrame:UpdateNamePlateOptions()
   end
@@ -176,6 +177,36 @@ end
 
 local function RefreshTooltips()
   -- Tooltip CVars usually apply on next show; nothing required.
+end
+
+local function IsAddonLoaded(addonName)
+  if C_AddOns and C_AddOns.IsAddOnLoaded then
+    return not not C_AddOns.IsAddOnLoaded(addonName)
+  end
+  if IsAddOnLoaded then
+    return not not IsAddOnLoaded(addonName)
+  end
+  return false
+end
+
+local function IsPlaterLoaded()
+  return IsAddonLoaded("Plater")
+end
+
+local function EnforcePlaterNameplateCVars()
+  if not IsPlaterLoaded() then return end
+
+  if CVarExists("nameplateShowFriends") then
+    CVarBoolSet("nameplateShowFriends", false, true)
+  end
+  if CVarExists("nameplateShowFriendlyNPCs") then
+    CVarBoolSet("nameplateShowFriendlyNPCs", false, true)
+  end
+  if CVarExists("nameplateShowFriendlyMinions") then
+    CVarBoolSet("nameplateShowFriendlyMinions", false, true)
+  end
+
+  RefreshNameplates()
 end
 
 -- -----------------------------
@@ -739,6 +770,8 @@ function mod.Init(_)
   local db = GetDB()
   local frame = EnsureRuntimeFrame()
   frame:UnregisterAllEvents()
+
+  EnforcePlaterNameplateCVars()
 
   if db.enabled and db.fastAutoLoot then
     frame:RegisterEvent("LOOT_OPENED")

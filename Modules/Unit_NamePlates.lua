@@ -19,6 +19,7 @@ local formatted_player_debuffs = {}
 local formatted_absorb_buffs = {}
 
 local max_player_debuffs = 4
+local ApplyExistingNameplates
 
 local function GetDB()
   ETBC.db.profile.nameplates = ETBC.db.profile.nameplates or {}
@@ -61,6 +62,45 @@ local function InInstance()
   end
   local inInst, instType = IsInInstance()
   return not not inInst, instType
+end
+
+local function IsRestrictedFrame(frame)
+  return frame and frame.IsForbidden and frame:IsForbidden()
+end
+
+local function ShouldIgnoreNameplate(nameplate)
+  if not nameplate or not nameplate.UnitFrame then return true end
+  if nameplate.Plater or nameplate.unitFramePlater
+    or nameplate.UnitFrame.Plater or nameplate.UnitFrame.unitFramePlater then
+    return true
+  end
+  if IsRestrictedFrame(nameplate) or IsRestrictedFrame(nameplate.UnitFrame) then
+    return true
+  end
+  if IsRestrictedFrame(nameplate.UnitFrame.healthBar) or IsRestrictedFrame(nameplate.UnitFrame.castBar) then
+    return true
+  end
+  return false
+end
+
+local function IsSecureUpdateBlocked()
+  return InCombatLockdown and InCombatLockdown()
+end
+
+local function SafeUnitIsUnit(unit, other_unit)
+  if type(unit) ~= "string" or unit == "" then return false end
+  if type(other_unit) ~= "string" or other_unit == "" then return false end
+  return UnitIsUnit(unit, other_unit)
+end
+
+local function IsPlaterLoaded()
+  if C_AddOns and C_AddOns.IsAddOnLoaded then
+    return C_AddOns.IsAddOnLoaded("Plater")
+  end
+  if IsAddOnLoaded then
+    return IsAddOnLoaded("Plater")
+  end
+  return false
 end
 
 local function ApplyFont(fs, size)
@@ -605,7 +645,7 @@ local function SetNameplateHealthBarColor(nameplate, statusbar, unit)
   else
     if db.nameplate_unit_target_color then
       if not IsFriendlyNameplate(nameplate, unit) then
-        if UnitIsUnit(unit .. "target", "player") then
+        if SafeUnitIsUnit(unit .. "target", "player") then
           statusbar:SetStatusBarColor(0, 0.1, 0.9)
           return
         end
@@ -659,7 +699,7 @@ local function SetNameplateAbsorb(nameplate, unit)
     local nameplate_health_bar = nameplate.UnitFrame.healthBar
     if not nameplate_health_bar or not nameplate_health_bar.absorb then return end
 
-    if IsFriendlyNameplate(nameplate, unit) or UnitIsUnit(unit, "player") then
+    if IsFriendlyNameplate(nameplate, unit) or SafeUnitIsUnit(unit, "player") then
       nameplate_health_bar.absorb:Hide()
       return
     end
@@ -715,7 +755,7 @@ local function SetNameplateSize(nameplate, statusbar, unit)
   local db = GetDB()
   if not UnitExists(unit) or not nameplate.modified then return end
 
-  if not UnitIsUnit("player", unit) then
+  if not SafeUnitIsUnit("player", unit) then
     if not IsFriendlyNameplate(nameplate, unit) then
       nameplate.UnitFrame.healthBarWrapper:SetSize(
         db.enemy_nameplate_width or 109,
@@ -797,7 +837,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
     local nameplate_player_debuffs = nameplate.UnitFrame.healthBar.player_debuffs
     if not nameplate_player_debuffs then return end
 
-    if IsFriendlyNameplate(nameplate, unit) or UnitIsUnit(unit, "player") then
+    if IsFriendlyNameplate(nameplate, unit) or SafeUnitIsUnit(unit, "player") then
       for _, player_debuff in pairs({ nameplate_player_debuffs:GetChildren() }) do
         player_debuff.current_debuff = nil
         player_debuff.cooldown_started = -1
@@ -844,8 +884,11 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
           player_debuff = nil
         end
 
-        if player_debuff and unit_caster and debuff_expiration_time and
-          (UnitIsUnit(unit_caster, "player") or UnitIsUnit(unit_caster, "pet") or player_debuff.totem_debuff) then
+        if player_debuff and unit_caster and debuff_expiration_time and (
+          SafeUnitIsUnit(unit_caster, "player")
+          or SafeUnitIsUnit(unit_caster, "pet")
+          or player_debuff.totem_debuff
+        ) then
           local debuff_frame = nil
 
           for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
@@ -923,8 +966,8 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
             end
           end
         elseif player_debuff and unit_caster
-          and not UnitIsUnit(unit_caster, "player")
-          and not UnitIsUnit(unit_caster, "pet") then
+          and not SafeUnitIsUnit(unit_caster, "player")
+          and not SafeUnitIsUnit(unit_caster, "pet") then
           for _, player_debuff_frame in pairs({ nameplate_player_debuffs:GetChildren() }) do
             if player_debuff_frame.current_debuff then
               if player_debuff.single_debuff and player_debuff.name == player_debuff_frame.current_debuff.name then
@@ -964,7 +1007,7 @@ local function SetNameplateUnitDebuff(nameplate, unit)
     local nameplate_debuff = nameplate.UnitFrame.healthBar.unit_debuff
     if not nameplate_debuff then return end
 
-    if IsFriendlyNameplate(nameplate, unit) or UnitIsUnit(unit, "player") then
+    if IsFriendlyNameplate(nameplate, unit) or SafeUnitIsUnit(unit, "player") then
       if nameplate.nameplate_events then
         nameplate.nameplate_events:UnregisterEvent("UNIT_AURA")
       end
@@ -1173,9 +1216,12 @@ end
 
 function mod.StyleUnitNameplate(_, unit)
   if not unit then return end
+  if IsPlaterLoaded() then return end
 
   local unit_nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
   if not unit_nameplate or not unit_nameplate.UnitFrame then return end
+  if ShouldIgnoreNameplate(unit_nameplate) then return end
+  if IsSecureUpdateBlocked() then return end
 
   local unit_guid = UnitGUID(unit)
   if not unit_guid then return end
@@ -1572,6 +1618,9 @@ local function RemoveUnitNameplate(unit)
 end
 
 local function SetNameplatePadding()
+  if IsPlaterLoaded() then return end
+  if IsSecureUpdateBlocked() then return end
+
   local db = GetDB()
   local padding = 8
   local name_height = 15
@@ -1609,7 +1658,7 @@ function mod.UpdateExistingNameplatesSize(_)
       local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
       if not nameplate or not nameplate.UnitFrame or nameplate.UnitFrame ~= unit_nameplate then return end
 
-      if UnitExists(unit) and not UnitIsUnit("player", unit) then
+      if UnitExists(unit) and not SafeUnitIsUnit("player", unit) then
         SetNameplateSize(nameplate, unit_nameplate.healthBar, unit)
       end
     end
@@ -1623,7 +1672,7 @@ function mod.UpdateExistingNameplatesColor(_)
       local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
       if not nameplate or not nameplate.UnitFrame or nameplate.UnitFrame ~= unit_nameplate then return end
 
-      if UnitExists(unit) and not UnitIsUnit("player", unit) then
+      if UnitExists(unit) and not SafeUnitIsUnit("player", unit) then
         SetNameplateHealthBarColor(nameplate, unit_nameplate.healthBar, unit)
       end
     end
@@ -1688,7 +1737,7 @@ function mod.UpdateExistingNameplatesText(_)
         unit_nameplate.healthBar.unit_health_text:Hide()
       else
         local unit = unit_nameplate.displayedUnit
-        if UnitExists(unit) and not UnitIsUnit("player", unit) then
+        if UnitExists(unit) and not SafeUnitIsUnit("player", unit) then
           if not IsFriendlyNameplate(unit_nameplate, unit) then
             unit_nameplate.healthBar.unit_health_text:Show()
           end
@@ -1730,6 +1779,7 @@ local function HookEvents()
   driver:RegisterEvent("DUEL_REQUESTED")
   driver:RegisterEvent("DUEL_FINISHED")
   driver:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+  driver:RegisterEvent("PLAYER_REGEN_ENABLED")
 
   driver:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_ENTERING_WORLD" or event == "DISPLAY_SIZE_CHANGED" then
@@ -1743,7 +1793,7 @@ local function HookEvents()
     end
 
     if event == "DUEL_FINISHED" then
-      if duel_unit and not UnitIsUnit(duel_unit, "player") then
+      if duel_unit and not SafeUnitIsUnit(duel_unit, "player") then
         mod:StyleUnitNameplate(duel_unit)
       end
       duel_unit = nil
@@ -1764,6 +1814,12 @@ local function HookEvents()
       SetNameplateUnitInterrupt()
       SetNameplateUnitStance()
       SetNameplatePlayerMindControl()
+      return
+    end
+
+    if event == "PLAYER_REGEN_ENABLED" then
+      SetNameplatePadding()
+      ApplyExistingNameplates()
     end
   end)
 end
@@ -1775,10 +1831,13 @@ local function UnhookEvents()
   hooked = false
 end
 
-local function ApplyExistingNameplates()
+ApplyExistingNameplates = function()
   if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
   for _, nameplate in pairs(C_NamePlate.GetNamePlates(false)) do
-    if nameplate.UnitFrame and nameplate.UnitFrame.displayedUnit and UnitExists(nameplate.UnitFrame.displayedUnit) then
+    if not ShouldIgnoreNameplate(nameplate)
+      and nameplate.UnitFrame
+      and nameplate.UnitFrame.displayedUnit
+      and UnitExists(nameplate.UnitFrame.displayedUnit) then
       local unit_guid = UnitGUID(nameplate.UnitFrame.displayedUnit)
       if unit_guid and not unit_nameplates[unit_guid] then
         mod:StyleUnitNameplate(nameplate.UnitFrame.displayedUnit)
@@ -1796,6 +1855,13 @@ local function ResetNameplates()
 end
 
 function mod.Apply(_)
+  if IsPlaterLoaded() then
+    UnhookEvents()
+    ResetNameplates()
+    loaded = false
+    return
+  end
+
   if not ETBC.db or not ETBC.db.profile or not ETBC.db.profile.general or not ETBC.db.profile.general.enabled then
     UnhookEvents()
     ResetNameplates()
