@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.2.7 - 2026-02-20
+- Fixed:
+	- Hardened nameplate safety around restricted frames and combat-lockdown updates to reduce `FrameMeasurement` taint errors.
+	- Added safe `UnitIsUnit` guards in nameplate paths to prevent invalid unit usage during soft-target/nameplate transitions.
+	- Blocked Blizzard nameplate option refresh and forced friendly-nameplate CVars off while Plater is active.
+	- Restored and synchronized castbar texture preview + LSM texture wiring in both main and test paths.
+	- Fixed tooltip subtle-skin color application for background, border, and top glow on NineSlice-based tooltips.
+	- Fixed config window TreeGroup/SimpleGroup resize behavior by binding tree width/height updates to live window size.
+	- Ported Blizzard aura frame suppression behavior into main Auras module and kept test/main parity.
+- Changed:
+	- Reconciled test/main mirror drift and kept newer issue-fix variants during selective sync.
+	- Updated addon version metadata for release preparation (`1.2.7`).
+
 ## v1.2.6 - 2026-02-19
 - Fixed:
 	- AceGUI skin constructor hook safety to avoid runtime errors when widget constructors are plain functions.
