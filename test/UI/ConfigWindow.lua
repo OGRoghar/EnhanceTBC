@@ -1469,12 +1469,45 @@ local function BuildWindow()
 
   local root
   local QueueResizeLayout
+  local ApplyTreeWidth
+
+  ApplyTreeWidth = function(width)
+    local w = tonumber(width) or 280
+    if w < 180 then w = 180 end
+    w = math.floor(w + 0.5)
+
+    db.treewidth = w
+    if tree and tree.localstatus then
+      tree.localstatus.treewidth = w
+    end
+    if tree and tree.SetTreeWidth then
+      tree:SetTreeWidth(w, true)
+    end
+  end
 
   -- Handle window resize dynamically
   QueueResizeLayout = function()
     if state.resizeTimer then return end
     state.resizeTimer = NewDebounceTimer(0.06, function()
       state.resizeTimer = nil
+      if tree then
+        local contentWidth = 0
+        if win and win.content and win.content.GetWidth then
+          contentWidth = tonumber(win.content:GetWidth()) or 0
+        end
+        if contentWidth <= 0 and root and root.frame and root.frame.GetWidth then
+          contentWidth = tonumber(root.frame:GetWidth()) or 0
+        end
+        if contentWidth > 0 then
+          local maxTreeWidth = math.max(180, math.floor(contentWidth - 260))
+          local target = tonumber(db.treewidth) or 280
+          if target > maxTreeWidth then
+            target = maxTreeWidth
+          end
+          ApplyTreeWidth(target)
+        end
+      end
+
       if win and win.DoLayout then
         win:DoLayout()
       end
@@ -1593,6 +1626,8 @@ local function BuildWindow()
   end
 
   RestoreWindow()
+  ApplyTreeWidth(db.treewidth or 280)
+  QueueResizeLayout()
 
   local function ShowModule(moduleKey)
     if not moduleKey then return end
@@ -1609,10 +1644,7 @@ local function BuildWindow()
 
   -- Persist tree width when resized
   tree:SetCallback("OnTreeResize", function(_, _, width)
-    db.treewidth = width
-    if tree and tree.localstatus then
-      tree.localstatus.treewidth = width
-    end
+    ApplyTreeWidth(width)
     QueueResizeLayout()
   end)
 
