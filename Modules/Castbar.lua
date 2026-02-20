@@ -639,6 +639,8 @@ local function GetBars()
   return out
 end
 
+local RefreshPreviewIfShown
+
 local function Apply()
   EnsureDriver()
 
@@ -653,6 +655,7 @@ local function Apply()
       HideChannelTicks(bar)
       if bar and bar.SetAlpha then bar:SetAlpha(1) end
     end
+    RefreshPreviewIfShown()
     return
   end
 
@@ -664,6 +667,7 @@ local function Apply()
     ApplySkin(bar)
     OnBarValueChanged(bar)
   end
+  RefreshPreviewIfShown()
 end
 
 local function EnsurePreviewBar()
@@ -693,6 +697,45 @@ local function EnsurePreviewBar()
   return bar
 end
 
+local function RefreshPreviewBar(force)
+  local bar = mod._previewBar
+  if not bar then return end
+  if not force and bar.IsShown and not bar:IsShown() then return end
+
+  local db = GetDB()
+  if not db.enabled then
+    if bar.Hide then bar:Hide() end
+    return
+  end
+
+  if bar.SetScale then bar:SetScale(tonumber(db.scale) or 1) end
+  if bar.SetSize then bar:SetSize(tonumber(db.width) or 195, tonumber(db.height) or 18) end
+
+  local texture = LSM_Fetch("statusbar", db.texture, "Interface\\TargetingFrame\\UI-StatusBar")
+  if texture and bar.SetStatusBarTexture then
+    bar:SetStatusBarTexture(texture)
+  end
+
+  local cast = db.castColor or { 0.25, 0.80, 0.25 }
+  if bar.SetStatusBarColor then
+    bar:SetStatusBarColor(cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25)
+  end
+
+  ApplySkinBackdropColors(bar, { backdrop = bar }, db)
+  StyleFontString(bar.Text)
+  StyleFontString(bar._etbcTimeText)
+  ApplyAlpha(bar)
+
+  if not db.showTime and bar._etbcTimeText then
+    bar._etbcTimeText:SetText("")
+    bar._etbcTimeText:Hide()
+  end
+end
+
+RefreshPreviewIfShown = function()
+  RefreshPreviewBar(false)
+end
+
 function mod.ShowPreview(_, duration)
   local db = GetDB()
   local bar = EnsurePreviewBar()
@@ -700,20 +743,10 @@ function mod.ShowPreview(_, duration)
   if d < 0.5 then d = 0.5 end
   if d > 8 then d = 8 end
 
-  bar:SetScale(tonumber(db.scale) or 1)
-  bar:SetSize(tonumber(db.width) or 195, tonumber(db.height) or 18)
-  local texture = LSM_Fetch("statusbar", db.texture, "Interface\\TargetingFrame\\UI-StatusBar")
-  if texture then bar:SetStatusBarTexture(texture) end
-
-  local cast = db.castColor or { 0.25, 0.80, 0.25 }
-  bar:SetStatusBarColor(cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25)
-  ApplySkinBackdropColors(bar, { backdrop = bar }, db)
-  StyleFontString(bar.Text)
-  StyleFontString(bar._etbcTimeText)
-
   bar:SetMinMaxValues(0, d)
   bar:SetValue(0)
   bar.Text:SetText("Preview Cast")
+  RefreshPreviewBar(true)
   bar:Show()
 
   local start = GetTime()
