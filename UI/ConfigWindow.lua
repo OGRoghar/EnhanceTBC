@@ -1469,8 +1469,12 @@ local function BuildWindow()
 
   local root
   local tree
+  local right
+  local topPad
+  local search
   local QueueResizeLayout
   local ApplyTreeWidth
+  local SyncContainerHeights
 
   ApplyTreeWidth = function(width)
     local w = tonumber(width) or 280
@@ -1483,6 +1487,33 @@ local function BuildWindow()
     end
     if tree and tree.SetTreeWidth then
       tree:SetTreeWidth(w, true)
+    end
+  end
+
+  SyncContainerHeights = function()
+    if not (win and win.content and root and tree) then return end
+    if not (win.content.GetHeight and root.SetHeight and tree.SetHeight) then return end
+
+    local contentHeight = tonumber(win.content:GetHeight()) or 0
+    if contentHeight <= 0 then return end
+
+    local topPadHeight = 0
+    if topPad and topPad.frame and topPad.frame.GetHeight then
+      topPadHeight = tonumber(topPad.frame:GetHeight()) or 0
+    end
+    local searchHeight = 0
+    if search and search.frame and search.frame.GetHeight then
+      searchHeight = tonumber(search.frame:GetHeight()) or 0
+    end
+    if searchHeight <= 0 then
+      searchHeight = 38
+    end
+
+    local treeHeight = math.max(120, math.floor(contentHeight - topPadHeight - searchHeight - 8))
+    root:SetHeight(contentHeight)
+    tree:SetHeight(treeHeight)
+    if right and right.SetHeight then
+      right:SetHeight(treeHeight)
     end
   end
 
@@ -1508,6 +1539,7 @@ local function BuildWindow()
           ApplyTreeWidth(target)
         end
       end
+      SyncContainerHeights()
 
       if win and win.DoLayout then
         win:DoLayout()
@@ -1543,7 +1575,7 @@ local function BuildWindow()
   root:SetLayout("List")
   win:AddChild(root)
 
-  local topPad = AceGUI:Create("Label")
+  topPad = AceGUI:Create("Label")
   topPad:SetText(" ")
   topPad:SetFullWidth(true)
   if topPad.SetHeight then
@@ -1551,7 +1583,6 @@ local function BuildWindow()
   end
   root:AddChild(topPad)
 
-  local search
   if HasWidget("ETBC_SearchHeader") then
     search = AceGUI:Create("ETBC_SearchHeader")
     search:SetLabel("Search")
@@ -1612,7 +1643,7 @@ local function BuildWindow()
   end
 
   -- ScrollFrame goes INSIDE TreeGroup
-  local right = AceGUI:Create("ScrollFrame")
+  right = AceGUI:Create("ScrollFrame")
   right:SetLayout("List")
   right:SetFullWidth(true)
   right:SetFullHeight(true)
@@ -1628,6 +1659,7 @@ local function BuildWindow()
 
   RestoreWindow()
   ApplyTreeWidth(db.treewidth or 280)
+  SyncContainerHeights()
   QueueResizeLayout()
 
   local function ShowModule(moduleKey)
