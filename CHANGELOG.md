@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.2.8 - 2026-02-20
+- Added:
+	- Draggable "Exit mover mode" popup shown during mover mode.
+- Changed:
+	- Mover mode now auto-closes config, enables mover-related preview helpers, unlocks SwingTimer while moving, and restores prior preview/lock state on exit.
+	- Minimap header layout updated: zone text is top-centered, clock moved to minimap bottom-center (+6 inset), and calendar button is hidden/disabled while MinimapPlus is enabled.
+	- Minimap zone text and clock anchors are now enforced to resist external re-anchoring.
+	- Default mover grid size changed from `8` to `50`.
+	- Default minimap mask apply (`square_mask`) is now enabled.
+	- Castbar preview now refreshes immediately on settings apply.
+- Fixed:
+	- Timer scheduling now prefers shared AceTimer wrappers with safe fallback behavior.
+	- Vendor throttled sell queue now safely falls back when repeating ticker backends are unavailable.
+- Release:
+	- Prepared version metadata for `1.2.8`.
+
 ## v1.2.7 - 2026-02-20
 - Fixed:
 	- Hardened nameplate safety around restricted frames and combat-lockdown updates to reduce `FrameMeasurement` taint errors.
