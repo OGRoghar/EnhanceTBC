@@ -25,10 +25,10 @@ Recent additions include:
 
 1. Download the addon from GitHub (Code -> Download ZIP) or your preferred release archive.
 2. Extract the folder to your WoW AddOns directory:
-	- Windows: `World of Warcraft/_classic_/Interface/AddOns/`
-	- macOS: `World of Warcraft/_classic_/Interface/AddOns/`
+	- Windows: `World of Warcraft/_anniversary_/Interface/AddOns/`
+	- macOS: `World of Warcraft/_anniversary_/Interface/AddOns/`
 3. Ensure the final path is:
-	`World of Warcraft/_classic_/Interface/AddOns/EnhanceTBC/`
+	`World of Warcraft/_anniversary_/Interface/AddOns/EnhanceTBC/`
 4. Launch the game and enable EnhanceTBC in the AddOns list.
 
 ### Updating

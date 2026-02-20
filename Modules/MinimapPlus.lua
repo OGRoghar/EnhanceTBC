@@ -17,6 +17,8 @@ local MINIMAP_CONTAINER_FLAG = "etbc_minimap_container"
 local RIGHT_MANAGED_FLAG = "etbc_ui_parent_right_managed_frame"
 local TRACKING_POINT_FLAG = "etbc_tracking_button"
 local LFG_POINT_FLAG = "etbc_lfg_button"
+local ZONE_TEXT_POINT_FLAG = "etbc_zone_text_button"
+local CLOCK_POINT_FLAG = "etbc_clock_button"
 
 local SINK_ICON_SIZE = 18
 local SINK_ICON_SPACING = 4
@@ -27,7 +29,9 @@ local SINK_MIN_HEIGHT = 32
 local state = {
   styled = false,
   containerHooked = false,
-  timeTextureHooked = false,
+  zoneTextPointHooked = false,
+  clockPointHooked = false,
+  gameTimeShowHooked = false,
   questWatchHooked = false,
   trackingPointHooked = false,
   lfgPointHooked = false,
@@ -458,15 +462,27 @@ function mod:StyleMinimap()
   if MinimapZoneTextButton then
     MinimapZoneTextButton:SetSize(110, 20)
     MinimapZoneTextButton:ClearAllPoints()
-    MinimapZoneTextButton:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 0, db.minimap_icons and 42 or 22)
+    MinimapZoneTextButton:SetPoint("TOP", Minimap, "TOP", 0, db.minimap_icons and 42 or 22, ZONE_TEXT_POINT_FLAG)
+    if not state.zoneTextPointHooked then
+      hooksecurefunc(MinimapZoneTextButton, "SetPoint", function(frame, _, _, _, _, _, flag)
+        if flag == ZONE_TEXT_POINT_FLAG then return end
+        if not IsFeatureEnabled() then return end
+        local rowOffset = (GetDB().minimap_icons and 42) or 22
+        RunSetPointGuard("inZoneTextPointHook", function()
+          frame:ClearAllPoints()
+          frame:SetPoint("TOP", Minimap, "TOP", 0, rowOffset, ZONE_TEXT_POINT_FLAG)
+        end)
+      end)
+      state.zoneTextPointHooked = true
+    end
   end
 
   if MinimapZoneText then
     MinimapZoneText:SetParent(Minimap)
     MinimapZoneText:SetWidth(110)
     MinimapZoneText:ClearAllPoints()
-    MinimapZoneText:SetPoint("LEFT", MinimapZoneTextButton, "LEFT", 0, 0)
-    MinimapZoneText:SetJustifyH("LEFT")
+    MinimapZoneText:SetPoint("CENTER", MinimapZoneTextButton, "CENTER", 0, 0)
+    MinimapZoneText:SetJustifyH("CENTER")
     ApplyFont(MinimapZoneText, 12)
   end
 
@@ -475,37 +491,66 @@ function mod:StyleMinimap()
   end
 
   if GameTimeFrame and GameTimeTexture then
-    GameTimeFrame:SetSize(20, 20)
-    GameTimeFrame:ClearAllPoints()
-    GameTimeFrame:SetPoint("LEFT", MinimapZoneText, "RIGHT", 0, 0)
-    GameTimeFrame:SetHitRectInsets(0, 0, 0, 0)
+    if GameTimeFrame.EnableMouse then
+      GameTimeFrame:EnableMouse(false)
+    end
+    if GameTimeFrame.SetAlpha then
+      GameTimeFrame:SetAlpha(0)
+    end
     GameTimeTexture:Hide()
-
-    if not GameTimeFrame.texture then
-      GameTimeFrame.texture = GameTimeFrame:CreateTexture(nil, "ARTWORK")
-      GameTimeFrame.texture:SetSize(16, 16)
-      GameTimeFrame.texture:SetPoint("CENTER", 0, 0)
-      GameTimeFrame.texture:SetTexture(947347)
+    if GameTimeFrame.texture and GameTimeFrame.texture.Hide then
+      GameTimeFrame.texture:Hide()
     end
-
-    local minX = select(1, GameTimeTexture:GetTexCoord())
-    if minX == 0 then
-      GameTimeFrame.texture:SetTexCoord(0.26, 0.39, 0.65, 0.91)
-    else
-      GameTimeFrame.texture:SetTexCoord(0.44, 0.56, 0.64, 0.91)
-    end
-
-    if not state.timeTextureHooked then
-      hooksecurefunc(GameTimeTexture, "SetTexCoord", function(_, texMinX)
+    GameTimeFrame:Hide()
+    if not state.gameTimeShowHooked then
+      hooksecurefunc(GameTimeFrame, "Show", function(frame)
         if not IsFeatureEnabled() then return end
-        if not GameTimeFrame.texture then return end
-        if texMinX == 0 then
-          GameTimeFrame.texture:SetTexCoord(0.26, 0.39, 0.65, 0.91)
-        else
-          GameTimeFrame.texture:SetTexCoord(0.44, 0.56, 0.64, 0.91)
-        end
+        RunSetPointGuard("inGameTimeShowHook", function()
+          if frame.EnableMouse then
+            frame:EnableMouse(false)
+          end
+          if frame.SetAlpha then
+            frame:SetAlpha(0)
+          end
+          if GameTimeTexture and GameTimeTexture.Hide then
+            GameTimeTexture:Hide()
+          end
+          if frame.texture and frame.texture.Hide then
+            frame.texture:Hide()
+          end
+          frame:Hide()
+        end)
       end)
-      state.timeTextureHooked = true
+      state.gameTimeShowHooked = true
+    end
+  elseif GameTimeFrame then
+    if GameTimeFrame.EnableMouse then
+      GameTimeFrame:EnableMouse(false)
+    end
+    if GameTimeFrame.SetAlpha then
+      GameTimeFrame:SetAlpha(0)
+    end
+    if GameTimeFrame.texture and GameTimeFrame.texture.Hide then
+      GameTimeFrame.texture:Hide()
+    end
+    GameTimeFrame:Hide()
+    if not state.gameTimeShowHooked then
+      hooksecurefunc(GameTimeFrame, "Show", function(frame)
+        if not IsFeatureEnabled() then return end
+        RunSetPointGuard("inGameTimeShowHook", function()
+          if frame.EnableMouse then
+            frame:EnableMouse(false)
+          end
+          if frame.SetAlpha then
+            frame:SetAlpha(0)
+          end
+          if frame.texture and frame.texture.Hide then
+            frame.texture:Hide()
+          end
+          frame:Hide()
+        end)
+      end)
+      state.gameTimeShowHooked = true
     end
   end
 
@@ -1115,14 +1160,25 @@ function mod.StyleTimeManagerClockButton()
   if not IsAddonLoadedCompat("Blizzard_TimeManager") then return end
   if not IsFeatureEnabled() then return end
 
-  if TimeManagerClockButton and MinimapZoneText then
+  if TimeManagerClockButton then
     TimeManagerClockButton:SetSize(35, 20)
     TimeManagerClockButton:ClearAllPoints()
-    TimeManagerClockButton:SetPoint("LEFT", MinimapZoneText, "RIGHT", 20, 0)
+    TimeManagerClockButton:SetPoint("BOTTOM", Minimap, "BOTTOM", 0, 6, CLOCK_POINT_FLAG)
+    if not state.clockPointHooked then
+      hooksecurefunc(TimeManagerClockButton, "SetPoint", function(frame, _, _, _, _, _, flag)
+        if flag == CLOCK_POINT_FLAG then return end
+        if not IsFeatureEnabled() then return end
+        RunSetPointGuard("inClockPointHook", function()
+          frame:ClearAllPoints()
+          frame:SetPoint("BOTTOM", Minimap, "BOTTOM", 0, 6, CLOCK_POINT_FLAG)
+        end)
+      end)
+      state.clockPointHooked = true
+    end
 
     local label = select(2, TimeManagerClockButton:GetRegions())
     if label and label.SetJustifyH then
-      label:SetJustifyH("LEFT")
+      label:SetJustifyH("CENTER")
       ApplyFont(label, 12)
     end
 
