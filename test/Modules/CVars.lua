@@ -115,6 +115,30 @@ local function ShouldHideOptionForCVar(name)
   return not CVarExists(name)
 end
 
+local function IsAddonLoaded(addonName)
+  if C_AddOns and C_AddOns.IsAddOnLoaded then
+    return not not C_AddOns.IsAddOnLoaded(addonName)
+  end
+  if IsAddOnLoaded then
+    return not not IsAddOnLoaded(addonName)
+  end
+  return false
+end
+
+local function IsPlaterLoaded()
+  return IsAddonLoaded("Plater")
+end
+
+local PLATER_FORCED_FRIENDLY_CVARS = {
+  nameplateShowFriends = true,
+  nameplateShowFriendlyNPCs = true,
+  nameplateShowFriendlyMinions = true,
+}
+
+local function IsPlaterForcedFriendlyCVar(cvar)
+  return cvar and PLATER_FORCED_FRIENDLY_CVARS[cvar] and true or false
+end
+
 -- -----------------------------
 -- Safe CVar wrappers
 -- -----------------------------
@@ -165,13 +189,7 @@ end
 -- Refresh nudges (safe)
 -- -----------------------------
 local function RefreshNameplates()
-  local platerLoaded = false
-  if C_AddOns and C_AddOns.IsAddOnLoaded then
-    platerLoaded = not not C_AddOns.IsAddOnLoaded("Plater")
-  elseif IsAddOnLoaded then
-    platerLoaded = not not IsAddOnLoaded("Plater")
-  end
-  if platerLoaded then return end
+  if IsPlaterLoaded() then return end
   if InCombatLockdown and InCombatLockdown() then return end
   if NamePlateDriverFrame and NamePlateDriverFrame.UpdateNamePlateOptions then
     NamePlateDriverFrame:UpdateNamePlateOptions()
@@ -184,30 +202,6 @@ end
 
 local function RefreshTooltips()
   -- Tooltip CVars usually apply on next show; nothing required.
-end
-
-local function IsAddonLoaded(addonName)
-  if C_AddOns and C_AddOns.IsAddOnLoaded then
-    return not not C_AddOns.IsAddOnLoaded(addonName)
-  end
-  if IsAddOnLoaded then
-    return not not IsAddOnLoaded(addonName)
-  end
-  return false
-end
-
-local function IsPlaterLoaded()
-  return IsAddonLoaded("Plater")
-end
-
-local PLATER_FORCED_FRIENDLY_CVARS = {
-  nameplateShowFriends = true,
-  nameplateShowFriendlyNPCs = true,
-  nameplateShowFriendlyMinions = true,
-}
-
-local function IsPlaterForcedFriendlyCVar(cvar)
-  return cvar and PLATER_FORCED_FRIENDLY_CVARS[cvar] and true or false
 end
 
 local function EnforcePlaterNameplateCVars()
@@ -612,6 +606,10 @@ function mod.BuildOptions(_)
         perChar = true,
         order = 43,
         onChange = RefreshNameplates,
+        hideIfMissing = false,
+        hidden = function()
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriends")
+        end,
       }),
       nameplateShowFriendlyNPCs = MakeToggle({
         name = "Show Friendly NPC Nameplates",
@@ -620,6 +618,10 @@ function mod.BuildOptions(_)
         perChar = true,
         order = 44,
         onChange = RefreshNameplates,
+        hideIfMissing = false,
+        hidden = function()
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyNPCs")
+        end,
       }),
       nameplateShowFriendlyMinions = MakeToggle({
         name = "Show Friendly Minion Nameplates",
@@ -628,6 +630,10 @@ function mod.BuildOptions(_)
         perChar = true,
         order = 45,
         onChange = RefreshNameplates,
+        hideIfMissing = false,
+        hidden = function()
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyMinions")
+        end,
       }),
 
       nameplateMotion = MakeSelect({

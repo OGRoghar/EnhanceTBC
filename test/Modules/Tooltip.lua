@@ -127,6 +127,17 @@ local function ApplyStyleToTooltip(tip)
     SetBackdropColor(tip, bg.r or 0, bg.g or 0, bg.b or 0, bg.a or 1)
     SetBackdropBorderColor(tip, br.r or 1, br.g or 1, br.b or 1, br.a or 1)
     ApplyBackdropFallback(tip, bg, br)
+
+    -- Keep a guaranteed filled background on NineSlice tooltips.
+    if tip.NineSlice and tip.NineSlice.Center then
+      tip.NineSlice:Show()
+      if tip.NineSlice.Center.SetVertexColor then
+        tip.NineSlice.Center:SetVertexColor(bg.r or 0, bg.g or 0, bg.b or 0, bg.a or 1)
+      end
+      if tip.NineSlice.Center.SetAlpha then
+        tip.NineSlice.Center:SetAlpha(bg.a or 1)
+      end
+    end
   end
 
   -- Accent line (solid, safe) - using db.skin.grad for the color
@@ -148,18 +159,35 @@ local function ApplyStyleToTooltip(tip)
   end
 end
 
-local function ApplyTooltipNineSlice(tip, hide)
+local function ApplyTooltipNineSlice(tip, use_skin, skin)
   if not tip or not tip.NineSlice then return end
-  if hide then
-    tip.NineSlice:Hide()
-    if not tip._etbcNineSliceShow then
-      tip._etbcNineSliceShow = tip.NineSlice.Show
+  if use_skin then
+    local bg = (skin and skin.bg) or { r = 0.03, g = 0.06, b = 0.03, a = 0.92 }
+    local br = (skin and skin.border) or { r = 0.20, g = 1.00, b = 0.20, a = 0.95 }
+
+    tip.NineSlice:Show()
+    for _, region in pairs({ tip.NineSlice:GetRegions() }) do
+      if region == tip.NineSlice.Center then
+        if region.SetVertexColor then
+          region:SetVertexColor(bg.r or 0, bg.g or 0, bg.b or 0, bg.a or 1)
+        end
+        if region.SetAlpha then
+          region:SetAlpha(bg.a or 1)
+        end
+      elseif region then
+        if region.SetVertexColor then
+          region:SetVertexColor(br.r or 1, br.g or 1, br.b or 1, br.a or 1)
+        end
+        if region.SetAlpha then
+          region:SetAlpha(br.a or 1)
+        end
+      end
     end
-    tip.NineSlice.Show = function() end
   else
-    if tip._etbcNineSliceShow then
-      tip.NineSlice.Show = tip._etbcNineSliceShow
-      tip._etbcNineSliceShow = nil
+    for _, region in pairs({ tip.NineSlice:GetRegions() }) do
+      if region and region.SetAlpha then
+        region:SetAlpha(1)
+      end
     end
     tip.NineSlice:Show()
   end
@@ -786,7 +814,7 @@ function mod.Apply(_)
     if tip then
       ApplyTooltipBackdrop(tip)
       ApplyTooltipBorder(tip)
-      ApplyTooltipNineSlice(tip, db.skin and db.skin.enabled)
+      ApplyTooltipNineSlice(tip, db.skin and db.skin.enabled, db.skin)
     end
   end
 
