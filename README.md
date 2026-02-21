@@ -1,7 +1,5 @@
 # EnhanceTBC
 
-[![CI](https://github.com/OGRoghar/EnhanceTBC/actions/workflows/ci.yml/badge.svg)](https://github.com/OGRoghar/EnhanceTBC/actions/workflows/ci.yml)
-
 A quality-of-life addon suite for World of Warcraft: The Burning Crusade Anniversary Edition (TBC 2026, Ver 2.5.5, interface 20505).
 
 EnhanceTBC focuses on modernizing core UI behaviors without changing gameplay. It improves visibility, consistency, and usability across the default Blizzard interface while keeping the look and feel of TBC.
