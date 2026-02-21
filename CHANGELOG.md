@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.10 - 2026-02-21
+- Added:
+	- Minimap tracking state widgets for the icons row and sink tray, with live refresh from `MINIMAP_UPDATE_TRACKING`.
+	- Optional quick-toggle cycling for tracking filters via left-click when enabled in settings.
+- Fixed:
+	- Prevented `MinimapPlus` startup error on `PLAYER_ENTERING_WORLD` from calling missing `updateTrackingDisplay`.
+- Release:
+	- Prepared version metadata for `1.2.10`.
+
 ## v1.2.9 - 2026-02-21
 - Added:
 	- Expanded 2.5.5/20505 compatibility helpers and API fallbacks in `Core/Compat.lua`.
