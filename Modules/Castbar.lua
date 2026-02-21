@@ -537,6 +537,15 @@ local function ResetCustomFade(bar)
   bar._etbcFadeStartAlpha = nil
 end
 
+local function HideBarNow(bar)
+  if not bar then return end
+  if bar.UpdateShownState then
+    bar:UpdateShownState(false)
+  elseif bar.Hide then
+    bar:Hide()
+  end
+end
+
 local function HandleCustomFade(bar, elapsed)
   if not bar or not bar._etbcManaged then
     ResetCustomFade(bar)
@@ -544,18 +553,14 @@ local function HandleCustomFade(bar, elapsed)
   end
 
   local db = GetDB()
+  local now = (GetTime and GetTime()) or 0
+  local holdExpired = (not bar.holdTime) or (bar.holdTime <= now)
+  local idleNoEffects = (not bar.casting) and (not bar.channeling) and (not bar.flash) and holdExpired
+
   if not (db.enabled and db.fadeOut) then
-    if bar.fadeOut then
+    if bar.fadeOut or idleNoEffects then
       bar.fadeOut = nil
-      local hide
-      if bar.UpdateShownState then
-        hide = function() bar:UpdateShownState(false) end
-      else
-        hide = function()
-          if bar.Hide then bar:Hide() end
-        end
-      end
-      hide()
+      HideBarNow(bar)
     end
     ResetCustomFade(bar)
     return
@@ -573,7 +578,12 @@ local function HandleCustomFade(bar, elapsed)
     bar.fadeOut = nil
   end
 
-  if not bar._etbcFadeActive then return end
+  if not bar._etbcFadeActive then
+    if idleNoEffects then
+      HideBarNow(bar)
+    end
+    return
+  end
 
   local duration = tonumber(db.fadeOutTime) or 0.20
   if duration < 0.01 then duration = 0.01 end
@@ -587,11 +597,7 @@ local function HandleCustomFade(bar, elapsed)
       bar:SetAlpha(0)
     end
     ResetCustomFade(bar)
-    if bar.UpdateShownState then
-      bar:UpdateShownState(false)
-    elseif bar.Hide then
-      bar:Hide()
-    end
+    HideBarNow(bar)
     return
   end
 
@@ -602,6 +608,7 @@ local function HandleCustomFade(bar, elapsed)
   elseif bar.SetAlpha then
     bar:SetAlpha(alpha)
   end
+
 end
 
 -- Returns a good "content" region inside the castbar for overlay anchoring.
@@ -1228,7 +1235,6 @@ local function EnsureHooks()
       or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
       local pb = _G.PlayerCastingBarFrame or _G.CastingBarFrame
       if pb then
-        ResetCustomFade(pb)
         pb._etbcLatencySeconds = nil
         if pb._etbcLatency then pb._etbcLatency:Hide() end
         HideChannelTicks(pb)
