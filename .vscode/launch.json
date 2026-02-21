@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lua",
+      "request": "attach",
+      "name": "Attach to WoW TBC Debug Server",
+      "host": "localhost",
+      "port": 11411,
+      "sourceBasePath": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lua",
+      "request": "launch",
+      "name": "Launch WoW TBC Client",
+      "program": "${env:WOW_PATH}/WowClassic.exe",
+      "args": [],
+      "cwd": "${env:WOW_PATH}",
+      "stopOnEntry": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "lua",
+      "request": "attach",
+      "name": "Debug with Console",
+      "host": "localhost",
+      "port": 11411,
+      "sourceBasePath": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "logLevel": 1
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Launch & Debug WoW TBC",
+      "configurations": ["Launch WoW TBC Client", "Attach to WoW TBC Debug Server"],
+      "stopAll": true,
+      "preLaunchTask": "validate-addon"
+    }
+  ]
+}

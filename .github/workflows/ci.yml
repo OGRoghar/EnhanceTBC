@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install Lua
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+      
+      - name: Install LuaRocks
+        uses: leafo/gh-actions-luarocks@v4
+      
+      - name: Install dependencies with LuaRocks
+        run: |
+          luarocks install busted
+          luarocks install luacov
+      
+      - name: Run tests
+        run: busted --verbose --coverage
+      
+      - name: Generate coverage report
+        if: always()
+        run: |
+          if [ -f luacov.stats.out ]; then
+            luacov
+          else
+            echo "No coverage stats file found, skipping coverage report"
+          fi
+      
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: luacov.report.out
+          if-no-files-found: warn
