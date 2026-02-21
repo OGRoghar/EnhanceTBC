@@ -19,12 +19,14 @@ local TRACKING_POINT_FLAG = "etbc_tracking_button"
 local LFG_POINT_FLAG = "etbc_lfg_button"
 local ZONE_TEXT_POINT_FLAG = "etbc_zone_text_button"
 local CLOCK_POINT_FLAG = "etbc_clock_button"
+local TRACKING_NONE_TEXTURE = "Interface\\Minimap\\Tracking\\None"
 
 local SINK_ICON_SIZE = 18
 local SINK_ICON_SPACING = 4
 local SINK_PADDING = 6
 local SINK_MIN_WIDTH = 104
 local SINK_MIN_HEIGHT = 32
+local SINK_TRACKING_ROW_HEIGHT = 16
 
 local state = {
   styled = false,
@@ -219,6 +221,148 @@ local function ApplyBackdrop(frame)
   frame:SetBackdropBorderColor(0.04, 0.04, 0.04)
 end
 
+local function GetTrackingEntries()
+  local entries = {}
+  if C_Minimap and C_Minimap.GetNumTrackingTypes and C_Minimap.GetTrackingInfo then
+    local count = tonumber(C_Minimap.GetNumTrackingTypes()) or 0
+    for index = 1, count do
+      local info = C_Minimap.GetTrackingInfo(index)
+      if info then
+        entries[#entries + 1] = {
+          index = index,
+          name = info.name or ("#" .. tostring(index)),
+          texture = info.texture,
+          active = info.active and true or false,
+          type = info.type,
+        }
+      end
+    end
+  end
+  return entries
+end
+
+local function GetTrackingSnapshot()
+  local snapshot = {
+    activeCount = 0,
+    names = {},
+    texture = TRACKING_NONE_TEXTURE,
+  }
+
+  local entries = GetTrackingEntries()
+  local firstActiveTexture
+  local spellTexture
+  for _, entry in ipairs(entries) do
+    if entry.active then
+      snapshot.activeCount = snapshot.activeCount + 1
+      snapshot.names[#snapshot.names + 1] = entry.name
+      if not firstActiveTexture and entry.texture then
+        firstActiveTexture = entry.texture
+      end
+      if not spellTexture and entry.type == "spell" and entry.texture then
+        spellTexture = entry.texture
+      end
+    end
+  end
+
+  if spellTexture then
+    snapshot.texture = spellTexture
+  elseif firstActiveTexture then
+    snapshot.texture = firstActiveTexture
+  elseif GetTrackingTexture then
+    local icon = GetTrackingTexture()
+    if icon then
+      snapshot.texture = icon
+      snapshot.activeCount = 1
+      snapshot.names[1] = TRACKING or "Tracking"
+    end
+  end
+
+  return snapshot
+end
+
+local function CycleTrackingForward()
+  local db = GetDB()
+  if not db.enableTrackingQuickToggle then return false end
+  if not (C_Minimap and C_Minimap.GetNumTrackingTypes and C_Minimap.GetTrackingInfo and C_Minimap.SetTracking) then
+    return false
+  end
+
+  local ordered = {}
+  local activePos
+  local count = tonumber(C_Minimap.GetNumTrackingTypes()) or 0
+  for index = 1, count do
+    local info = C_Minimap.GetTrackingInfo(index)
+    if info then
+      ordered[#ordered + 1] = index
+      if info.active and not activePos then
+        activePos = #ordered
+      end
+    end
+  end
+
+  if #ordered == 0 then return false end
+
+  local nextPos = activePos and ((activePos % #ordered) + 1) or 1
+  if C_Minimap.ClearAllTracking then
+    C_Minimap.ClearAllTracking()
+  else
+    for _, index in ipairs(ordered) do
+      local info = C_Minimap.GetTrackingInfo(index)
+      if info and info.active then
+        C_Minimap.SetTracking(index, false)
+      end
+    end
+  end
+
+  C_Minimap.SetTracking(ordered[nextPos], true)
+  return true
+end
+
+local function ShowTrackingTooltip(anchor)
+  if not (GameTooltip and anchor) then return end
+
+  GameTooltip:SetOwner(anchor, "ANCHOR_BOTTOMLEFT")
+  GameTooltip:SetText(TRACKING or "Tracking", 1, 1, 1)
+
+  local snapshot = GetTrackingSnapshot()
+  if snapshot.activeCount > 0 then
+    local maxLines = math.min(#snapshot.names, 6)
+    for i = 1, maxLines do
+      GameTooltip:AddLine(snapshot.names[i], 0.8, 1.0, 0.8, true)
+    end
+    if #snapshot.names > maxLines then
+      GameTooltip:AddLine("...", 0.6, 0.6, 0.6)
+    end
+  else
+    GameTooltip:AddLine(MINIMAP_TRACKING_TOOLTIP_NONE or (NONE or "None"), 0.7, 0.7, 0.7, true)
+  end
+
+  local db = GetDB()
+  if db.enableTrackingQuickToggle then
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Left-click to cycle tracking filters.", 0.8, 0.8, 0.8, true)
+  end
+  GameTooltip:Show()
+end
+
+local function TrackingWidget_OnEnter(self)
+  ShowTrackingTooltip(self)
+end
+
+local function TrackingWidget_OnLeave()
+  if GameTooltip then GameTooltip:Hide() end
+end
+
+local function TrackingWidget_OnClick()
+  if not CycleTrackingForward() then return end
+  if state.iconsFrame and state.iconsFrame.updateTrackingDisplay then
+    state.iconsFrame:updateTrackingDisplay()
+  end
+  if state.sinkFrame and state.sinkFrame.updateTrackingDisplay then
+    state.sinkFrame:updateTrackingDisplay()
+  end
+end
+
 local function IconsEnabled()
   local db = GetDB()
   return db.enabled and db.minimap_icons
@@ -377,7 +521,12 @@ local function EnsureEventFrame()
         state.iconsFrame:updateDurabilityDisplay()
         state.iconsFrame:updateFriendsDisplay()
         state.iconsFrame:updateGuildDisplay()
-        state.iconsFrame:updateTrackingDisplay()
+        if state.iconsFrame.updateTrackingDisplay then
+          state.iconsFrame:updateTrackingDisplay()
+        end
+      end
+      if state.sinkFrame and state.sinkFrame.updateTrackingDisplay then
+        state.sinkFrame:updateTrackingDisplay()
       end
       mod:StyleTimeManagerClockButton()
       mod:MoveMinimapLFGButton()
@@ -693,6 +842,21 @@ function mod.CreateIconsFrame()
   frame.guild_text:SetJustifyV("MIDDLE")
   ApplyFont(frame.guild_text, 8.5)
 
+  frame.tracking_button = CreateFrame("Button", nil, frame)
+  frame.tracking_button:SetSize(14, 14)
+  frame.tracking_button:SetPoint("LEFT", 78, 0)
+  frame.tracking_button:RegisterForClicks("LeftButtonUp")
+  frame.tracking_button:SetScript("OnEnter", TrackingWidget_OnEnter)
+  frame.tracking_button:SetScript("OnLeave", TrackingWidget_OnLeave)
+  frame.tracking_button:SetScript("OnClick", TrackingWidget_OnClick)
+
+  frame.tracking_icon = frame.tracking_button:CreateTexture(nil, "OVERLAY")
+  frame.tracking_icon:SetSize(12.5, 12.5)
+  frame.tracking_icon:SetPoint("CENTER")
+  frame.tracking_icon:SetTexCoord(0.05, 0.95, 0.05, 0.95)
+  frame.tracking_icon:SetTexture(TRACKING_NONE_TEXTURE)
+  frame.tracking_button:Hide()
+
   frame.inventory_text = frame:CreateFontString(nil, "OVERLAY")
   frame.inventory_text:SetSize(50, frame:GetHeight())
   frame.inventory_text:SetPoint("RIGHT", 23, 0)
@@ -744,6 +908,21 @@ function mod.CreateIconsFrame()
     else
       self.guild_text:SetText("--")
     end
+  end
+
+  function frame:updateTrackingDisplay()
+    if not IconsEnabled() then return end
+    local db = GetDB()
+    local show = db.showTrackingState and true or false
+    self.tracking_button:SetShown(show)
+    if not show then return end
+
+    local snapshot = GetTrackingSnapshot()
+    self.tracking_icon:SetTexture(snapshot.texture or TRACKING_NONE_TEXTURE)
+    if self.tracking_icon.SetDesaturated then
+      self.tracking_icon:SetDesaturated(snapshot.activeCount == 0)
+    end
+    self.tracking_icon:SetAlpha(snapshot.activeCount > 0 and 1 or 0.5)
   end
 
   function frame:updateInventoryDisplay()
@@ -824,6 +1003,61 @@ function mod.EnsureSinkFrame()
   ApplyFont(state.sinkFrame.emptyText, 9)
   state.sinkFrame.emptyText:SetText("No addon minimap buttons")
   state.sinkFrame.emptyText:Hide()
+
+  state.sinkFrame.trackingButton = CreateFrame("Button", nil, state.sinkFrame)
+  state.sinkFrame.trackingButton:SetHeight(SINK_TRACKING_ROW_HEIGHT)
+  state.sinkFrame.trackingButton:SetPoint("TOPLEFT", state.sinkFrame, "TOPLEFT", SINK_PADDING, -3)
+  state.sinkFrame.trackingButton:SetPoint("TOPRIGHT", state.sinkFrame, "TOPRIGHT", -SINK_PADDING, -3)
+  state.sinkFrame.trackingButton:RegisterForClicks("LeftButtonUp")
+  state.sinkFrame.trackingButton:SetScript("OnEnter", TrackingWidget_OnEnter)
+  state.sinkFrame.trackingButton:SetScript("OnLeave", TrackingWidget_OnLeave)
+  state.sinkFrame.trackingButton:SetScript("OnClick", TrackingWidget_OnClick)
+  state.sinkFrame.trackingButton.icon = state.sinkFrame.trackingButton:CreateTexture(nil, "OVERLAY")
+  state.sinkFrame.trackingButton.icon:SetSize(12.5, 12.5)
+  state.sinkFrame.trackingButton.icon:SetPoint("LEFT", 0, 0)
+  state.sinkFrame.trackingButton.icon:SetTexCoord(0.05, 0.95, 0.05, 0.95)
+  state.sinkFrame.trackingButton.icon:SetTexture(TRACKING_NONE_TEXTURE)
+  state.sinkFrame.trackingButton.text = state.sinkFrame.trackingButton:CreateFontString(nil, "OVERLAY")
+  state.sinkFrame.trackingButton.text:SetPoint("LEFT", state.sinkFrame.trackingButton.icon, "RIGHT", 4, 0)
+  state.sinkFrame.trackingButton.text:SetPoint("RIGHT", state.sinkFrame.trackingButton, "RIGHT", -2, 0)
+  state.sinkFrame.trackingButton.text:SetJustifyH("LEFT")
+  state.sinkFrame.trackingButton.text:SetJustifyV("MIDDLE")
+  ApplyFont(state.sinkFrame.trackingButton.text, 8)
+  state.sinkFrame.trackingButton:Hide()
+
+  function state.sinkFrame:updateTrackingDisplay()
+    local db = GetDB()
+    local show = IsFeatureEnabled() and db.showTrackingState and db.sink_addons and db.sink_visible
+    local changed = (self._trackingShown ~= show)
+    self._trackingShown = show
+
+    if self.trackingButton then
+      self.trackingButton:SetShown(show)
+      if show then
+        local snapshot = GetTrackingSnapshot()
+        self.trackingButton.icon:SetTexture(snapshot.texture or TRACKING_NONE_TEXTURE)
+        if self.trackingButton.icon.SetDesaturated then
+          self.trackingButton.icon:SetDesaturated(snapshot.activeCount == 0)
+        end
+        self.trackingButton.icon:SetAlpha(snapshot.activeCount > 0 and 1 or 0.5)
+        if snapshot.activeCount > 0 then
+          if snapshot.activeCount == 1 then
+            self.trackingButton.text:SetText(snapshot.names[1] or (TRACKING or "Tracking"))
+          else
+            self.trackingButton.text:SetText(tostring(snapshot.activeCount) .. " active")
+          end
+          self.trackingButton.text:SetTextColor(0.65, 1.0, 0.65)
+        else
+          self.trackingButton.text:SetText(NONE or "None")
+          self.trackingButton.text:SetTextColor(0.75, 0.75, 0.75)
+        end
+      end
+    end
+
+    if changed then
+      mod:LayoutSinkButtons()
+    end
+  end
 
   state.sinkDragHandle = CreateFrame("Button", "EnhanceTBC_MinimapSinkDragHandle", UIParent, "BackdropTemplate")
   state.sinkDragHandle:SetSize(14, 14)
@@ -1038,6 +1272,13 @@ function mod.LayoutSinkButtons()
   local btnSize = SINK_ICON_SIZE + 6
   local spacing = SINK_ICON_SPACING
   local pad = SINK_PADDING
+  local trackingRowHeight = 0
+  if state.sinkFrame.trackingButton
+    and state.sinkFrame.trackingButton.IsShown
+    and state.sinkFrame.trackingButton:IsShown()
+  then
+    trackingRowHeight = SINK_TRACKING_ROW_HEIGHT
+  end
   local cols = 1
   if count > 1 then
     cols = math.min(count, math.max(4, math.ceil(math.sqrt(count))))
@@ -1048,19 +1289,22 @@ function mod.LayoutSinkButtons()
   local contentWidth = (cols * btnSize) + ((cols - 1) * spacing)
   local contentHeight = (rows * btnSize) + ((rows - 1) * spacing)
   local width = (pad * 2) + contentWidth
-  local height = (pad * 2) + contentHeight
+  local height = (pad * 2) + contentHeight + trackingRowHeight
 
   if count == 0 then
     width = 140
-    height = SINK_MIN_HEIGHT
+    height = SINK_MIN_HEIGHT + trackingRowHeight
   end
 
   if width < SINK_MIN_WIDTH then width = SINK_MIN_WIDTH end
-  if height < SINK_MIN_HEIGHT then height = SINK_MIN_HEIGHT end
+  if height < (SINK_MIN_HEIGHT + trackingRowHeight) then
+    height = SINK_MIN_HEIGHT + trackingRowHeight
+  end
 
   state.sinkFrame:SetSize(width, height)
 
-  local startY = math.floor((height - contentHeight) / 2 + 0.5)
+  local availableHeight = height - trackingRowHeight
+  local startY = trackingRowHeight + math.floor((availableHeight - contentHeight) / 2 + 0.5)
   for i = 1, count do
     local btn = buttons[i]
     local row = math.floor((i - 1) / cols)
@@ -1311,6 +1555,9 @@ function mod:Apply()
     state.iconsFrame:updateGuildDisplay()
     state.iconsFrame:updateDurabilityDisplay()
     state.iconsFrame:updateInventoryDisplay()
+    if state.iconsFrame.updateTrackingDisplay then
+      state.iconsFrame:updateTrackingDisplay()
+    end
   end
 
   if db.sink_addons and db.sink_visible then
@@ -1320,6 +1567,9 @@ function mod:Apply()
     SetManagedButtonsShown(false)
   else
     self:RestoreSinkButtons()
+  end
+  if state.sinkFrame and state.sinkFrame.updateTrackingDisplay then
+    state.sinkFrame:updateTrackingDisplay()
   end
 
   if state.performanceFrame then
