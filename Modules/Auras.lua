@@ -427,6 +427,12 @@ local function AcquireIcon()
   icon.cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
   icon.cooldown:SetAllPoints(icon)
   icon.cooldown.noCooldownCount = true
+  if icon.cooldown.SetReverse then
+    icon.cooldown:SetReverse(true)
+  end
+  if icon.cooldown.SetDrawSwipe then
+    icon.cooldown:SetDrawSwipe(true)
+  end
   if icon.cooldown.SetHideCountdownNumbers then
     icon.cooldown:SetHideCountdownNumbers(true)
   end
@@ -566,6 +572,12 @@ local function ApplyVisuals(icon, common, layout, data)
     icon.cooldown:Show()
     if icon.cooldown.SetHideCountdownNumbers then
       icon.cooldown:SetHideCountdownNumbers(true)
+    end
+    if icon.cooldown.SetReverse then
+      icon.cooldown:SetReverse(true)
+    end
+    if icon.cooldown.SetDrawSwipe then
+      icon.cooldown:SetDrawSwipe(true)
     end
     local start = data.expiration - data.duration
     icon.cooldown:SetCooldown(start, data.duration)
