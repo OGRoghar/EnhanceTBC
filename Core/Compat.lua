@@ -85,24 +85,6 @@ do
 end
 
 -- ---------------------------------------------------------
--- GetRaidTargetIndex compatibility
--- TBC 20505 NamePlate code can call GetRaidTargetIndex with nil/invalid unit.
--- Guarding this prevents Blizzard_NamePlates hard errors.
--- ---------------------------------------------------------
-do
-  if type(GetRaidTargetIndex) == "function" and not _G.__etbcRaidTargetIndexShimInstalled then
-    local origGetRaidTargetIndex = GetRaidTargetIndex
-    _G.GetRaidTargetIndex = function(unit, ...)
-      if type(unit) ~= "string" or unit == "" then
-        return nil
-      end
-      return origGetRaidTargetIndex(unit, ...)
-    end
-    _G.__etbcRaidTargetIndexShimInstalled = true
-  end
-end
-
--- ---------------------------------------------------------
 -- Helpers used across modules
 -- ---------------------------------------------------------
 local function DebugCompat(msg)
@@ -124,6 +106,16 @@ function C.SafeCall(fn, ...)
   if not ok and DEFAULT_CHAT_FRAME then
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99EnhanceTBC|r Compat error: " .. tostring(err))
   end
+end
+
+function C.GetRaidTargetIndexSafe(unit, ...)
+  if type(unit) ~= "string" or unit == "" then
+    return nil
+  end
+  if type(GetRaidTargetIndex) ~= "function" then
+    return nil
+  end
+  return GetRaidTargetIndex(unit, ...)
 end
 
 -- ---------------------------------------------------------

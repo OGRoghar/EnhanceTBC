@@ -19,7 +19,6 @@ local formatted_interrupts = {}
 local formatted_player_debuffs = {}
 local formatted_absorb_buffs = {}
 local formatted_debuffs_by_spell = {}
-local formatted_interrupts_by_spell = {}
 local formatted_player_debuffs_by_spell = {}
 local formatted_absorb_buffs_by_spell = {}
 local prioritized_debuffs = {}
@@ -542,7 +541,6 @@ local function BuildData()
   formatted_player_debuffs = {}
   formatted_absorb_buffs = {}
   formatted_debuffs_by_spell = {}
-  formatted_interrupts_by_spell = {}
   formatted_player_debuffs_by_spell = {}
   formatted_absorb_buffs_by_spell = {}
   prioritized_debuffs = {}
@@ -581,9 +579,6 @@ local function BuildData()
       interrupt.priority = 8
       interrupt.interrupt = true
       formatted_interrupts[interrupt.name] = interrupt
-      if interrupt.spell_id then
-        formatted_interrupts_by_spell[interrupt.spell_id] = interrupt
-      end
     end
   end
 
@@ -639,10 +634,11 @@ local function FindTrackedAbsorbAura(unit)
     if spellID then
       local auraData = C_UnitAuras.GetUnitAuraBySpellID(unit, spellID)
       if auraData then
-        if absorbBuff.track_spell_id and auraData.spellId
-          and not absorbBuff.track_spell_id[auraData.spellId] then
-          -- skip rank mismatch
-        else
+        if not (
+          absorbBuff.track_spell_id
+          and auraData.spellId
+          and not absorbBuff.track_spell_id[auraData.spellId]
+        ) then
           return absorbBuff, auraData
         end
       end
@@ -668,10 +664,11 @@ local function FindPriorityTrackedDebuffAura(unit)
     if spellID then
       local auraData = C_UnitAuras.GetUnitAuraBySpellID(unit, spellID)
       if auraData then
-        if debuff.track_spell_id and auraData.spellId
-          and not debuff.track_spell_id[auraData.spellId] then
-          -- skip rank mismatch
-        else
+        if not (
+          debuff.track_spell_id
+          and auraData.spellId
+          and not debuff.track_spell_id[auraData.spellId]
+        ) then
           local expiration = tonumber(auraData.expirationTime) or 0
           local remaining = expiration > 0 and (expiration - now) or 0
           if remaining < 0 then remaining = 0 end
@@ -878,9 +875,7 @@ local function SetNameplateAbsorb(nameplate, unit)
     end
 
     if db.useSpellIDAuraLookup then
-      local absorb_buff = nil
-      local auraData = nil
-      absorb_buff, auraData = FindTrackedAbsorbAura(unit)
+      local absorb_buff, auraData = FindTrackedAbsorbAura(unit)
       if absorb_buff and auraData then
         local unit_health = UnitHealth(unit)
         local unit_health_max = UnitHealthMax(unit)
@@ -2106,21 +2101,18 @@ function mod.Apply(_)
   if IsPlaterLoaded() then
     UnhookEvents()
     ResetNameplates()
-    loaded = false
     return
   end
 
   if not ETBC.db or not ETBC.db.profile or not ETBC.db.profile.general or not ETBC.db.profile.general.enabled then
     UnhookEvents()
     ResetNameplates()
-    loaded = false
     return
   end
 
   if not GetDB().enabled then
     UnhookEvents()
     ResetNameplates()
-    loaded = false
     return
   end
 
@@ -2128,7 +2120,6 @@ function mod.Apply(_)
   HookEvents()
   SetNameplatePadding()
   ApplyExistingNameplates()
-  loaded = true
 end
 
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then

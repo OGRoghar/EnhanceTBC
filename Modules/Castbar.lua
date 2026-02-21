@@ -11,6 +11,55 @@ local Compat = ETBC.Compat or {}
 
 local driver
 local hooked = false
+local unpackFn = unpack or table.unpack
+
+local CASTBAR_DEFAULTS = {
+  enabled = true,
+  player = true,
+  target = true,
+  focus = true,
+
+  width = 240,
+  height = 18,
+  scale = 1.0,
+  xOffset = 0,
+  yOffset = 0,
+
+  font = "Friz Quadrata TT",
+  texture = "Blizzard",
+  fontSize = 12,
+  outline = "OUTLINE",
+  shadow = true,
+  showTime = true,
+  timeFormat = "REMAIN",
+  decimals = 1,
+
+  skin = true,
+  showChannelTicks = false,
+
+  castColor = { 0.25, 0.80, 0.25 },
+  channelColor = { 0.25, 0.55, 1.00 },
+  nonInterruptibleColor = { 0.85, 0.25, 0.25 },
+  backgroundAlpha = 0.35,
+  borderAlpha = 0.95,
+
+  showLatency = true,
+  latencyMode = "CAST",
+  latencyAlpha = 0.45,
+  latencyColor = { 1.0, 0.15, 0.15 },
+
+  fadeOut = true,
+  fadeOutTime = 0.20,
+
+  onlyInCombat = false,
+  oocAlpha = 1.0,
+  combatAlpha = 1.0,
+}
+
+local NAME_TEXT_LEFT_PAD = 6
+local NAME_TEXT_RIGHT_PAD = 6
+local TIMER_TEXT_WIDTH = 52
+local TIMER_TEXT_RIGHT_PAD = 4
 
 local channelingSpells = {
   ["Mind Flay"] = 3,
@@ -38,40 +87,15 @@ local function GetDB()
   ETBC.db.profile.castbar = ETBC.db.profile.castbar or {}
   local db = ETBC.db.profile.castbar
 
-  if db.enabled == nil then db.enabled = true end
-
-  if db.font == nil then db.font = "Friz Quadrata TT" end
-  if db.texture == nil then db.texture = "Blizzard" end
-  if db.fontSize == nil then db.fontSize = 11 end
-  if db.outline == nil then db.outline = "OUTLINE" end
-  if db.shadow == nil then db.shadow = true end
-
-  if db.showTime == nil then db.showTime = true end
-  if db.timeFormat == nil then db.timeFormat = "REMAIN" end -- REMAIN | ELAPSED | BOTH
-  if db.decimals == nil then db.decimals = 1 end
-
-  -- Latency overlay (player only)
-  if db.showLatency == nil then db.showLatency = true end
-  if db.latencyMode == nil then db.latencyMode = "CAST" end -- CAST | NET
-  if db.latencyAlpha == nil then db.latencyAlpha = 0.45 end
-  if db.latencyColor == nil then db.latencyColor = { 1.0, 0.15, 0.15 } end
-
-  if db.showChannelTicks == nil then db.showChannelTicks = false end
-  if db.skin == nil then db.skin = true end
-  if db.backgroundAlpha == nil then db.backgroundAlpha = 0.22 end
-  if db.borderAlpha == nil then db.borderAlpha = 0.88 end
-
-  if db.width == nil then db.width = 195 end
-  if db.height == nil then db.height = 18 end
-  if db.scale == nil then db.scale = 1.0 end
-
-  if db.target == nil then db.target = true end
-  if db.focus == nil then db.focus = true end
-  if db.player == nil then db.player = true end
-
-  if db.onlyInCombat == nil then db.onlyInCombat = false end
-  if db.oocAlpha == nil then db.oocAlpha = 1.0 end
-  if db.combatAlpha == nil then db.combatAlpha = 1.0 end
+  for key, value in pairs(CASTBAR_DEFAULTS) do
+    if db[key] == nil then
+      if type(value) == "table" then
+        db[key] = { value[1], value[2], value[3] }
+      else
+        db[key] = value
+      end
+    end
+  end
 
   return db
 end
@@ -94,7 +118,7 @@ local function StyleFontString(fs)
   if not fs or not fs.SetFont then return end
   local db = GetDB()
   local fontPath = LSM_Fetch("font", db.font, "Fonts\\FRIZQT__.TTF")
-  local size = tonumber(db.fontSize) or 11
+  local size = tonumber(db.fontSize) or 12
   local outline = db.outline or ""
   fs:SetFont(fontPath, size, outline)
 
@@ -128,15 +152,15 @@ local function RestorePoints(frame, points)
   end
 end
 
-local function ApplyBackdrop(frame)
+local function ApplyIconBackdrop(frame)
   if not frame or not frame.SetBackdrop then return end
   frame:SetBackdrop({
     bgFile = "Interface\\Buttons\\WHITE8x8",
     edgeFile = "Interface\\Buttons\\WHITE8x8",
     edgeSize = 1,
   })
-  frame:SetBackdropColor(0.08, 0.10, 0.12, 0.14)
-  frame:SetBackdropBorderColor(0.42, 0.47, 0.55, 0.90)
+  frame:SetBackdropColor(0, 0, 0, 0)
+  frame:SetBackdropBorderColor(0.42, 0.47, 0.55, 0.95)
 end
 
 local function ApplyBackdropAlt(frame)
@@ -161,9 +185,9 @@ local function ApplySkinBackdropColors(bar, skin, db)
     end
   end
 
-  local bgAlpha = tonumber(db.backgroundAlpha) or 0.22
+  local bgAlpha = tonumber(db.backgroundAlpha) or 0.35
   if bgAlpha < 0 then bgAlpha = 0 elseif bgAlpha > 0.8 then bgAlpha = 0.8 end
-  local borderAlpha = tonumber(db.borderAlpha) or 0.88
+  local borderAlpha = tonumber(db.borderAlpha) or 0.95
   if borderAlpha < 0 then borderAlpha = 0 elseif borderAlpha > 1 then borderAlpha = 1 end
 
   local bgR = math.min(1, (sr * 0.35) + 0.10)
@@ -177,8 +201,18 @@ local function ApplySkinBackdropColors(bar, skin, db)
   skin.backdrop:SetBackdropBorderColor(brR, brG, brB, borderAlpha)
 end
 
+local function IsPrimaryPlayerCastbar(bar)
+  return bar == _G.PlayerCastingBarFrame or bar == _G.CastingBarFrame
+end
+
+local function IsPlayerCastbarFamily(bar)
+  return IsPrimaryPlayerCastbar(bar) or bar == _G.PetCastingBarFrame
+end
+
 local function EnsureSkin(bar)
-  if not bar or bar._etbcSkin then return end
+  if not bar then return nil end
+  if bar._etbcSkin then return bar._etbcSkin end
+
   local skin = {}
   bar._etbcSkin = skin
 
@@ -189,8 +223,24 @@ local function EnsureSkin(bar)
     spark = bar.Spark and bar.Spark.IsShown and bar.Spark:IsShown() or false,
   }
 
-  if bar.Icon and bar.Icon.GetPoint then
+  if bar.Text then
+    skin.textPoints = SnapshotPoints(bar.Text)
+    if bar.Text.GetJustifyH then skin.textJustifyH = bar.Text:GetJustifyH() end
+    if bar.Text.GetJustifyV then skin.textJustifyV = bar.Text:GetJustifyV() end
+    if bar.Text.GetWordWrap then skin.textWordWrap = bar.Text:GetWordWrap() end
+  end
+
+  if bar.Icon then
     skin.iconPoints = SnapshotPoints(bar.Icon)
+    skin.iconShown = bar.Icon.IsShown and bar.Icon:IsShown() or false
+    if bar.Icon.GetTexCoord then
+      local l, r, t, b = bar.Icon:GetTexCoord()
+      skin.iconTexCoord = { l, r, t, b }
+    end
+  end
+
+  if IsPrimaryPlayerCastbar(bar) then
+    skin.playerFramePoints = SnapshotPoints(bar)
   end
 
   skin.backdrop = CreateFrame("Frame", nil, bar, "BackdropTemplate")
@@ -207,20 +257,43 @@ local function EnsureSkin(bar)
     skin.iconBackdrop = CreateFrame("Frame", nil, skin.iconBackdropHolder, "BackdropTemplate")
     skin.iconBackdrop:SetPoint("BOTTOMLEFT", skin.iconBackdropHolder, "BOTTOMLEFT", -1, -1)
     skin.iconBackdrop:SetPoint("TOPRIGHT", skin.iconBackdropHolder, "TOPRIGHT", 1, 1)
-    ApplyBackdrop(skin.iconBackdrop)
+    ApplyIconBackdrop(skin.iconBackdrop)
     skin.iconBackdrop:Hide()
 
     bar.Icon:HookScript("OnShow", function()
-      if skin.iconBackdrop then skin.iconBackdrop:Show() end
+      if not skin.iconBackdrop then return end
+      if bar._etbcShowIconBackdrop then
+        skin.iconBackdrop:Show()
+      else
+        skin.iconBackdrop:Hide()
+      end
     end)
 
     bar.Icon:HookScript("OnHide", function()
       if skin.iconBackdrop then skin.iconBackdrop:Hide() end
     end)
   end
+
+  return skin
 end
 
-local function ApplySkin(bar)
+local function RestoreSkin(bar, skin)
+  if not (bar and skin) then return end
+  bar._etbcShowIconBackdrop = false
+  if skin.backdrop then skin.backdrop:Hide() end
+  if skin.iconBackdrop then skin.iconBackdrop:Hide() end
+
+  if bar.Border and bar.Border.Show and skin.regionState.border then bar.Border:Show() end
+  if bar.Border and bar.Border.Hide and not skin.regionState.border then bar.Border:Hide() end
+  if bar.BorderShield and bar.BorderShield.Show and skin.regionState.borderShield then bar.BorderShield:Show() end
+  if bar.BorderShield and bar.BorderShield.Hide and not skin.regionState.borderShield then bar.BorderShield:Hide() end
+  if bar.Flash and bar.Flash.Show and skin.regionState.flash then bar.Flash:Show() end
+  if bar.Flash and bar.Flash.Hide and not skin.regionState.flash then bar.Flash:Hide() end
+  if bar.Spark and bar.Spark.Show and skin.regionState.spark then bar.Spark:Show() end
+  if bar.Spark and bar.Spark.Hide and not skin.regionState.spark then bar.Spark:Hide() end
+end
+
+local function ApplySkin(bar, active)
   local db = GetDB()
   if not bar then return end
 
@@ -228,22 +301,8 @@ local function ApplySkin(bar)
   local skin = bar._etbcSkin
   if not skin then return end
 
-  if not db.enabled or not db.skin then
-    if skin.backdrop then skin.backdrop:Hide() end
-    if skin.iconBackdrop then skin.iconBackdrop:Hide() end
-
-    if bar.Border and bar.Border.Show and skin.regionState.border then bar.Border:Show() end
-    if bar.Border and bar.Border.Hide and not skin.regionState.border then bar.Border:Hide() end
-    if bar.BorderShield and bar.BorderShield.Show and skin.regionState.borderShield then bar.BorderShield:Show() end
-    if bar.BorderShield and bar.BorderShield.Hide and not skin.regionState.borderShield then bar.BorderShield:Hide() end
-    if bar.Flash and bar.Flash.Show and skin.regionState.flash then bar.Flash:Show() end
-    if bar.Flash and bar.Flash.Hide and not skin.regionState.flash then bar.Flash:Hide() end
-    if bar.Spark and bar.Spark.Show and skin.regionState.spark then bar.Spark:Show() end
-    if bar.Spark and bar.Spark.Hide and not skin.regionState.spark then bar.Spark:Hide() end
-
-    if bar.Icon and skin.iconPoints then
-      RestorePoints(bar.Icon, skin.iconPoints)
-    end
+  if not (active and db.enabled and db.skin) then
+    RestoreSkin(bar, skin)
     return
   end
 
@@ -262,14 +321,10 @@ local function ApplySkin(bar)
     bar.Flash:Hide()
   end
 
-  local isPlayerBar = (bar == _G.PlayerCastingBarFrame or bar == _G.CastingBarFrame or bar == _G.PetCastingBarFrame)
-  if isPlayerBar and bar.Icon then
-    bar.Icon:ClearAllPoints()
-    bar.Icon:SetPoint("RIGHT", bar, "LEFT", 0, 0)
-    bar.Icon:SetTexCoord(0.07, 0.90, 0.07, 0.90)
-    if skin.iconBackdrop then
-      skin.iconBackdrop:Show()
-    end
+  if skin.iconBackdrop and bar._etbcShowIconBackdrop and bar.Icon and bar.Icon.IsShown and bar.Icon:IsShown() then
+    skin.iconBackdrop:Show()
+  elseif skin.iconBackdrop then
+    skin.iconBackdrop:Hide()
   end
 end
 
@@ -321,6 +376,232 @@ local function EnsureText(bar)
   fs:SetText("")
   fs:Hide()
   return fs
+end
+
+local function RestoreTextLayout(bar)
+  if not bar then return end
+  local skin = EnsureSkin(bar)
+  if not skin then return end
+
+  if bar.Text and skin.textPoints then
+    RestorePoints(bar.Text, skin.textPoints)
+    if skin.textJustifyH and bar.Text.SetJustifyH then
+      bar.Text:SetJustifyH(skin.textJustifyH)
+    end
+    if skin.textJustifyV and bar.Text.SetJustifyV then
+      bar.Text:SetJustifyV(skin.textJustifyV)
+    end
+    if skin.textWordWrap ~= nil and bar.Text.SetWordWrap then
+      bar.Text:SetWordWrap(skin.textWordWrap and true or false)
+    end
+  end
+end
+
+local function ApplyTextLayout(bar, active)
+  if not bar then return end
+  EnsureSkin(bar)
+
+  if not active then
+    RestoreTextLayout(bar)
+    if bar._etbcTimeText then
+      bar._etbcTimeText:SetText("")
+      bar._etbcTimeText:Hide()
+    end
+    return
+  end
+
+  if not bar.Text then return end
+
+  local db = GetDB()
+  local fs = EnsureText(bar)
+  local reserve = db.showTime and (TIMER_TEXT_WIDTH + TIMER_TEXT_RIGHT_PAD + NAME_TEXT_RIGHT_PAD) or NAME_TEXT_RIGHT_PAD
+
+  bar.Text:ClearAllPoints()
+  bar.Text:SetPoint("TOPLEFT", bar, "TOPLEFT", NAME_TEXT_LEFT_PAD, 0)
+  bar.Text:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -reserve, 0)
+  if bar.Text.SetJustifyH then bar.Text:SetJustifyH("CENTER") end
+  if bar.Text.SetJustifyV then bar.Text:SetJustifyV("MIDDLE") end
+  if bar.Text.SetWordWrap then bar.Text:SetWordWrap(false) end
+
+  if fs then
+    fs:ClearAllPoints()
+    fs:SetPoint("RIGHT", bar, "RIGHT", -TIMER_TEXT_RIGHT_PAD, 0)
+    fs:SetWidth(TIMER_TEXT_WIDTH)
+    fs:SetJustifyH("RIGHT")
+    fs:SetJustifyV("MIDDLE")
+  end
+end
+
+local function RestoreIconLayout(bar)
+  if not bar then return end
+  local skin = EnsureSkin(bar)
+  if not (skin and bar.Icon) then return end
+
+  bar._etbcShowIconBackdrop = false
+  if skin.iconBackdrop then skin.iconBackdrop:Hide() end
+  if skin.iconPoints then
+    RestorePoints(bar.Icon, skin.iconPoints)
+  end
+  if skin.iconTexCoord and bar.Icon.SetTexCoord then
+    bar.Icon:SetTexCoord(unpackFn(skin.iconTexCoord))
+  end
+  if IsPrimaryPlayerCastbar(bar) then
+    if skin.iconShown then
+      bar.Icon:Show()
+    else
+      bar.Icon:Hide()
+    end
+  end
+end
+
+local function ApplyIconLayout(bar, active)
+  if not bar or not bar.Icon then return end
+  local skin = EnsureSkin(bar)
+  if not skin then return end
+  local db = GetDB()
+
+  if not active then
+    RestoreIconLayout(bar)
+    return
+  end
+
+  if IsPrimaryPlayerCastbar(bar) then
+    bar.Icon:ClearAllPoints()
+    bar.Icon:SetPoint("RIGHT", bar, "LEFT", -3, 0)
+    bar.Icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    bar.Icon:Show()
+    bar._etbcShowIconBackdrop = true
+  else
+    bar._etbcShowIconBackdrop = bar.Icon.IsShown and bar.Icon:IsShown() or false
+  end
+
+  if skin.iconBackdrop then
+    if db.skin and bar._etbcShowIconBackdrop then
+      skin.iconBackdrop:Show()
+    else
+      skin.iconBackdrop:Hide()
+    end
+  end
+end
+
+local function ApplyPlayerOffset(bar, active)
+  if not IsPrimaryPlayerCastbar(bar) then return end
+  local skin = EnsureSkin(bar)
+  if not (skin and skin.playerFramePoints) then return end
+
+  RestorePoints(bar, skin.playerFramePoints)
+  if not active then return end
+
+  local db = GetDB()
+  local xOff = tonumber(db.xOffset) or 0
+  local yOff = tonumber(db.yOffset) or 0
+  if xOff == 0 and yOff == 0 then return end
+
+  local shifted = {}
+  for i = 1, #skin.playerFramePoints do
+    local p = skin.playerFramePoints[i]
+    shifted[i] = { p[1], p[2], p[3], (p[4] or 0) + xOff, (p[5] or 0) + yOff }
+  end
+  RestorePoints(bar, shifted)
+end
+
+local function ApplyBarColors(bar, active)
+  if not bar then return end
+
+  if not active then
+    if bar.SetStartCastColor then bar:SetStartCastColor(1.0, 0.7, 0.0) end
+    if bar.SetStartChannelColor then bar:SetStartChannelColor(0.0, 1.0, 0.0) end
+    if bar.SetNonInterruptibleCastColor then bar:SetNonInterruptibleCastColor(0.7, 0.7, 0.7) end
+    return
+  end
+
+  local db = GetDB()
+  local cast = db.castColor or { 0.25, 0.80, 0.25 }
+  local channel = db.channelColor or { 0.25, 0.55, 1.00 }
+  local nonInterrupt = db.nonInterruptibleColor or { 0.85, 0.25, 0.25 }
+  if bar.SetStartCastColor then
+    bar:SetStartCastColor(cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25)
+  end
+  if bar.SetStartChannelColor then
+    bar:SetStartChannelColor(channel[1] or 0.25, channel[2] or 0.55, channel[3] or 1.0)
+  end
+  if bar.SetNonInterruptibleCastColor then
+    bar:SetNonInterruptibleCastColor(nonInterrupt[1] or 0.85, nonInterrupt[2] or 0.25, nonInterrupt[3] or 0.25)
+  end
+end
+
+local function ResetCustomFade(bar)
+  if not bar then return end
+  bar._etbcFadeActive = false
+  bar._etbcFadeElapsed = 0
+  bar._etbcFadeStartAlpha = nil
+end
+
+local function HandleCustomFade(bar, elapsed)
+  if not bar or not bar._etbcManaged then
+    ResetCustomFade(bar)
+    return
+  end
+
+  local db = GetDB()
+  if not (db.enabled and db.fadeOut) then
+    if bar.fadeOut then
+      bar.fadeOut = nil
+      local hide
+      if bar.UpdateShownState then
+        hide = function() bar:UpdateShownState(false) end
+      else
+        hide = function()
+          if bar.Hide then bar:Hide() end
+        end
+      end
+      hide()
+    end
+    ResetCustomFade(bar)
+    return
+  end
+
+  if bar.casting or bar.channeling then
+    ResetCustomFade(bar)
+    return
+  end
+
+  if bar.fadeOut and not bar._etbcFadeActive then
+    bar._etbcFadeActive = true
+    bar._etbcFadeElapsed = 0
+    bar._etbcFadeStartAlpha = (bar.GetAlpha and bar:GetAlpha()) or 1
+    bar.fadeOut = nil
+  end
+
+  if not bar._etbcFadeActive then return end
+
+  local duration = tonumber(db.fadeOutTime) or 0.20
+  if duration < 0.01 then duration = 0.01 end
+  bar._etbcFadeElapsed = (bar._etbcFadeElapsed or 0) + (elapsed or 0)
+  local t = bar._etbcFadeElapsed / duration
+
+  if t >= 1 then
+    if bar.ApplyAlpha then
+      bar:ApplyAlpha(0)
+    elseif bar.SetAlpha then
+      bar:SetAlpha(0)
+    end
+    ResetCustomFade(bar)
+    if bar.UpdateShownState then
+      bar:UpdateShownState(false)
+    elseif bar.Hide then
+      bar:Hide()
+    end
+    return
+  end
+
+  local startAlpha = bar._etbcFadeStartAlpha or 1
+  local alpha = startAlpha * (1 - t)
+  if bar.ApplyAlpha then
+    bar:ApplyAlpha(alpha)
+  elseif bar.SetAlpha then
+    bar:SetAlpha(alpha)
+  end
 end
 
 -- Returns a good "content" region inside the castbar for overlay anchoring.
@@ -433,7 +714,7 @@ local function UpdateChannelTicks(bar, spellName)
   end
 end
 
-local function ApplySizing(bar)
+local function ApplySizing(bar, active)
   if not bar then return end
   local db = GetDB()
 
@@ -450,7 +731,7 @@ local function ApplySizing(bar)
     }
   end
 
-  if not db.enabled then
+  if not (active and db.enabled) then
     if bar.SetScale and bar._etbcOrig.scale then bar:SetScale(bar._etbcOrig.scale) end
     if bar.SetSize and bar._etbcOrig.w and bar._etbcOrig.h then bar:SetSize(bar._etbcOrig.w, bar._etbcOrig.h) end
     if bar.SetStatusBarTexture and bar._etbcOrig.texture then bar:SetStatusBarTexture(bar._etbcOrig.texture) end
@@ -463,19 +744,24 @@ local function ApplySizing(bar)
   -- if bar.SetSize then bar:SetSize(tonumber(db.width) or 195, tonumber(db.height) or 18) end
 end
 
-local function ApplyTexture(bar)
+local function ApplyTexture(bar, active)
   if not (bar and bar.SetStatusBarTexture) then return end
   local db = GetDB()
-  if not db.enabled then return end
+  if not (active and db.enabled) then
+    if bar._etbcOrig and bar._etbcOrig.texture then
+      bar:SetStatusBarTexture(bar._etbcOrig.texture)
+    end
+    return
+  end
   local texture = LSM_Fetch("statusbar", db.texture, "Interface\\TargetingFrame\\UI-StatusBar")
   if texture then
     bar:SetStatusBarTexture(texture)
   end
 end
 
-local function ApplyAlpha(bar)
+local function ApplyAlpha(bar, active)
   local db = GetDB()
-  if not db.enabled then
+  if not (active and db.enabled) then
     if bar and bar.SetAlpha then bar:SetAlpha(1) end
     return
   end
@@ -504,10 +790,11 @@ local function FormatTime(cur, maxv, mode, decimals)
   return string.format(fmt, remain)
 end
 
-local function UpdateBarText(bar)
+local function UpdateBarText(bar, active)
   if not bar or not bar.IsShown or not bar:IsShown() then return end
   local db = GetDB()
-  if not (db.enabled and db.showTime) then
+  ApplyTextLayout(bar, active and db.enabled)
+  if not (active and db.enabled and db.showTime) then
     if bar._etbcTimeText then bar._etbcTimeText:SetText(""); bar._etbcTimeText:Hide() end
     return
   end
@@ -523,9 +810,9 @@ local function UpdateBarText(bar)
   fs:Show()
 end
 
-local function UpdateLatency(bar)
+local function UpdateLatency(bar, active)
   local db = GetDB()
-  if not (db.enabled and db.showLatency) then
+  if not (active and db.enabled and db.showLatency) then
     if bar and bar._etbcLatency then bar._etbcLatency:Hide() end
     return
   end
@@ -579,65 +866,86 @@ local function UpdateLatency(bar)
   tx:Show()
 end
 
-local function OnBarValueChanged(bar)
-  UpdateBarText(bar)
-  UpdateLatency(bar)
+local function OnBarValueChanged(bar, active)
+  UpdateBarText(bar, active)
+  UpdateLatency(bar, active)
 end
 
 local function HookBar(bar)
   if not bar or bar._etbcHooked then return end
   bar._etbcHooked = true
+  bar._etbcManaged = false
 
   -- Hook SetValue to refresh time/latency without OnUpdate spam
   hooksecurefunc(bar, "SetValue", function()
-    OnBarValueChanged(bar)
+    OnBarValueChanged(bar, bar._etbcManaged and true or false)
   end)
 
   bar:HookScript("OnShow", function()
-    ApplySizing(bar)
-    ApplyTexture(bar)
-    ApplyAlpha(bar)
-    ApplySkin(bar)
-    if bar.Text and bar.Text.SetFont then
+    local active = bar._etbcManaged and true or false
+    ResetCustomFade(bar)
+    ApplySizing(bar, active)
+    ApplyTexture(bar, active)
+    ApplyBarColors(bar, active)
+    ApplyAlpha(bar, active)
+    ApplyPlayerOffset(bar, active)
+    ApplyTextLayout(bar, active)
+    ApplyIconLayout(bar, active)
+    ApplySkin(bar, active)
+    if active and bar.Text and bar.Text.SetFont then
       StyleFontString(bar.Text)
     end
-    if bar._etbcChannelSpellName then
+    if active and bar._etbcChannelSpellName then
       UpdateChannelTicks(bar, bar._etbcChannelSpellName)
+    else
+      HideChannelTicks(bar)
     end
-    OnBarValueChanged(bar)
+    OnBarValueChanged(bar, active)
+  end)
+
+  bar:HookScript("OnUpdate", function(_, elapsed)
+    HandleCustomFade(bar, elapsed)
   end)
 
   bar:HookScript("OnHide", function()
+    ResetCustomFade(bar)
     if bar._etbcLatency then bar._etbcLatency:Hide() end
     if bar._etbcTimeText then bar._etbcTimeText:Hide() end
     HideChannelTicks(bar)
   end)
-
-  ApplySizing(bar)
-  ApplyTexture(bar)
-  ApplyAlpha(bar)
-  ApplySkin(bar)
 end
 
-local function GetBars()
-  local db = GetDB()
+local function GetAllBars()
   local out = {}
 
-  if db.player then
-    if _G.PlayerCastingBarFrame then table.insert(out, _G.PlayerCastingBarFrame) end
-    if _G.CastingBarFrame then table.insert(out, _G.CastingBarFrame) end
-    if _G.PetCastingBarFrame then table.insert(out, _G.PetCastingBarFrame) end
+  local function Add(bar)
+    if bar then
+      table.insert(out, bar)
+    end
   end
 
-  if db.target and _G.TargetFrameSpellBar then
-    table.insert(out, _G.TargetFrameSpellBar)
+  Add(_G.PlayerCastingBarFrame)
+  if _G.CastingBarFrame and _G.CastingBarFrame ~= _G.PlayerCastingBarFrame then
+    Add(_G.CastingBarFrame)
   end
-
-  if db.focus and _G.FocusFrameSpellBar then
-    table.insert(out, _G.FocusFrameSpellBar)
-  end
-
+  Add(_G.PetCastingBarFrame)
+  Add(_G.TargetFrameSpellBar)
+  Add(_G.FocusFrameSpellBar)
   return out
+end
+
+local function IsBarEnabledBySettings(db, bar)
+  if not bar then return false end
+  if IsPlayerCastbarFamily(bar) then
+    return db.player and true or false
+  end
+  if bar == _G.TargetFrameSpellBar then
+    return db.target and true or false
+  end
+  if bar == _G.FocusFrameSpellBar then
+    return db.focus and true or false
+  end
+  return false
 end
 
 local RefreshPreviewIfShown
@@ -647,26 +955,43 @@ local function Apply()
 
   local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
   local db = GetDB()
-  if not (generalEnabled and db.enabled) then
-    for _, bar in ipairs(GetBars()) do
-      ApplySizing(bar)
-      ApplySkin(bar)
-      if bar and bar._etbcTimeText then bar._etbcTimeText:SetText(""); bar._etbcTimeText:Hide() end
-      if bar and bar._etbcLatency then bar._etbcLatency:Hide() end
-      HideChannelTicks(bar)
-      if bar and bar.SetAlpha then bar:SetAlpha(1) end
-    end
-    RefreshPreviewIfShown()
-    return
+  local bars = GetAllBars()
+  for _, bar in ipairs(bars) do
+    HookBar(bar)
   end
 
-  for _, bar in ipairs(GetBars()) do
-    HookBar(bar)
-    ApplySizing(bar)
-    ApplyTexture(bar)
-    ApplyAlpha(bar)
-    ApplySkin(bar)
-    OnBarValueChanged(bar)
+  local moduleActive = generalEnabled and db.enabled
+  for _, bar in ipairs(bars) do
+    local active = moduleActive and IsBarEnabledBySettings(db, bar)
+    bar._etbcManaged = active and true or false
+
+    ApplySizing(bar, active)
+    ApplyTexture(bar, active)
+    ApplyBarColors(bar, active)
+    ApplyAlpha(bar, active)
+    ApplyPlayerOffset(bar, active)
+    ApplyTextLayout(bar, active)
+    ApplyIconLayout(bar, active)
+    ApplySkin(bar, active)
+
+    if active and bar.Text and bar.Text.SetFont then
+      StyleFontString(bar.Text)
+    end
+    if active and bar._etbcChannelSpellName then
+      UpdateChannelTicks(bar, bar._etbcChannelSpellName)
+    else
+      HideChannelTicks(bar)
+    end
+    OnBarValueChanged(bar, active)
+
+    if not active then
+      ResetCustomFade(bar)
+      if bar._etbcLatency then bar._etbcLatency:Hide() end
+      if bar._etbcTimeText then
+        bar._etbcTimeText:SetText("")
+        bar._etbcTimeText:Hide()
+      end
+    end
   end
   RefreshPreviewIfShown()
 end
@@ -685,17 +1010,42 @@ local function EnsurePreviewBar()
   bar.bg:SetVertexColor(0, 0, 0, 0.35)
 
   bar.Text = bar:CreateFontString(nil, "OVERLAY")
-  bar.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
-  bar.Text:SetJustifyH("LEFT")
+  bar.Text:SetPoint("TOPLEFT", bar, "TOPLEFT", NAME_TEXT_LEFT_PAD, 0)
+  local previewReserve = TIMER_TEXT_WIDTH + TIMER_TEXT_RIGHT_PAD + NAME_TEXT_RIGHT_PAD
+  bar.Text:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -previewReserve, 0)
+  bar.Text:SetJustifyH("CENTER")
+  bar.Text:SetJustifyV("MIDDLE")
   bar.Text:SetText("Preview Cast")
 
   bar._etbcTimeText = bar:CreateFontString(nil, "OVERLAY")
-  bar._etbcTimeText:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
+  bar._etbcTimeText:SetPoint("RIGHT", bar, "RIGHT", -TIMER_TEXT_RIGHT_PAD, 0)
+  bar._etbcTimeText:SetWidth(TIMER_TEXT_WIDTH)
   bar._etbcTimeText:SetJustifyH("RIGHT")
+  bar._etbcTimeText:SetJustifyV("MIDDLE")
 
   ApplyBackdropAlt(bar)
   mod._previewBar = bar
   return bar
+end
+
+local function ApplyPreviewTextLayout(bar)
+  if not bar then return end
+  local db = GetDB()
+  local reserve = db.showTime and (TIMER_TEXT_WIDTH + TIMER_TEXT_RIGHT_PAD + NAME_TEXT_RIGHT_PAD) or NAME_TEXT_RIGHT_PAD
+  if bar.Text then
+    bar.Text:ClearAllPoints()
+    bar.Text:SetPoint("TOPLEFT", bar, "TOPLEFT", NAME_TEXT_LEFT_PAD, 0)
+    bar.Text:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -reserve, 0)
+    bar.Text:SetJustifyH("CENTER")
+    bar.Text:SetJustifyV("MIDDLE")
+  end
+  if bar._etbcTimeText then
+    bar._etbcTimeText:ClearAllPoints()
+    bar._etbcTimeText:SetPoint("RIGHT", bar, "RIGHT", -TIMER_TEXT_RIGHT_PAD, 0)
+    bar._etbcTimeText:SetWidth(TIMER_TEXT_WIDTH)
+    bar._etbcTimeText:SetJustifyH("RIGHT")
+    bar._etbcTimeText:SetJustifyV("MIDDLE")
+  end
 end
 
 local function RefreshPreviewBar(force)
@@ -723,9 +1073,10 @@ local function RefreshPreviewBar(force)
   end
 
   ApplySkinBackdropColors(bar, { backdrop = bar }, db)
+  ApplyPreviewTextLayout(bar)
   StyleFontString(bar.Text)
   StyleFontString(bar._etbcTimeText)
-  ApplyAlpha(bar)
+  ApplyAlpha(bar, true)
 
   if not db.showTime and bar._etbcTimeText then
     bar._etbcTimeText:SetText("")
@@ -794,7 +1145,16 @@ local function EnsureHooks()
     end
 
     if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
-      for _, bar in ipairs(GetBars()) do ApplyAlpha(bar) end
+      local eventDB = GetDB()
+      local generalEnabledNow = ETBC.db
+        and ETBC.db.profile
+        and ETBC.db.profile.general
+        and ETBC.db.profile.general.enabled
+      for _, bar in ipairs(GetAllBars()) do
+        local active = generalEnabledNow and eventDB.enabled and IsBarEnabledBySettings(eventDB, bar)
+        bar._etbcManaged = active and true or false
+        ApplyAlpha(bar, active)
+      end
       return
     end
 
@@ -836,9 +1196,16 @@ local function EnsureHooks()
       local pb = _G.PlayerCastingBarFrame or _G.CastingBarFrame
       if pb then
         HookBar(pb)
-        OnBarValueChanged(pb)
+        local active = pb._etbcManaged and true or false
+        ResetCustomFade(pb)
+        ApplyBarColors(pb, active)
+        ApplyPlayerOffset(pb, active)
+        ApplyTextLayout(pb, active)
+        ApplyIconLayout(pb, active)
+        ApplySkin(pb, active)
+        OnBarValueChanged(pb, active)
       end
-      if event == "UNIT_SPELLCAST_CHANNEL_START" and pb then
+      if event == "UNIT_SPELLCAST_CHANNEL_START" and pb and pb._etbcManaged then
         local spellName = nil
         if spellId and Compat.GetSpellInfoByID then
           local info = Compat.GetSpellInfoByID(spellId)
@@ -861,6 +1228,7 @@ local function EnsureHooks()
       or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
       local pb = _G.PlayerCastingBarFrame or _G.CastingBarFrame
       if pb then
+        ResetCustomFade(pb)
         pb._etbcLatencySeconds = nil
         if pb._etbcLatency then pb._etbcLatency:Hide() end
         HideChannelTicks(pb)

@@ -18,7 +18,9 @@ mod._processorHooked = false
 local DEFAULT_ID_COLOR = { r = 0.5, g = 0.9, b = 0.5 }
 local CLASS_FALLBACK = { r = 0.78, g = 0.78, b = 0.78 }
 local TOOLTIP_LINE_TYPE_SELL_PRICE = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.SellPrice) or 11
-local TOOLTIP_LINE_TYPE_ITEM_BINDING = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ItemBinding) or 20
+local TOOLTIP_LINE_TYPE_ITEM_BINDING = (
+  Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ItemBinding
+) or 20
 
 local function GetClassColorForUnit(unit)
   if not unit then return CLASS_FALLBACK.r, CLASS_FALLBACK.g, CLASS_FALLBACK.b end

@@ -191,7 +191,10 @@ local function AutoSelectGossip()
       if currentOption then
         SelectOption(currentOption)
         if ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.debug then
-          Print("Auto-selected gossip option (" .. tostring(currentMatchType or "TEXT") .. "): " .. (currentText or "unknown"))
+          Print(
+            "Auto-selected gossip option (" .. tostring(currentMatchType or "TEXT") .. "): " ..
+            (currentText or "unknown")
+          )
         end
       end
       pendingGossip = false

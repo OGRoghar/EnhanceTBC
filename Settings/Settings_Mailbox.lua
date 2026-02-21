@@ -207,7 +207,10 @@ ETBC.SettingsRegistry:RegisterGroup("mailbox", {
             desc = "Checks C_Mail.IsCommandPending() before issuing each mailbox action.",
             order = 1,
             get = function() return db.respectMailPendingCommands end,
-            set = function(_, v) db.respectMailPendingCommands = v and true or false; ETBC.ApplyBus:Notify("mailbox") end,
+            set = function(_, v)
+              db.respectMailPendingCommands = v and true or false
+              ETBC.ApplyBus:Notify("mailbox")
+            end,
           },
           pendingRetryInterval = {
             type = "range",

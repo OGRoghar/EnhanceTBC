@@ -2,53 +2,62 @@
 -- EnhanceTBC - Castbar+ settings
 
 local _, ETBC = ...
+local CASTBAR_DEFAULTS = {
+  enabled = true,
+  player = true,
+  target = true,
+  focus = true,
+
+  width = 240,
+  height = 18,
+  scale = 1.00,
+  xOffset = 0,
+  yOffset = 0,
+
+  font = "Friz Quadrata TT",
+  texture = "Blizzard",
+  fontSize = 12,
+  outline = "OUTLINE",
+  shadow = true,
+  showTime = true,
+  timeFormat = "REMAIN",
+  decimals = 1,
+
+  skin = true,
+  showChannelTicks = false,
+
+  castColor = { 0.25, 0.80, 0.25 },
+  channelColor = { 0.25, 0.55, 1.00 },
+  nonInterruptibleColor = { 0.85, 0.25, 0.25 },
+  backgroundAlpha = 0.35,
+  borderAlpha = 0.95,
+
+  showLatency = true,
+  latencyMode = "CAST",
+  latencyAlpha = 0.45,
+  latencyColor = { 1.0, 0.15, 0.15 },
+
+  fadeOut = true,
+  fadeOutTime = 0.20,
+
+  onlyInCombat = false,
+  oocAlpha = 1.0,
+  combatAlpha = 1.0,
+}
+
 local function GetDB()
   ETBC.db.profile.castbar = ETBC.db.profile.castbar or {}
   local db = ETBC.db.profile.castbar
 
-  if db.enabled == nil then db.enabled = true end
-
-  -- Per-frame toggles
-  if db.player == nil then db.player = true end
-  if db.target == nil then db.target = true end
-  if db.focus == nil then db.focus = true end
-
-  -- Layout
-  if db.width == nil then db.width = 240 end
-  if db.height == nil then db.height = 18 end
-  if db.scale == nil then db.scale = 1.00 end
-  if db.xOffset == nil then db.xOffset = 0 end
-  if db.yOffset == nil then db.yOffset = 0 end
-
-  -- Text
-  if db.font == nil then db.font = "Friz Quadrata TT" end
-  if db.texture == nil then db.texture = "Blizzard" end
-  if db.fontSize == nil then db.fontSize = 12 end
-  if db.outline == nil then db.outline = "OUTLINE" end
-  if db.shadow == nil then db.shadow = true end
-  if db.showTime == nil then db.showTime = true end
-  if db.timeFormat == nil then db.timeFormat = "REMAIN" end -- REMAIN / ELAPSED
-  if db.decimals == nil then db.decimals = 1 end
-
-  if db.skin == nil then db.skin = true end
-  if db.showChannelTicks == nil then db.showChannelTicks = false end
-
-  -- Colors
-  if db.castColor == nil then db.castColor = { 0.25, 0.80, 0.25 } end
-  if db.channelColor == nil then db.channelColor = { 0.25, 0.55, 1.00 } end
-  if db.nonInterruptibleColor == nil then db.nonInterruptibleColor = { 0.85, 0.25, 0.25 } end
-  if db.backgroundAlpha == nil then db.backgroundAlpha = 0.35 end
-  if db.borderAlpha == nil then db.borderAlpha = 0.95 end
-
-  -- Latency (player only)
-  if db.showLatency == nil then db.showLatency = true end
-  if db.latencyMode == nil then db.latencyMode = "CAST" end -- CAST / NET
-  if db.latencyAlpha == nil then db.latencyAlpha = 0.45 end
-  if db.latencyColor == nil then db.latencyColor = { 1.0, 0.15, 0.15 } end
-
-  -- Fade out
-  if db.fadeOut == nil then db.fadeOut = true end
-  if db.fadeOutTime == nil then db.fadeOutTime = 0.20 end
+  for key, value in pairs(CASTBAR_DEFAULTS) do
+    if db[key] == nil then
+      if type(value) == "table" then
+        db[key] = { value[1], value[2], value[3] }
+      else
+        db[key] = value
+      end
+    end
+  end
 
   return db
 end
@@ -126,6 +135,13 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
         set = function(_, v) db.focus = v and true or false; ETBC.ApplyBus:Notify("castbar") end,
       },
 
+      playerIconInfo = {
+        type = "description",
+        name = "Player spell icon is forced visible while Castbar+ is enabled.",
+        order = 14,
+        width = "full",
+      },
+
       layoutHeader = { type = "header", name = "Layout", order = 20 },
 
       scale = {
@@ -141,7 +157,8 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       skin = {
         type = "toggle",
         name = "Use Castbar Skin",
-        desc = "Applies the EnhanceTBC castbar skin (backdrop, icon border, hidden spark/flash).",
+        desc = "Applies the EnhanceTBC castbar skin (backdrop, icon border, hidden spark/flash). " ..
+          "Player icon remains visible while Castbar+ is enabled.",
         order = 23,
         width = "full",
         disabled = function() return not db.enabled end,
@@ -161,7 +178,8 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
 
       xOffset = {
         type = "range",
-        name = "X offset",
+        name = "Player X offset",
+        desc = "Moves only the player castbar.",
         order = 25,
         min = -200, max = 200, step = 1,
         disabled = function() return not db.enabled end,
@@ -171,7 +189,8 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
 
       yOffset = {
         type = "range",
-        name = "Y offset",
+        name = "Player Y offset",
+        desc = "Moves only the player castbar.",
         order = 26,
         min = -200, max = 200, step = 1,
         disabled = function() return not db.enabled end,
