@@ -15,3 +15,7 @@ ignore:
   - .luarc.json
   - luacov.report.out
   - luacov.stats.out
+  - luacheck-0.21.0-1
+  - check_luacheck.lua
+  - check_busted.lua
+  
