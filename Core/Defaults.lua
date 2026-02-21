@@ -40,6 +40,8 @@ ETBC.defaults = {
       hideMicroMenu = false,
       hideQuickJoinToast = true,
       hideRaidToolsInParty = true,
+      showTrackingState = true,
+      enableTrackingQuickToggle = false,
 
       landingButtons = {
         ExpansionLandingPageMinimapButton = true,
@@ -81,6 +83,8 @@ ETBC.defaults = {
       friendly_nameplate_default_color = false,
       nameplate_unit_target_color = true,
       totem_nameplate_colors = true,
+      useAuraDeltaUpdates = true,
+      useSpellIDAuraLookup = true,
     },
 
     player_nameplates = {
@@ -133,6 +137,8 @@ ETBC.defaults = {
       showVendorPrice = true,
       showStatSummary = true,
       statSummaryMax = 6,
+      useTooltipDataProcessor = true,
+      showTooltipDataMeta = false,
       anchorMode = "DEFAULT",
       offsetX = 16,
       offsetY = -16,
@@ -179,6 +185,7 @@ ETBC.defaults = {
       enabled = true,
       preview = false,
       playerOnly = false,
+      useDeltaAuraUpdates = true,
       useBlizzardTooltips = true,
       sortMode = "TIME",
       sortAscending = true,
@@ -312,8 +319,20 @@ ETBC.defaults = {
       autoDeleteEmpty = false,
       confirmDelete = true,
       throttle = { enabled = true, interval = 0.05, maxPerTick = 3 },
+      respectMailPendingCommands = true,
+      pendingRetryInterval = 0.05,
+      pendingMaxWait = 2.0,
       printSummary = true,
       _saved = nil,
+    },
+
+    autoGossip = {
+      enabled = true,
+      delay = 0,
+      options = {},
+      useGossipInfo = true,
+      matchByOptionID = false,
+      optionIDs = {},
     },
 
     objectives = {

@@ -1,5 +1,6 @@
 -- Modules/Mailbox.lua
 local _, ETBC = ...
+local Compat = ETBC.Compat or {}
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Mailbox = mod
@@ -10,6 +11,8 @@ local tickerOnUpdate
 local queue
 local pendingAuto = false
 local deleteConfirmed = false
+local pendingWaitStart = nil
+local pendingNextRetry = 0
 
 local tookMoney = 0
 local tookItems = 0
@@ -45,6 +48,8 @@ function mod.Stop(_)
   StopTicker()
   queue = nil
   pendingAuto = false
+  pendingWaitStart = nil
+  pendingNextRetry = 0
 end
 
 local function ResetSession()
@@ -95,7 +100,7 @@ local function BuildQueue(db)
     local sender, _, money, cod, itemCount, isGM = InboxInfo(i)
     -- Defensive: Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
     if sender and CanTouchMail(db, sender, isGM, cod) then
-      local hasMoney = money > 0
+      local hasMoney = Compat.HasInboxMoney and Compat.HasInboxMoney(i, money) or (money > 0)
       local hasItems = itemCount > 0
 
       if db.collectGold and hasMoney then
@@ -163,6 +168,33 @@ local function Step(db)
     return
   end
 
+  if db.respectMailPendingCommands and Compat.IsMailCommandPending and Compat.IsMailCommandPending() then
+    local now = GetTime and GetTime() or 0
+    local retry = tonumber(db.pendingRetryInterval) or 0.05
+    if retry < 0.01 then retry = 0.01 end
+    local maxWait = tonumber(db.pendingMaxWait) or 2.0
+    if maxWait < 0 then maxWait = 0 end
+
+    if not pendingWaitStart then
+      pendingWaitStart = now
+      pendingNextRetry = now
+    end
+
+    if (now - pendingWaitStart) < maxWait then
+      if now < pendingNextRetry then
+        return
+      end
+      pendingNextRetry = now + retry
+      return
+    end
+
+    pendingWaitStart = nil
+    pendingNextRetry = 0
+  else
+    pendingWaitStart = nil
+    pendingNextRetry = 0
+  end
+
   if not queue or #queue == 0 then
     mod:Stop()
     FinishSummary(db)
@@ -173,6 +205,10 @@ local function Step(db)
   local did = 0
 
   while did < maxPerTick and queue and #queue > 0 do
+    if db.respectMailPendingCommands and Compat.IsMailCommandPending and Compat.IsMailCommandPending() then
+      return
+    end
+
     local job = table.remove(queue, 1)
     if not job then break end
 
@@ -184,7 +220,8 @@ local function Step(db)
       -- Skip invalid mail entries (InboxInfo returns nil sender for invalid entries)
       if sender and CanTouchMail(db, sender, isGM, cod) then
         if job.action == "MONEY" then
-          if db.collectGold and money and money > 0 then
+          local hasMoneyAttached = Compat.HasInboxMoney and Compat.HasInboxMoney(idx, money) or (money and money > 0)
+          if db.collectGold and hasMoneyAttached then
             TakeInboxMoney(idx)
             tookMoney = tookMoney + (money or 0)
           end

@@ -2,6 +2,7 @@
 -- Auto-selects specific NPC dialog options based on configured patterns
 
 local _, ETBC = ...
+local Compat = ETBC.Compat or {}
 
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
@@ -24,7 +25,10 @@ local function GetDB()
 
   if db.enabled == nil then db.enabled = true end
   if db.delay == nil then db.delay = 0 end
+  if db.useGossipInfo == nil then db.useGossipInfo = true end
+  if db.matchByOptionID == nil then db.matchByOptionID = false end
   db.options = db.options or {}
+  db.optionIDs = db.optionIDs or {}
 
   return db
 end
@@ -56,27 +60,98 @@ local function MatchesPattern(gossipText, pattern)
   return lowerGossip:find(lowerPattern, 1, true) ~= nil
 end
 
+local function BuildLegacyGossipOptions()
+  if type(GetGossipOptions) ~= "function" then
+    return {}
+  end
+
+  local raw = { GetGossipOptions() }
+  local out = {}
+  local optionIndex = 0
+  for i = 1, #raw, 2 do
+    local text = raw[i]
+    local optionType = raw[i + 1]
+    if text then
+      optionIndex = optionIndex + 1
+      out[#out + 1] = {
+        index = optionIndex,
+        orderIndex = optionIndex,
+        gossipOptionID = nil,
+        name = tostring(text),
+        type = optionType,
+        status = 0,
+        available = true,
+        selectable = true,
+      }
+    end
+  end
+  return out
+end
+
+local function GetNormalizedGossipOptions(db)
+  if db.useGossipInfo and Compat.GetGossipOptions then
+    local options = Compat.GetGossipOptions()
+    if type(options) == "table" and #options > 0 then
+      return options
+    end
+  end
+
+  return BuildLegacyGossipOptions()
+end
+
+local function IsOptionSelectable(option)
+  if type(option) ~= "table" then return false end
+  if option.selectable ~= nil then
+    return option.selectable and true or false
+  end
+  if option.disabled ~= nil then
+    return not option.disabled
+  end
+  local status = tonumber(option.status)
+  if status then
+    return status == 0
+  end
+  return true
+end
+
+local function HasConfiguredOptionID(db, optionID)
+  local id = tonumber(optionID)
+  if not id or type(db.optionIDs) ~= "table" then return false end
+
+  if db.optionIDs[id] then
+    return true
+  end
+
+  for _, configured in ipairs(db.optionIDs) do
+    if tonumber(configured) == id then
+      return true
+    end
+  end
+
+  return false
+end
+
 local function FindMatchingOption()
   local db = GetDB()
+  local options = GetNormalizedGossipOptions(db)
+  if type(options) ~= "table" or #options == 0 then return nil end
+
+  if db.matchByOptionID then
+    for _, option in ipairs(options) do
+      if IsOptionSelectable(option) and HasConfiguredOptionID(db, option.gossipOptionID) then
+        return option, option.name, "ID"
+      end
+    end
+  end
+
   if not db.options or #db.options == 0 then return nil end
 
-  -- Get available gossip options
-  -- In TBC, GetGossipOptions() returns pairs of (text, type) for each option
-  local options = { GetGossipOptions() }
-  local numOptions = #options / 2
-
-  if numOptions == 0 then return nil end
-
-  -- Check each gossip option
-  for i = 1, numOptions do
-    local textIndex = (i - 1) * 2 + 1
-    local gossipText = options[textIndex]
-
-    if gossipText then
-      -- Check against all patterns
+  for _, option in ipairs(options) do
+    if IsOptionSelectable(option) then
+      local gossipText = option.name
       for _, pattern in ipairs(db.options) do
         if MatchesPattern(gossipText, pattern) then
-          return i, gossipText
+          return option, gossipText, "TEXT"
         end
       end
     end
@@ -85,12 +160,25 @@ local function FindMatchingOption()
   return nil
 end
 
+local function SelectOption(option)
+  if Compat.SelectGossipOption then
+    return Compat.SelectGossipOption(option)
+  end
+
+  if type(SelectGossipOption) == "function" and type(option) == "table" and option.index then
+    local ok = pcall(SelectGossipOption, option.index)
+    return ok and true or false
+  end
+
+  return false
+end
+
 local function AutoSelectGossip()
   if not ShouldAutoSelect() then return end
   if pendingGossip then return end
 
-  local optionIndex, optionText = FindMatchingOption()
-  if not optionIndex then return end
+  local option, optionText, matchType = FindMatchingOption()
+  if not option then return end
 
   pendingGossip = true
 
@@ -99,11 +187,11 @@ local function AutoSelectGossip()
 
   if delay > 0 then
     local applySelection = function()
-      local currentIndex, currentText = FindMatchingOption()
-      if currentIndex then
-        SelectGossipOption(currentIndex)
+      local currentOption, currentText, currentMatchType = FindMatchingOption()
+      if currentOption then
+        SelectOption(currentOption)
         if ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.debug then
-          Print("Auto-selected gossip option: " .. (currentText or "unknown"))
+          Print("Auto-selected gossip option (" .. tostring(currentMatchType or "TEXT") .. "): " .. (currentText or "unknown"))
         end
       end
       pendingGossip = false
@@ -117,9 +205,9 @@ local function AutoSelectGossip()
       applySelection()
     end
   else
-    SelectGossipOption(optionIndex)
+    SelectOption(option)
     if ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.debug then
-      Print("Auto-selected gossip option: " .. (optionText or "unknown"))
+      Print("Auto-selected gossip option (" .. tostring(matchType or "TEXT") .. "): " .. (optionText or "unknown"))
     end
     pendingGossip = false
   end

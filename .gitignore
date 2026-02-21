@@ -5,6 +5,14 @@
 Thumbs.db
 WTF/
 Cache/
+tools/
+spec/
+.busted
+*.json
+.luacheckrc
+.vscode/
+.luarc.json
+
 
 # Test coverage files
 luacov.*.out

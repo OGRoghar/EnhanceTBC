@@ -3,6 +3,7 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.ActionTracker = mod
+local Compat = ETBC.Compat or {}
 
 local LSM = ETBC.LSM
 
@@ -178,8 +179,11 @@ local function ApplyVisuals(icon, db, entry)
   end
 
   if db.showCooldownSpiral and entry.spellID and entry.spellID ~= 0 then
-    local start, duration, enabled = GetSpellCooldown(entry.spellID)
-    if enabled == 1 and duration and duration > 1.5 and start and start > 0 then
+    local cd = Compat.GetSpellCooldownByID and Compat.GetSpellCooldownByID(entry.spellID) or nil
+    local start = cd and cd.startTime or 0
+    local duration = cd and cd.duration or 0
+    local enabled = cd and cd.isEnabled or false
+    if enabled and duration > 1.5 and start > 0 then
       icon.cooldown:Show()
       icon.cooldown:SetCooldown(start, duration)
     else
@@ -259,8 +263,8 @@ end
 local function AddSpell(db, spellID)
   if not spellID or spellID == 0 then return end
 
-  local name, _, texture = GetSpellInfo(spellID)
-  if not name then return end
+  local info = Compat.GetSpellInfoByID and Compat.GetSpellInfoByID(spellID) or nil
+  if not info or not info.name then return end
 
   for i = 1, #entries do
     if entries[i].spellID == spellID then
@@ -272,8 +276,8 @@ local function AddSpell(db, spellID)
   table.insert(entries, 1, {
     kind = "SPELL",
     spellID = spellID,
-    name = name,
-    texture = texture,
+    name = info.name,
+    texture = info.iconID,
     t = GetTime(),
     alpha = 1,
   })

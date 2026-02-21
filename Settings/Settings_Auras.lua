@@ -37,6 +37,7 @@ local function EnsureDefaults()
   db.border = db.border or {}
   db.durationText = db.durationText or {}
   db.countText = db.countText or {}
+  if db.useDeltaAuraUpdates == nil then db.useDeltaAuraUpdates = true end
 end
 
 ETBC.SettingsRegistry:RegisterGroup("auras", {
@@ -93,6 +94,15 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
             width = "full",
             get = function() return db.trimIcons end,
             set = function(_, v) db.trimIcons = v and true or false; ETBC.ApplyBus:Notify("auras") end,
+          },
+          useDeltaAuraUpdates = {
+            type = "toggle",
+            name = "Use Delta Aura Updates",
+            desc = "Uses UNIT_AURA update payloads when available for lower update cost.",
+            order = 4,
+            width = "full",
+            get = function() return db.useDeltaAuraUpdates end,
+            set = function(_, v) db.useDeltaAuraUpdates = v and true or false; ETBC.ApplyBus:Notify("auras") end,
           },
         },
       },

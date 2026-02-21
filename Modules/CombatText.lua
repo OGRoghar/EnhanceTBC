@@ -3,6 +3,7 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CombatText = mod
+local Compat = ETBC.Compat or {}
 
 local LSM = ETBC.LSM
 
@@ -300,8 +301,10 @@ local function FlushBatch(db)
 
     local namePart = ""
     if db.showSpellName and b.spellID and b.spellID ~= 0 then
-      local n = GetSpellInfo(b.spellID)
-      if n then namePart = n .. ": " end
+      local info = Compat.GetSpellInfoByID and Compat.GetSpellInfoByID(b.spellID) or nil
+      if info and info.name then
+        namePart = info.name .. ": "
+      end
     end
     if b.label and b.label ~= "" then
       namePart = b.label .. ": "

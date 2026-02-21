@@ -34,6 +34,8 @@ local function GetDB()
   if db.friendly_nameplate_default_color == nil then db.friendly_nameplate_default_color = false end
   if db.nameplate_unit_target_color == nil then db.nameplate_unit_target_color = true end
   if db.totem_nameplate_colors == nil then db.totem_nameplate_colors = true end
+  if db.useAuraDeltaUpdates == nil then db.useAuraDeltaUpdates = true end
+  if db.useSpellIDAuraLookup == nil then db.useSpellIDAuraLookup = true end
 
   return db
 end
@@ -189,6 +191,26 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         disabled = function() return not (db.enabled and db.enemy_nameplate_stance) end,
         get = function() return db.enemy_nameplate_stance_scale end,
         set = function(_, v) db.enemy_nameplate_stance_scale = v; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      useAuraDeltaUpdates = {
+        type = "toggle",
+        name = "Use Aura Delta Events",
+        desc = "Uses UNIT_AURA delta payloads to skip redundant refresh work when possible.",
+        order = 23,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.useAuraDeltaUpdates end,
+        set = function(_, v) db.useAuraDeltaUpdates = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      useSpellIDAuraLookup = {
+        type = "toggle",
+        name = "Use SpellID Aura Lookup",
+        desc = "Uses C_UnitAuras.GetUnitAuraBySpellID for tracked aura checks before loop fallback.",
+        order = 24,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.useSpellIDAuraLookup end,
+        set = function(_, v) db.useSpellIDAuraLookup = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
       },
 
       friendlyHeader = { type = "header", name = "Friendly Nameplates", order = 30 },

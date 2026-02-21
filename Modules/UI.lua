@@ -67,6 +67,29 @@ local function GetDB()
   return db
 end
 
+local legacyGetItemInfo = _G["GetItemInfo"]
+local legacyGetItemInfoInstant = _G["GetItemInfoInstant"]
+
+local function GetItemInfoCompat(item)
+  if C_Item and C_Item.GetItemInfo then
+    return C_Item.GetItemInfo(item)
+  end
+  if type(legacyGetItemInfo) == "function" then
+    return legacyGetItemInfo(item)
+  end
+  return nil
+end
+
+local function GetItemInfoInstantCompat(item)
+  if C_Item and C_Item.GetItemInfoInstant then
+    return C_Item.GetItemInfoInstant(item)
+  end
+  if type(legacyGetItemInfoInstant) == "function" then
+    return legacyGetItemInfoInstant(item)
+  end
+  return nil
+end
+
 local function CursorItemQualityAndLabel()
   if type(GetCursorInfo) ~= "function" then return nil, nil end
 
@@ -74,14 +97,14 @@ local function CursorItemQualityAndLabel()
   if infoType ~= "item" then return nil, nil end
 
   local quality
-  if type(GetItemInfo) == "function" then
-    local _, _, q = GetItemInfo(itemLink or itemID)
+  local _, _, q = GetItemInfoCompat(itemLink or itemID)
+  if q ~= nil then
     quality = q
   end
 
-  if not quality and type(GetItemInfoInstant) == "function" then
-    local _, _, q = GetItemInfoInstant(itemLink or itemID)
-    quality = q
+  if not quality then
+    local _, _, instant_quality = GetItemInfoInstantCompat(itemLink or itemID)
+    quality = instant_quality
   end
 
   return quality, itemLink or (itemID and ("item:" .. tostring(itemID))) or "item"

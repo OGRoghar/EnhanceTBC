@@ -12,10 +12,13 @@ mod._hooked = false
 mod._idHooked = false
 mod._menuHooked = false
 mod._anchorHooked = false
+mod._processorHooked = false
 
 -- Default ID color (light green)
 local DEFAULT_ID_COLOR = { r = 0.5, g = 0.9, b = 0.5 }
 local CLASS_FALLBACK = { r = 0.78, g = 0.78, b = 0.78 }
+local TOOLTIP_LINE_TYPE_SELL_PRICE = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.SellPrice) or 11
+local TOOLTIP_LINE_TYPE_ITEM_BINDING = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ItemBinding) or 20
 
 local function GetClassColorForUnit(unit)
   if not unit then return CLASS_FALLBACK.r, CLASS_FALLBACK.g, CLASS_FALLBACK.b end
@@ -57,7 +60,45 @@ local function GetDB()
   if db.enabled == nil then db.enabled = true end
   if db.showReactionText == nil then db.showReactionText = true end
   if db.showUnitHealthText == nil then db.showUnitHealthText = true end
+  if db.useTooltipDataProcessor == nil then db.useTooltipDataProcessor = true end
+  if db.showTooltipDataMeta == nil then db.showTooltipDataMeta = false end
   return db
+end
+
+local legacyGetItemInfo = _G["GetItemInfo"]
+local legacyGetCoinTextureString = _G["GetCoinTextureString"]
+local legacyUnitAura = _G["UnitAura"]
+
+local function GetItemInfoCompat(item)
+  if C_Item and C_Item.GetItemInfo then
+    return C_Item.GetItemInfo(item)
+  end
+  if type(legacyGetItemInfo) == "function" then
+    return legacyGetItemInfo(item)
+  end
+  return nil
+end
+
+local function GetCoinTextureStringCompat(amount)
+  if C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString then
+    return C_CurrencyInfo.GetCoinTextureString(amount)
+  end
+  if type(legacyGetCoinTextureString) == "function" then
+    return legacyGetCoinTextureString(amount)
+  end
+  return nil
+end
+
+local function GetUnitAuraSpellID(unit, index, filter)
+  if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex and AuraUtil and AuraUtil.UnpackAuraData then
+    local auraData = C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
+    if not auraData then return nil end
+    return select(10, AuraUtil.UnpackAuraData(auraData))
+  end
+  if type(legacyUnitAura) == "function" then
+    return select(10, legacyUnitAura(unit, index, filter))
+  end
+  return nil
 end
 
 local function SafeSetBackdrop(frame, bg, edge, edgeSize, insets)
@@ -219,6 +260,44 @@ local function AddLineOnce(tooltip, text, r, g, b)
   end
   tooltip._etbcLineKeys[text] = true
   tooltip:AddLine(text, r or 1, g or 1, b or 1)
+end
+
+local function HookTooltipDataProcessor()
+  if mod._processorHooked then return end
+  if not TooltipDataProcessor then return end
+  if not TooltipDataProcessor.AddTooltipPostCall then return end
+  if not TooltipDataProcessor.AddLinePostCall then return end
+
+  mod._processorHooked = true
+
+  TooltipDataProcessor.AddLinePostCall(TooltipDataProcessor.AllTypes, function(tooltip, lineData)
+    if not tooltip or type(lineData) ~= "table" then return end
+    if lineData.type == TOOLTIP_LINE_TYPE_SELL_PRICE then
+      tooltip._etbcHasStructuredSellLine = true
+    elseif lineData.type == TOOLTIP_LINE_TYPE_ITEM_BINDING then
+      tooltip._etbcHasStructuredBindingLine = true
+    end
+  end)
+
+  TooltipDataProcessor.AddTooltipPostCall(TooltipDataProcessor.AllTypes, function(tooltip, tooltipData)
+    local db = GetDB()
+    if not db or not db.enabled or not db.useTooltipDataProcessor then return end
+    if not tooltip or type(tooltipData) ~= "table" then return end
+
+    ApplyStyleToTooltip(tooltip)
+
+    if db.showTooltipDataMeta then
+      local lineCount = (type(tooltipData.lines) == "table") and #tooltipData.lines or 0
+      AddLineOnce(tooltip, "Data Type: " .. tostring(tooltipData.type), 0.55, 0.90, 0.55)
+      AddLineOnce(tooltip, "Data Lines: " .. tostring(lineCount), 0.55, 0.90, 0.55)
+      if tooltip._etbcHasStructuredBindingLine then
+        AddLineOnce(tooltip, "Binding: structured tooltip data", 0.70, 0.85, 0.70)
+      end
+      if tooltip._etbcHasStructuredSellLine then
+        AddLineOnce(tooltip, "Vendor Price: structured tooltip data", 0.70, 0.85, 0.70)
+      end
+    end
+  end)
 end
 
 local function AddGuildLine(tooltip, unit)
@@ -409,7 +488,7 @@ local function AddItemLevelLine(tooltip, itemLink)
   if not db or not db.enabled or not db.showItemLevel then return end
   if not itemLink then return end
 
-  local item_level = select(4, GetItemInfo(itemLink))
+  local item_level = select(4, GetItemInfoCompat(itemLink))
   if item_level then
     AddLineOnce(tooltip, "Item Level: " .. item_level, 0.8, 0.8, 0.8)
   end
@@ -419,10 +498,16 @@ local function AddVendorPriceLine(tooltip, itemLink)
   local db = GetDB()
   if not db or not db.enabled or not db.showVendorPrice then return end
   if not itemLink then return end
+  if db.useTooltipDataProcessor and tooltip and tooltip._etbcHasStructuredSellLine then
+    return
+  end
 
-  local sell_price = select(11, GetItemInfo(itemLink))
-  if sell_price and sell_price > 0 and GetCoinTextureString then
-    AddLineOnce(tooltip, "Vendor Price: " .. GetCoinTextureString(sell_price), 0.8, 0.8, 0.8)
+  local sell_price = select(11, GetItemInfoCompat(itemLink))
+  if sell_price and sell_price > 0 then
+    local coin_text = GetCoinTextureStringCompat(sell_price)
+    if coin_text then
+      AddLineOnce(tooltip, "Vendor Price: " .. coin_text, 0.8, 0.8, 0.8)
+    end
   end
 end
 
@@ -676,7 +761,7 @@ local function OnTooltipSetUnitAura(tooltip, unit, index, filter)
   if not db or not db.enabled or not db.showSpellId then return end
   if not unit or not index or not filter then return end
 
-  local spell_id = select(10, UnitAura(unit, index, filter))
+  local spell_id = GetUnitAuraSpellID(unit, index, filter)
   if spell_id then
     AddIDLine(tooltip, "Spell ID: ", spell_id, db.idColor or DEFAULT_ID_COLOR)
   end
@@ -697,6 +782,10 @@ function mod.Apply(_)
     EnsureStatusBarText()
   end
 
+  if db.useTooltipDataProcessor then
+    HookTooltipDataProcessor()
+  end
+
   -- Hook once for styling
   if not mod._hooked then
     mod._hooked = true
@@ -708,6 +797,8 @@ function mod.Apply(_)
       if t._etbcAccentLine then t._etbcAccentLine:Hide() end
       t._etbcLineKeys = nil
       t._etbcAnchorSig = nil
+      t._etbcHasStructuredSellLine = nil
+      t._etbcHasStructuredBindingLine = nil
     end
 
     local tips = {

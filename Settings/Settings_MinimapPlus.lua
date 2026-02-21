@@ -30,6 +30,8 @@ local function EnsureDefaults()
   if db.squareMinimap == nil then db.squareMinimap = db.square_mask end
 
   if db.hideMinimapToggleButton == nil then db.hideMinimapToggleButton = true end
+  if db.showTrackingState == nil then db.showTrackingState = true end
+  if db.enableTrackingQuickToggle == nil then db.enableTrackingQuickToggle = false end
 
   if db.sink_addons == nil then db.sink_addons = true end
   if db.sink_visible == nil and db.sinkEnabled ~= nil then db.sink_visible = db.sinkEnabled end
@@ -139,6 +141,31 @@ ETBC.SettingsRegistry:RegisterGroup("minimapplus", {
         set = function(_, v)
           db.minimap_performance = v and true or false
           db.minimapPerformance = db.minimap_performance
+          Apply()
+        end,
+      },
+      showTrackingState = {
+        type = "toggle",
+        name = "Show Tracking State",
+        desc = "Shows active tracking state in the minimap info row and sink tray.",
+        order = 13,
+        width = "full",
+        get = function() return db.showTrackingState end,
+        set = function(_, v)
+          db.showTrackingState = v and true or false
+          Apply()
+        end,
+      },
+      enableTrackingQuickToggle = {
+        type = "toggle",
+        name = "Enable Tracking Quick Toggle",
+        desc = "Click the tracking indicator to cycle tracking filters.",
+        order = 14,
+        width = "full",
+        disabled = function() return not db.showTrackingState end,
+        get = function() return db.enableTrackingQuickToggle end,
+        set = function(_, v)
+          db.enableTrackingQuickToggle = v and true or false
           Apply()
         end,
       },

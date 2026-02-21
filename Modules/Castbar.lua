@@ -7,6 +7,7 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Castbar = mod
+local Compat = ETBC.Compat or {}
 
 local driver
 local hooked = false
@@ -839,8 +840,9 @@ local function EnsureHooks()
       end
       if event == "UNIT_SPELLCAST_CHANNEL_START" and pb then
         local spellName = nil
-        if spellId and GetSpellInfo then
-          spellName = GetSpellInfo(spellId)
+        if spellId and Compat.GetSpellInfoByID then
+          local info = Compat.GetSpellInfoByID(spellId)
+          spellName = info and info.name or nil
         elseif UnitChannelInfo then
           spellName = select(1, UnitChannelInfo("player"))
         end

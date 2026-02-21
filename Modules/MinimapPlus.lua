@@ -87,6 +87,98 @@ local function GetBagNumFreeSlots(bag)
   return 0
 end
 
+local function GetNumTrackingTypesCompat()
+  if C_Minimap and C_Minimap.GetNumTrackingTypes then
+    local ok, n = pcall(C_Minimap.GetNumTrackingTypes)
+    if ok then return tonumber(n) or 0 end
+  end
+  if GetNumTrackingTypes then
+    return tonumber(GetNumTrackingTypes()) or 0
+  end
+  return 0
+end
+
+local function GetTrackingInfoCompat(index)
+  local idx = tonumber(index)
+  if not idx or idx < 1 then return nil end
+
+  if C_Minimap and C_Minimap.GetTrackingInfo then
+    local ok, info = pcall(C_Minimap.GetTrackingInfo, idx)
+    if ok and type(info) == "table" then
+      return {
+        index = idx,
+        name = info.name,
+        texture = info.texture,
+        active = info.active and true or false,
+        type = info.type,
+        subType = info.subType,
+        spellID = info.spellID,
+      }
+    end
+  end
+
+  if GetTrackingInfo then
+    local name, texture, active, trackingType, subType, spellID = GetTrackingInfo(idx)
+    if name then
+      return {
+        index = idx,
+        name = name,
+        texture = texture,
+        active = active and true or false,
+        type = trackingType,
+        subType = subType,
+        spellID = spellID,
+      }
+    end
+  end
+
+  return nil
+end
+
+local function SetTrackingCompat(index, enabled)
+  local idx = tonumber(index)
+  if not idx then return false end
+
+  if C_Minimap and C_Minimap.SetTracking then
+    local ok = pcall(C_Minimap.SetTracking, idx, enabled and true or false)
+    if ok then return true end
+  end
+
+  if SetTracking then
+    local ok = pcall(SetTracking, idx, enabled and true or false)
+    if ok then return true end
+  end
+
+  return false
+end
+
+local function ClearAllTrackingCompat()
+  if C_Minimap and C_Minimap.ClearAllTracking then
+    local ok = pcall(C_Minimap.ClearAllTracking)
+    if ok then return true end
+  end
+  if ClearAllTracking then
+    local ok = pcall(ClearAllTracking)
+    if ok then return true end
+  end
+  return false
+end
+
+local function GetTrackingEntries()
+  local out = {}
+  local total = GetNumTrackingTypesCompat()
+  if total <= 0 then return out end
+
+  for i = 1, total do
+    local info = GetTrackingInfoCompat(i)
+    if info then
+      out[#out + 1] = info
+    end
+  end
+
+  return out
+end
+
 local function RunSetPointGuard(lockKey, fn)
   if state[lockKey] then return end
   state[lockKey] = true
@@ -123,6 +215,8 @@ local function GetDB()
   if db.squareMinimap == nil then db.squareMinimap = db.square_mask end
 
   if db.hideMinimapToggleButton == nil then db.hideMinimapToggleButton = true end
+  if db.showTrackingState == nil then db.showTrackingState = true end
+  if db.enableTrackingQuickToggle == nil then db.enableTrackingQuickToggle = false end
 
   if db.sink_addons == nil then
     if db.autoScan ~= nil then
@@ -353,6 +447,7 @@ local function EnsureEventFrame()
   state.eventFrame:RegisterEvent("BN_FRIEND_INFO_CHANGED")
   state.eventFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
   state.eventFrame:RegisterEvent("PLAYER_GUILD_UPDATE")
+  state.eventFrame:RegisterEvent("MINIMAP_UPDATE_TRACKING")
   state.eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if not IsFeatureEnabled() then return end
 
@@ -374,6 +469,7 @@ local function EnsureEventFrame()
         state.iconsFrame:updateDurabilityDisplay()
         state.iconsFrame:updateFriendsDisplay()
         state.iconsFrame:updateGuildDisplay()
+        state.iconsFrame:updateTrackingDisplay()
       end
       mod:StyleTimeManagerClockButton()
       mod:MoveMinimapLFGButton()
@@ -400,6 +496,16 @@ local function EnsureEventFrame()
 
     if event == "GUILD_ROSTER_UPDATE" or event == "PLAYER_GUILD_UPDATE" then
       if state.iconsFrame then state.iconsFrame:updateGuildDisplay() end
+      return
+    end
+
+    if event == "MINIMAP_UPDATE_TRACKING" then
+      if state.iconsFrame and state.iconsFrame.updateTrackingDisplay then
+        state.iconsFrame:updateTrackingDisplay()
+      end
+      if state.sinkFrame and state.sinkFrame.updateTrackingDisplay then
+        state.sinkFrame:updateTrackingDisplay()
+      end
     end
   end)
 end

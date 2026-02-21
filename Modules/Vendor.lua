@@ -82,6 +82,18 @@ local function GetItemIDFromLink(link)
   return nil
 end
 
+local legacyGetItemInfo = _G["GetItemInfo"]
+
+local function GetItemInfoCompat(item)
+  if C_Item and C_Item.GetItemInfo then
+    return C_Item.GetItemInfo(item)
+  end
+  if type(legacyGetItemInfo) == "function" then
+    return legacyGetItemInfo(item)
+  end
+  return nil
+end
+
 local function GetDB()
   ETBC.db.profile.vendor = ETBC.db.profile.vendor or {}
   local db = ETBC.db.profile.vendor
@@ -230,7 +242,7 @@ local function BuildSellQueue(db)
       local link = GetBagItemLink(bag, slot)
       if link then
         local itemID = GetItemIDFromLink(link)
-        local _, _, quality, _, _, _, _, _, _, _, vendorPrice = GetItemInfo(link)
+        local _, _, quality, _, _, _, _, _, _, _, vendorPrice = GetItemInfoCompat(link)
         local locked = GetBagItemLocked(bag, slot)
 
         if ShouldSellItem(db, itemID, quality, vendorPrice, locked) then

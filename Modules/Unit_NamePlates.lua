@@ -3,6 +3,7 @@
 -- Based on the provided JUI nameplate logic, adapted for EnhanceTBC.
 
 local _, ETBC = ...
+local Compat = ETBC.Compat or {}
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Nameplates = mod
@@ -17,6 +18,12 @@ local formatted_debuffs = {}
 local formatted_interrupts = {}
 local formatted_player_debuffs = {}
 local formatted_absorb_buffs = {}
+local formatted_debuffs_by_spell = {}
+local formatted_interrupts_by_spell = {}
+local formatted_player_debuffs_by_spell = {}
+local formatted_absorb_buffs_by_spell = {}
+local prioritized_debuffs = {}
+local prioritized_absorb_buffs = {}
 
 local max_player_debuffs = 4
 
@@ -51,6 +58,8 @@ local function GetDB()
   if db.friendly_nameplate_default_color == nil then db.friendly_nameplate_default_color = false end
   if db.nameplate_unit_target_color == nil then db.nameplate_unit_target_color = true end
   if db.totem_nameplate_colors == nil then db.totem_nameplate_colors = true end
+  if db.useAuraDeltaUpdates == nil then db.useAuraDeltaUpdates = true end
+  if db.useSpellIDAuraLookup == nil then db.useSpellIDAuraLookup = true end
 
   return db
 end
@@ -148,16 +157,45 @@ local function Trim(str)
   return (str:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+local legacyUnitAura = _G["UnitAura"]
+
+local function GetUnitAuraByIndex(unit, index, filter)
+  if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex and AuraUtil and AuraUtil.UnpackAuraData then
+    local auraData = C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
+    if auraData then
+      return AuraUtil.UnpackAuraData(auraData)
+    end
+    return nil
+  end
+
+  if type(legacyUnitAura) == "function" then
+    return legacyUnitAura(unit, index, filter)
+  end
+
+  return nil
+end
+
 local function FindAuraByName(name, unit, filter)
   if not name or not unit then return nil end
   if AuraUtil and AuraUtil.FindAuraByName then
     return AuraUtil.FindAuraByName(name, unit, filter)
   end
   for i = 1, 40 do
-    local aura_name = UnitAura(unit, i, filter)
+    local aura_name = GetUnitAuraByIndex(unit, i, filter)
     if aura_name == name then return true end
     if not aura_name then break end
   end
+  return nil
+end
+
+local function GetSpellInfoByID(spellID)
+  if Compat and Compat.GetSpellInfoByID then
+    local info = Compat.GetSpellInfoByID(spellID)
+    if info and info.name then
+      return info
+    end
+  end
+
   return nil
 end
 
@@ -503,27 +541,49 @@ local function BuildData()
   formatted_interrupts = {}
   formatted_player_debuffs = {}
   formatted_absorb_buffs = {}
+  formatted_debuffs_by_spell = {}
+  formatted_interrupts_by_spell = {}
+  formatted_player_debuffs_by_spell = {}
+  formatted_absorb_buffs_by_spell = {}
+  prioritized_debuffs = {}
+  prioritized_absorb_buffs = {}
 
   for i, debuff_type_list in pairs(debuffs) do
     for _, debuff in pairs(debuff_type_list) do
-      local name, _, texture = GetSpellInfo(debuff.spell_id)
-      if name then
-        debuff.name = name
-        debuff.texture = texture
+      local info = GetSpellInfoByID(debuff.spell_id)
+      if info and info.name then
+        debuff.name = info.name
+        debuff.texture = info.iconID
         debuff.priority = i
         formatted_debuffs[debuff.name] = debuff
+        if debuff.spell_id then
+          formatted_debuffs_by_spell[debuff.spell_id] = debuff
+          prioritized_debuffs[#prioritized_debuffs + 1] = debuff
+        end
       end
     end
   end
 
+  table.sort(prioritized_debuffs, function(a, b)
+    local pa = tonumber(a and a.priority) or 0
+    local pb = tonumber(b and b.priority) or 0
+    if pa ~= pb then
+      return pa > pb
+    end
+    return (tonumber(a and a.spell_id) or 0) < (tonumber(b and b.spell_id) or 0)
+  end)
+
   for _, interrupt in pairs(interrupts) do
-    local name, _, texture = GetSpellInfo(interrupt.spell_id)
-    if name then
-      interrupt.name = name
-      interrupt.texture = texture
+    local info = GetSpellInfoByID(interrupt.spell_id)
+    if info and info.name then
+      interrupt.name = info.name
+      interrupt.texture = info.iconID
       interrupt.priority = 8
       interrupt.interrupt = true
       formatted_interrupts[interrupt.name] = interrupt
+      if interrupt.spell_id then
+        formatted_interrupts_by_spell[interrupt.spell_id] = interrupt
+      end
     end
   end
 
@@ -531,24 +591,137 @@ local function BuildData()
   for _, debuff_type_list in pairs(player_debuffs) do
     for _, debuff in pairs(debuff_type_list) do
       if debuff.class == player_class then
-        local name, _, texture = GetSpellInfo(debuff.spell_id)
-        if name then
-          debuff.name = name
-          debuff.texture = texture
+        local info = GetSpellInfoByID(debuff.spell_id)
+        if info and info.name then
+          debuff.name = info.name
+          debuff.texture = info.iconID
           formatted_player_debuffs[debuff.name] = debuff
+          if debuff.spell_id then
+            formatted_player_debuffs_by_spell[debuff.spell_id] = debuff
+          end
         end
       end
     end
   end
 
   for _, absorb_buff in pairs(absorb_buffs) do
-    local name, _, texture = GetSpellInfo(absorb_buff.spell_id)
-    if name then
-      absorb_buff.name = name
-      absorb_buff.texture = texture
+    local info = GetSpellInfoByID(absorb_buff.spell_id)
+    if info and info.name then
+      absorb_buff.name = info.name
+      absorb_buff.texture = info.iconID
       formatted_absorb_buffs[absorb_buff.name] = absorb_buff
+      if absorb_buff.spell_id then
+        formatted_absorb_buffs_by_spell[absorb_buff.spell_id] = absorb_buff
+        prioritized_absorb_buffs[#prioritized_absorb_buffs + 1] = absorb_buff
+      end
     end
   end
+end
+
+local function IsTrackedSpellID(spellID)
+  local sid = tonumber(spellID)
+  if not sid then return false end
+  return not not (
+    formatted_debuffs_by_spell[sid]
+    or formatted_player_debuffs_by_spell[sid]
+    or formatted_absorb_buffs_by_spell[sid]
+  )
+end
+
+local function FindTrackedAbsorbAura(unit)
+  if not (C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID) then
+    return nil, nil
+  end
+
+  for i = 1, #prioritized_absorb_buffs do
+    local absorbBuff = prioritized_absorb_buffs[i]
+    local spellID = absorbBuff and absorbBuff.spell_id
+    if spellID then
+      local auraData = C_UnitAuras.GetUnitAuraBySpellID(unit, spellID)
+      if auraData then
+        if absorbBuff.track_spell_id and auraData.spellId
+          and not absorbBuff.track_spell_id[auraData.spellId] then
+          -- skip rank mismatch
+        else
+          return absorbBuff, auraData
+        end
+      end
+    end
+  end
+
+  return nil, nil
+end
+
+local function FindPriorityTrackedDebuffAura(unit)
+  if not (C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID) then
+    return nil, nil
+  end
+
+  local now = GetTime()
+  local bestDebuff
+  local bestAura
+  local bestRemaining = -1
+
+  for i = 1, #prioritized_debuffs do
+    local debuff = prioritized_debuffs[i]
+    local spellID = debuff and debuff.spell_id
+    if spellID then
+      local auraData = C_UnitAuras.GetUnitAuraBySpellID(unit, spellID)
+      if auraData then
+        if debuff.track_spell_id and auraData.spellId
+          and not debuff.track_spell_id[auraData.spellId] then
+          -- skip rank mismatch
+        else
+          local expiration = tonumber(auraData.expirationTime) or 0
+          local remaining = expiration > 0 and (expiration - now) or 0
+          if remaining < 0 then remaining = 0 end
+          local priority = tonumber(debuff.priority) or 0
+          local bestPriority = tonumber(bestDebuff and bestDebuff.priority) or -1
+          if (not bestDebuff)
+            or priority > bestPriority
+            or (priority == bestPriority and remaining > bestRemaining) then
+            bestDebuff = debuff
+            bestAura = auraData
+            bestRemaining = remaining
+          end
+        end
+      end
+    end
+  end
+
+  return bestDebuff, bestAura
+end
+
+local function ShouldRefreshAurasFromUpdateInfo(updateInfo, db)
+  if not (db and db.useAuraDeltaUpdates) then
+    return true
+  end
+
+  if type(updateInfo) ~= "table" then
+    return true
+  end
+
+  if updateInfo.isFullUpdate then
+    return true
+  end
+
+  if type(updateInfo.addedAuras) == "table" then
+    for _, auraData in ipairs(updateInfo.addedAuras) do
+      if auraData and IsTrackedSpellID(auraData.spellId) then
+        return true
+      end
+    end
+  end
+
+  if type(updateInfo.updatedAuraInstanceIDs) == "table" and #updateInfo.updatedAuraInstanceIDs > 0 then
+    return true
+  end
+
+  if type(updateInfo.removedAuraInstanceIDs) == "table" and #updateInfo.removedAuraInstanceIDs > 0 then
+    return true
+  end
+
+  return false
 end
 
 local function IsFriendlyNameplate(nameplate, unit)
@@ -693,6 +866,7 @@ local function SetNameplateHealthBarColor(nameplate, statusbar, unit)
 end
 
 local function SetNameplateAbsorb(nameplate, unit)
+  local db = GetDB()
   if unit and UnitExists(unit) and not UnitIsDead(unit)
     and nameplate and nameplate.UnitFrame then
     local nameplate_health_bar = nameplate.UnitFrame.healthBar
@@ -703,8 +877,32 @@ local function SetNameplateAbsorb(nameplate, unit)
       return
     end
 
+    if db.useSpellIDAuraLookup then
+      local absorb_buff = nil
+      local auraData = nil
+      absorb_buff, auraData = FindTrackedAbsorbAura(unit)
+      if absorb_buff and auraData then
+        local unit_health = UnitHealth(unit)
+        local unit_health_max = UnitHealthMax(unit)
+
+        if unit_health and unit_health_max and unit_health_max > 0 then
+          local x = nameplate_health_bar:GetWidth() * (unit_health / unit_health_max)
+          if x + nameplate_health_bar.absorb:GetWidth() > nameplate_health_bar:GetWidth() then
+            x = nameplate_health_bar:GetWidth() - nameplate_health_bar.absorb:GetWidth()
+            nameplate_health_bar.absorb.over_absorb_texture:Show()
+          else
+            nameplate_health_bar.absorb.over_absorb_texture:Hide()
+          end
+
+          nameplate_health_bar.absorb:SetPoint("LEFT", nameplate_health_bar, x, 0)
+          nameplate_health_bar.absorb:Show()
+          return
+        end
+      end
+    end
+
     for i = 1, 40 do
-      local name, _, _, _, _, _, _, _, _, absorb_spell_id = UnitAura(unit, i, "HELPFUL")
+      local name, _, _, _, _, _, _, _, _, absorb_spell_id = GetUnitAuraByIndex(unit, i, "HELPFUL")
       if name then
         local absorb_buff = formatted_absorb_buffs[name]
 
@@ -873,7 +1071,7 @@ local function SetNameplatePlayerDebuffs(nameplate, unit)
 
     for i = 1, 40 do
       local name, icon, debuff_aura_count, _, debuff_duration,
-        debuff_expiration_time, unit_caster, _, _, debuff_spell_id = UnitAura(unit, i, "HARMFUL")
+        debuff_expiration_time, unit_caster, _, _, debuff_spell_id = GetUnitAuraByIndex(unit, i, "HARMFUL")
       if not debuff_duration then debuff_duration = 0 end
 
       if name then
@@ -1038,10 +1236,43 @@ local function SetNameplateUnitDebuff(nameplate, unit)
 
     if not db.enemy_nameplate_debuff then return end
 
+    if db.useSpellIDAuraLookup then
+      local trackedDebuff, auraData = FindPriorityTrackedDebuffAura(unit)
+      if trackedDebuff and auraData then
+        local debuff_duration = tonumber(auraData.duration) or 0
+        local debuff_expiration_time = tonumber(auraData.expirationTime) or 0
+        local icon = auraData.icon
+        local now = GetTime()
+        local cooldownStarted = now
+        if debuff_expiration_time > 0 then
+          cooldownStarted = now - (debuff_duration - (debuff_expiration_time - now))
+        end
+
+        nameplate_debuff.current_debuff = trackedDebuff
+        nameplate_debuff.cooldown_started = cooldownStarted
+        nameplate_debuff.cooldown_duration = debuff_duration
+        nameplate_debuff.filter = auraData.isHarmful and "HARMFUL" or "HELPFUL"
+        nameplate_debuff:Show()
+
+        if icon ~= trackedDebuff.texture then
+          nameplate_debuff.texture:SetTexture(icon)
+        else
+          nameplate_debuff.texture:SetTexture(trackedDebuff.texture)
+        end
+
+        nameplate_debuff.cooldown:SetCooldown(
+          nameplate_debuff.cooldown_started,
+          nameplate_debuff.cooldown_duration
+        )
+        nameplate_debuff.cooldown:Show()
+        return
+      end
+    end
+
     for _, aura_type in pairs({ "HELPFUL", "HARMFUL" }) do
       for i = 1, 40 do
         local name, icon, _, _, debuff_duration, debuff_expiration_time,
-          _, _, _, debuff_spell_id = UnitAura(unit, i, aura_type)
+          _, _, _, debuff_spell_id = GetUnitAuraByIndex(unit, i, aura_type)
         if not debuff_duration then debuff_duration = 0 end
 
         if name then
@@ -1112,7 +1343,9 @@ local function SetNameplateUnitInterrupt(db, dest_guid, dest_name, dest_flags, s
       if not nameplate_debuff then return end
 
       if spell_id then
-        local name, _, texture = GetSpellInfo(spell_id)
+        local spellInfo = GetSpellInfoByID(spell_id)
+        local name = spellInfo and spellInfo.name
+        local texture = spellInfo and spellInfo.iconID
         local interrupt = formatted_interrupts[name]
 
         if interrupt then
@@ -1193,7 +1426,8 @@ local function SetNameplatePlayerMindControl(combat_event, source_name, dest_nam
   if not player_name or (source_name ~= player_name and dest_name ~= player_name) then return end
   if not spell_id then return end
 
-  local name = GetSpellInfo(spell_id)
+  local spellInfo = GetSpellInfoByID(spell_id)
+  local name = spellInfo and spellInfo.name
   if name ~= "Mind Control" and name ~= "Gnomish Mind Control Cap"
     and name ~= "Chains of Kel'Thuzad"
   then
@@ -1524,8 +1758,12 @@ function mod.StyleUnitNameplate(_, unit)
     )
     ApplyBackdrop(unit_nameplate_health_bar.unit_stance.backdrop)
 
-    unit_nameplate.nameplate_events:HookScript("OnEvent", function(_, event)
+    unit_nameplate.nameplate_events:HookScript("OnEvent", function(_, event, _, updateInfo)
       if event == "UNIT_AURA" and unit_nameplate.UnitFrame then
+        local db = GetDB()
+        if not ShouldRefreshAurasFromUpdateInfo(updateInfo, db) then
+          return
+        end
         SetNameplateUnitDebuff(unit_nameplate, unit_nameplate.UnitFrame.unit)
         SetNameplatePlayerDebuffs(unit_nameplate, unit_nameplate.UnitFrame.unit)
         SetNameplateAbsorb(unit_nameplate, unit_nameplate.UnitFrame.unit)

@@ -2,6 +2,12 @@
 local _, ETBC = ...
 
 local tempText = ""
+local tempOptionID = ""
+
+local function TrimText(value)
+  if type(value) ~= "string" then return "" end
+  return (value:gsub("^%s+", ""):gsub("%s+$", ""))
+end
 
 local function GetDB()
   ETBC.db.profile.autoGossip = ETBC.db.profile.autoGossip or {}
@@ -9,7 +15,10 @@ local function GetDB()
 
   if db.enabled == nil then db.enabled = true end
   if db.delay == nil then db.delay = 0 end
+  if db.useGossipInfo == nil then db.useGossipInfo = true end
+  if db.matchByOptionID == nil then db.matchByOptionID = false end
   db.options = db.options or {}
+  db.optionIDs = db.optionIDs or {}
 
   return db
 end
@@ -67,6 +76,30 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           Apply()
         end,
       },
+      useGossipInfo = {
+        type = "toggle",
+        name = "Use C_GossipInfo",
+        desc = "Uses structured gossip options when available; falls back to legacy APIs automatically.",
+        order = 4,
+        width = "full",
+        get = function() return db.useGossipInfo end,
+        set = function(_, v)
+          db.useGossipInfo = v and true or false
+          Apply()
+        end,
+      },
+      matchByOptionID = {
+        type = "toggle",
+        name = "Match by Option ID",
+        desc = "When enabled, Option IDs are matched first (locale-safe), then text patterns.",
+        order = 5,
+        width = "full",
+        get = function() return db.matchByOptionID end,
+        set = function(_, v)
+          db.matchByOptionID = v and true or false
+          Apply()
+        end,
+      },
 
       optionsHeader = {
         type = "header",
@@ -104,7 +137,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
             order = 2,
             func = function()
               if tempText and tempText ~= "" then
-                local pattern = tempText:trim()
+                local pattern = TrimText(tempText)
                 if pattern ~= "" then
                   -- Check if already exists
                   local exists = false
@@ -130,6 +163,67 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
                 end
               end
             end,
+          },
+        },
+      },
+      optionIDGroup = {
+        type = "group",
+        name = "Option ID Matching",
+        order = 17,
+        inline = true,
+        args = {
+          optionIDInput = {
+            type = "input",
+            name = "Gossip Option ID",
+            desc = "Numeric gossip option ID to auto-select when match-by-ID is enabled.",
+            order = 1,
+            width = "double",
+            get = function() return tempOptionID end,
+            set = function(_, v) tempOptionID = v end,
+          },
+          addOptionID = {
+            type = "execute",
+            name = "Add ID",
+            order = 2,
+            func = function()
+              local id = tonumber(TrimText(tempOptionID))
+              if not id then
+                if ETBC.Print then
+                  ETBC:Print("Option ID must be a number.")
+                end
+                return
+              end
+              db.optionIDs[id] = true
+              tempOptionID = ""
+              Apply()
+            end,
+          },
+          clearOptionIDs = {
+            type = "execute",
+            name = "Clear IDs",
+            order = 3,
+            func = function()
+              db.optionIDs = {}
+              Apply()
+            end,
+          },
+          optionIDList = {
+            type = "description",
+            name = function()
+              local ids = {}
+              for id, enabled in pairs(db.optionIDs or {}) do
+                if enabled then
+                  ids[#ids + 1] = tonumber(id) or id
+                end
+              end
+              table.sort(ids)
+              if #ids == 0 then
+                return "|cffaaaaaa(No option IDs configured)|r"
+              end
+              return "Configured IDs: |cff00ff00" .. table.concat(ids, ", ") .. "|r"
+            end,
+            order = 4,
+            width = "full",
           },
         },
       },

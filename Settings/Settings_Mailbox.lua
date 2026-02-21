@@ -16,6 +16,9 @@ local function GetDB()
   if db.autoDeleteEmpty == nil then db.autoDeleteEmpty = false end
   if db.confirmDelete == nil then db.confirmDelete = true end
   if db.printSummary == nil then db.printSummary = true end
+  if db.respectMailPendingCommands == nil then db.respectMailPendingCommands = true end
+  if db.pendingRetryInterval == nil then db.pendingRetryInterval = 0.05 end
+  if db.pendingMaxWait == nil then db.pendingMaxWait = 2.0 end
 
   db.throttle = db.throttle or {}
   if db.throttle.enabled == nil then db.throttle.enabled = true end
@@ -189,6 +192,40 @@ ETBC.SettingsRegistry:RegisterGroup("mailbox", {
             order = 4,
             get = function() return db.printSummary end,
             set = function(_, v) db.printSummary = v and true or false; ETBC.ApplyBus:Notify("mailbox") end,
+          },
+        },
+      },
+      pending = {
+        type = "group",
+        name = "Command Queue Safety",
+        order = 45,
+        inline = true,
+        args = {
+          respectMailPendingCommands = {
+            type = "toggle",
+            name = "Respect Mail Pending Commands",
+            desc = "Checks C_Mail.IsCommandPending() before issuing each mailbox action.",
+            order = 1,
+            get = function() return db.respectMailPendingCommands end,
+            set = function(_, v) db.respectMailPendingCommands = v and true or false; ETBC.ApplyBus:Notify("mailbox") end,
+          },
+          pendingRetryInterval = {
+            type = "range",
+            name = "Pending Retry Interval (sec)",
+            order = 2,
+            min = 0.01, max = 0.25, step = 0.01,
+            disabled = function() return not db.respectMailPendingCommands end,
+            get = function() return tonumber(db.pendingRetryInterval) or 0.05 end,
+            set = function(_, v) db.pendingRetryInterval = v; ETBC.ApplyBus:Notify("mailbox") end,
+          },
+          pendingMaxWait = {
+            type = "range",
+            name = "Pending Max Wait (sec)",
+            order = 3,
+            min = 0.2, max = 5.0, step = 0.1,
+            disabled = function() return not db.respectMailPendingCommands end,
+            get = function() return tonumber(db.pendingMaxWait) or 2.0 end,
+            set = function(_, v) db.pendingMaxWait = v; ETBC.ApplyBus:Notify("mailbox") end,
           },
         },
       },

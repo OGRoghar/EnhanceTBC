@@ -17,6 +17,8 @@ local function GetDB()
   if db.showItemLevel == nil then db.showItemLevel = true end
   if db.showVendorPrice == nil then db.showVendorPrice = true end
   if db.showStatSummary == nil then db.showStatSummary = true end
+  if db.useTooltipDataProcessor == nil then db.useTooltipDataProcessor = true end
+  if db.showTooltipDataMeta == nil then db.showTooltipDataMeta = false end
   if db.statSummaryMax == nil then db.statSummaryMax = 6 end
   if db.anchorMode == nil then db.anchorMode = "DEFAULT" end
   if db.offsetX == nil then db.offsetX = 16 end
@@ -125,8 +127,21 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
             get = function() return db.showQuestId end,
             set = function(_, v) db.showQuestId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
           },
+          useTooltipDataProcessor = {
+            type = "toggle", name = "Use Tooltip Data Processor", order = 10,
+            desc = "Uses structured tooltip data callbacks when available; falls back to standard hooks.",
+            get = function() return db.useTooltipDataProcessor end,
+            set = function(_, v) db.useTooltipDataProcessor = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
+          },
+          showTooltipDataMeta = {
+            type = "toggle", name = "Show Tooltip Data Meta", order = 11,
+            desc = "Adds debug-friendly tooltip data metadata lines.",
+            get = function() return db.showTooltipDataMeta end,
+            set = function(_, v) db.showTooltipDataMeta = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
+            disabled = function() return not db.useTooltipDataProcessor end,
+          },
           idColor = {
-            type = "color", name = "ID Text Color", order = 10,
+            type = "color", name = "ID Text Color", order = 12,
             hasAlpha = false,
             get = function()
               local c = db.idColor

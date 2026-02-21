@@ -19,6 +19,12 @@ local suppressBlizzardAuras = false
 local pool = {}
 local activeBuffs = {}
 local activeDebuffs = {}
+local auraCache = {
+  BUFF = {},
+  DEBUFF = {},
+}
+local auraInstanceKinds = {}
+local auraSyntheticKey = 0
 local blizzardAuraFrames = {
   "BuffFrame",
   "DebuffFrame",
@@ -35,6 +41,200 @@ local DEBUFF_COLORS = {
   Disease = { r = 0.60, g = 0.40, b = 0.00, a = 1.0 },
   Poison  = { r = 0.00, g = 0.60, b = 0.00, a = 1.0 },
 }
+
+local legacyUnitBuff = _G["UnitBuff"]
+local legacyUnitDebuff = _G["UnitDebuff"]
+
+local function GetUnitBuffByIndex(unit, index)
+  if C_UnitAuras and C_UnitAuras.GetBuffDataByIndex and AuraUtil and AuraUtil.UnpackAuraData then
+    local auraData = C_UnitAuras.GetBuffDataByIndex(unit, index)
+    if auraData then
+      return AuraUtil.UnpackAuraData(auraData)
+    end
+    return nil
+  end
+
+  if type(legacyUnitBuff) == "function" then
+    return legacyUnitBuff(unit, index)
+  end
+
+  return nil
+end
+
+local function GetUnitDebuffByIndex(unit, index)
+  if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex and AuraUtil and AuraUtil.UnpackAuraData then
+    local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, index)
+    if auraData then
+      return AuraUtil.UnpackAuraData(auraData)
+    end
+    return nil
+  end
+
+  if type(legacyUnitDebuff) == "function" then
+    return legacyUnitDebuff(unit, index)
+  end
+
+  return nil
+end
+
+local function NextSyntheticAuraKey(kind)
+  auraSyntheticKey = auraSyntheticKey + 1
+  return (kind or "AURA") .. ":synthetic:" .. tostring(auraSyntheticKey)
+end
+
+local function ClearAuraCache()
+  if wipe then
+    wipe(auraCache.BUFF)
+    wipe(auraCache.DEBUFF)
+    wipe(auraInstanceKinds)
+  else
+    auraCache.BUFF = {}
+    auraCache.DEBUFF = {}
+    auraInstanceKinds = {}
+  end
+end
+
+local function ResolveAuraIndexByInstanceID(kind, auraInstanceID)
+  local instanceID = tonumber(auraInstanceID)
+  if not instanceID then return nil end
+  if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return nil end
+
+  local filter = (kind == "DEBUFF") and "HARMFUL" or "HELPFUL"
+  for i = 1, 40 do
+    local auraData = C_UnitAuras.GetAuraDataByIndex("player", i, filter)
+    if not auraData then break end
+    if tonumber(auraData.auraInstanceID) == instanceID then
+      return i
+    end
+  end
+
+  return nil
+end
+
+local function NormalizeAuraEntry(kind, auraData, index)
+  if type(auraData) ~= "table" then return nil end
+
+  local expiration = tonumber(auraData.expirationTime) or 0
+  local duration = tonumber(auraData.duration) or 0
+  local remaining = 0
+  if expiration > 0 then
+    remaining = math.max(0, expiration - GetTime())
+  end
+
+  return {
+    kind = kind,
+    index = tonumber(index),
+    auraInstanceID = tonumber(auraData.auraInstanceID),
+    spellID = tonumber(auraData.spellId),
+    name = auraData.name,
+    texture = auraData.icon,
+    count = tonumber(auraData.applications) or 0,
+    duration = duration,
+    expiration = expiration,
+    debuffType = auraData.dispelName,
+    caster = auraData.sourceUnit,
+    remaining = remaining,
+  }
+end
+
+local function StoreAuraInCache(kind, entry, forceKey)
+  if not entry or not kind then return end
+  local key = forceKey or entry.auraInstanceID or NextSyntheticAuraKey(kind)
+  auraCache[kind][key] = entry
+  if entry.auraInstanceID then
+    auraInstanceKinds[entry.auraInstanceID] = kind
+  end
+end
+
+local function RebuildAuraCacheFromUnitAuras()
+  if not (C_UnitAuras and C_UnitAuras.GetUnitAuras) then
+    return false
+  end
+
+  ClearAuraCache()
+
+  local function Fill(kind, filter)
+    local ok, list = pcall(C_UnitAuras.GetUnitAuras, "player", filter, 40)
+    if not ok or type(list) ~= "table" then
+      return
+    end
+
+    for i = 1, #list do
+      local entry = NormalizeAuraEntry(kind, list[i], i)
+      if entry then
+        StoreAuraInCache(kind, entry)
+      end
+    end
+  end
+
+  Fill("BUFF", "HELPFUL")
+  Fill("DEBUFF", "HARMFUL")
+  return true
+end
+
+local function ApplyAuraDeltaUpdate(updateInfo)
+  if type(updateInfo) ~= "table" then
+    return RebuildAuraCacheFromUnitAuras()
+  end
+
+  if updateInfo.isFullUpdate then
+    return RebuildAuraCacheFromUnitAuras()
+  end
+
+  if not (C_UnitAuras and C_UnitAuras.GetAuraDataByAuraInstanceID) then
+    return RebuildAuraCacheFromUnitAuras()
+  end
+
+  if type(updateInfo.removedAuraInstanceIDs) == "table" then
+    for _, removedID in ipairs(updateInfo.removedAuraInstanceIDs) do
+      local instanceID = tonumber(removedID)
+      local knownKind = instanceID and auraInstanceKinds[instanceID]
+      if instanceID and knownKind and auraCache[knownKind] then
+        auraCache[knownKind][instanceID] = nil
+        auraInstanceKinds[instanceID] = nil
+      end
+    end
+  end
+
+  if type(updateInfo.addedAuras) == "table" then
+    for _, auraData in ipairs(updateInfo.addedAuras) do
+      if type(auraData) == "table" then
+        local kind = auraData.isHarmful and "DEBUFF" or "BUFF"
+        local entry = NormalizeAuraEntry(kind, auraData, nil)
+        if entry then
+          StoreAuraInCache(kind, entry)
+        end
+      end
+    end
+  end
+
+  if type(updateInfo.updatedAuraInstanceIDs) == "table" then
+    for _, updatedID in ipairs(updateInfo.updatedAuraInstanceIDs) do
+      local instanceID = tonumber(updatedID)
+      if instanceID then
+        local auraData = C_UnitAuras.GetAuraDataByAuraInstanceID("player", instanceID)
+        local oldKind = auraInstanceKinds[instanceID]
+        if not auraData then
+          if oldKind and auraCache[oldKind] then
+            auraCache[oldKind][instanceID] = nil
+          end
+          auraInstanceKinds[instanceID] = nil
+        else
+          local newKind = auraData.isHarmful and "DEBUFF" or "BUFF"
+          local entry = NormalizeAuraEntry(newKind, auraData, nil)
+          if entry then
+            if oldKind and oldKind ~= newKind and auraCache[oldKind] then
+              auraCache[oldKind][instanceID] = nil
+            end
+            StoreAuraInCache(newKind, entry, instanceID)
+          end
+        end
+      end
+    end
+  end
+
+  return true
+end
 
 local function SafeFont(face)
   face = face or "Friz Quadrata TT"
@@ -268,10 +468,20 @@ local function AcquireIcon()
     end
 
     if not self.data then return end
+    local auraIndex = self.data.index
+    if (not auraIndex or auraIndex <= 0) and self.data.auraInstanceID then
+      auraIndex = ResolveAuraIndexByInstanceID(self.data.kind, self.data.auraInstanceID)
+      self.data.index = auraIndex
+    end
+
     if self.data.kind == "BUFF" then
-      GameTooltip:SetUnitBuff("player", self.data.index)
+      if auraIndex then
+        GameTooltip:SetUnitBuff("player", auraIndex)
+      end
     else
-      GameTooltip:SetUnitDebuff("player", self.data.index)
+      if auraIndex then
+        GameTooltip:SetUnitDebuff("player", auraIndex)
+      end
     end
     GameTooltip:Show()
   end)
@@ -284,7 +494,14 @@ local function AcquireIcon()
     if button ~= "RightButton" then return end
     if self.type == "preview" then return end
     if not self.data or self.data.kind ~= "BUFF" then return end
-    CancelUnitBuff("player", self.data.index)
+    local auraIndex = self.data.index
+    if (not auraIndex or auraIndex <= 0) and self.data.auraInstanceID then
+      auraIndex = ResolveAuraIndexByInstanceID(self.data.kind, self.data.auraInstanceID)
+      self.data.index = auraIndex
+    end
+    if auraIndex then
+      CancelUnitBuff("player", auraIndex)
+    end
   end)
 
   return icon
@@ -404,12 +621,12 @@ local function UpdateIconDuration(icon, data, common, now)
   icon.timeText:Show()
 end
 
-local function CollectAuras(kind, common)
+local function CollectLegacyAuras(kind, common)
   local list = {}
 
   if kind == "BUFF" then
     for i = 1, 40 do
-      local name, iconTexture, count, debuffType, duration, expiration, caster = UnitBuff("player", i)
+      local name, iconTexture, count, debuffType, duration, expiration, caster = GetUnitBuffByIndex("player", i)
       if not name then break end
 
       local include = true
@@ -418,7 +635,7 @@ local function CollectAuras(kind, common)
       if include then
         local remaining = 0
         if expiration and expiration > 0 then remaining = math.max(0, expiration - GetTime()) end
-        list[#list+1] = {
+        list[#list + 1] = {
           kind = "BUFF",
           index = i,
           name = name,
@@ -434,7 +651,7 @@ local function CollectAuras(kind, common)
     end
   else
     for i = 1, 40 do
-      local name, iconTexture, count, debuffType, duration, expiration, caster = UnitDebuff("player", i)
+      local name, iconTexture, count, debuffType, duration, expiration, caster = GetUnitDebuffByIndex("player", i)
       if not name then break end
 
       local include = true
@@ -443,7 +660,7 @@ local function CollectAuras(kind, common)
       if include then
         local remaining = 0
         if expiration and expiration > 0 then remaining = math.max(0, expiration - GetTime()) end
-        list[#list+1] = {
+        list[#list + 1] = {
           kind = "DEBUFF",
           index = i,
           name = name,
@@ -461,6 +678,62 @@ local function CollectAuras(kind, common)
 
   SortList(list, common.sortMode, common.sortAscending)
   return list
+end
+
+local function CollectCachedAuras(kind, common)
+  local map = auraCache[kind]
+  if type(map) ~= "table" or not next(map) then
+    return {}
+  end
+
+  local list = {}
+  for _, aura in pairs(map) do
+    if aura then
+      local include = true
+      if common.playerOnly and aura.caster and aura.caster ~= "player" then
+        include = false
+      end
+
+      if include then
+        local remaining = 0
+        if aura.expiration and aura.expiration > 0 then
+          remaining = math.max(0, aura.expiration - GetTime())
+        end
+
+        list[#list + 1] = {
+          kind = aura.kind,
+          index = aura.index,
+          auraInstanceID = aura.auraInstanceID,
+          spellID = aura.spellID,
+          name = aura.name,
+          texture = aura.texture,
+          count = aura.count,
+          duration = aura.duration,
+          expiration = aura.expiration,
+          debuffType = aura.debuffType,
+          caster = aura.caster,
+          remaining = remaining,
+        }
+      end
+    end
+  end
+
+  SortList(list, common.sortMode, common.sortAscending)
+  return list
+end
+
+local function CollectAuras(kind, common, updateInfo)
+  if common.useDeltaAuraUpdates then
+    if updateInfo ~= false then
+      local cacheUpdated = ApplyAuraDeltaUpdate(updateInfo)
+      if not cacheUpdated then
+        return CollectLegacyAuras(kind, common)
+      end
+    end
+    return CollectCachedAuras(kind, common)
+  end
+
+  return CollectLegacyAuras(kind, common)
 end
 
 local function BuildPreview(kind)
@@ -507,10 +780,10 @@ local function ClearActive(list)
   end
 end
 
-local function Render(kind, container, activeList, common, layout)
+local function Render(kind, container, activeList, common, layout, updateInfo)
   ClearActive(activeList)
 
-  local dataList = common.preview and BuildPreview(kind) or CollectAuras(kind, common)
+  local dataList = common.preview and BuildPreview(kind) or CollectAuras(kind, common, updateInfo)
 
   for i = 1, #dataList do
     local data = dataList[i]
@@ -552,6 +825,7 @@ local function Apply()
 
   local enabled = p.general.enabled and db.enabled
   if not enabled or not VisibilityAllowed(db) then
+    ClearAuraCache()
     SetBlizzardAuraFramesSuppressed(false)
     driver:UnregisterAllEvents()
     driver:SetScript("OnUpdate", nil)
@@ -586,19 +860,29 @@ local function Apply()
   SetShownCompat(buffContainer, db.buffs.enabled)
   SetShownCompat(debuffContainer, db.debuffs.enabled)
 
+  if not db.useDeltaAuraUpdates then
+    ClearAuraCache()
+  end
+
   driver:UnregisterAllEvents()
   driver:RegisterEvent("UNIT_AURA")
   driver:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-  driver:SetScript("OnEvent", function(_, event, unit)
+  driver:SetScript("OnEvent", function(_, event, unit, updateInfo)
     if event == "UNIT_AURA" and unit ~= "player" then return end
+    local updateToken = updateInfo
+    if db.useDeltaAuraUpdates and not db.preview then
+      ApplyAuraDeltaUpdate(updateInfo)
+      updateToken = false
+    end
+
     if db.buffs.enabled then
-      Render("BUFF", buffContainer, activeBuffs, db, db.buffs)
+      Render("BUFF", buffContainer, activeBuffs, db, db.buffs, updateToken)
     else
       ClearActive(activeBuffs)
     end
     if db.debuffs.enabled then
-      Render("DEBUFF", debuffContainer, activeDebuffs, db, db.debuffs)
+      Render("DEBUFF", debuffContainer, activeDebuffs, db, db.debuffs, updateToken)
     else
       ClearActive(activeDebuffs)
     end
@@ -630,14 +914,18 @@ local function Apply()
 
   driver:Show()
 
+  if db.useDeltaAuraUpdates and not db.preview then
+    ApplyAuraDeltaUpdate({ isFullUpdate = true })
+  end
+
   if db.buffs.enabled then
-    Render("BUFF", buffContainer, activeBuffs, db, db.buffs)
+    Render("BUFF", buffContainer, activeBuffs, db, db.buffs, db.useDeltaAuraUpdates and false or nil)
   else
     ClearActive(activeBuffs)
   end
 
   if db.debuffs.enabled then
-    Render("DEBUFF", debuffContainer, activeDebuffs, db, db.debuffs)
+    Render("DEBUFF", debuffContainer, activeDebuffs, db, db.debuffs, db.useDeltaAuraUpdates and false or nil)
   else
     ClearActive(activeDebuffs)
   end
