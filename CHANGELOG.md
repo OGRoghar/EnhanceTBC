@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.2.9 - 2026-02-21
+- Added:
+	- Expanded 2.5.5/20505 compatibility helpers and API fallbacks in `Core/Compat.lua`.
+- Changed:
+	- Reworked Castbar+ runtime/settings wiring: centered spell text + right timer layout, player icon handling, player-only offsets, live cast/channel/non-interruptible colors, and custom fade timing.
+	- Updated module/settings compatibility paths for current client behavior across castbar, nameplates, minimap, tooltip, mailbox, and auto-gossip flows.
+	- Updated `.pkgmeta` packaging ignores to exclude local Lua tooling artifacts (`luacheck-0.21.0-1`, `check_luacheck.lua`, `check_busted.lua`).
+- Fixed:
+	- Aura cooldown spiral now renders bright-to-dark.
+	- Castbar now reliably hides after cast/channel completion.
+- Release:
+	- Prepared version metadata for `1.2.9`.
+
 ## v1.2.8 - 2026-02-20
 - Added:
 	- Draggable "Exit mover mode" popup shown during mover mode.

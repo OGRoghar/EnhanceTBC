@@ -12,7 +12,7 @@ _G.EnhanceTBC = ETBC
 _G.ETBC = ETBC
 
 ETBC.name = ADDON_NAME
-ETBC.version = ETBC.version or "1.2.1"
+ETBC.version = ETBC.version or "1.2.9"
 
 ETBC.Modules = ETBC.Modules or {}
 ETBC.modules = ETBC.modules or {}
