@@ -16,6 +16,7 @@ luacheck-0.21.0-1
 enhancetbc-dev-1.rockspec
 check_luacheck.lua
 check_busted.lua
+.github
 
 # Test coverage files
 luacov.*.out
