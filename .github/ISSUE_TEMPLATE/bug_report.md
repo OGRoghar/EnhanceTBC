@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Report a reproducible issue in EnhanceTBC (WoW TBC Anniversary)
-title: ''
+title: "[BUG]"
 labels: bug
 assignees: OGRoghar
 
