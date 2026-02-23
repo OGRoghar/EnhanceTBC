@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - 2026-02-23
+## v1.2.11 - 2026-02-23
 - Added:
 	- Castbar+ option to class-color the player castbar's casting/channeling states while preserving custom non-interruptible and latency colors.
 	- Config window header mover-mode toggle button for quick entry/exit of mover mode.
@@ -10,7 +10,7 @@
 	- Reduced duplicate `/etbc` UI clutter by hiding redundant root `enabled` toggles when the module header quick-toggle is present.
 	- Corrected custom config categorization/summary coverage for `nameplates` and `swingtimer`.
 - Release:
-	- Prepared CurseForge + Wago packaging metadata/workflow support (Wago TOC metadata, release workflow env wiring, and package ignore allowlist cleanup).
+	- Added GitHub release workflow + `.pkgmeta` packaging metadata to publish tagged releases to CurseForge and Wago.
 
 ## v1.2.10 - 2026-02-21
 - Added:
