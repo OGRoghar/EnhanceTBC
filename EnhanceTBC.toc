@@ -7,6 +7,9 @@
 ## OptionalDeps: Ace3
 ## X-Category: Interface Enhancements
 ## X-Curse-Project-ID: 1466265
+## X-Wago-ID: j6jm55NR
+
+
 
 # ==========================================================
 # Embedded Libraries (load first)
