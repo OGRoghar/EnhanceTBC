@@ -1,0 +1,29 @@
+curseforge:
+  project-id: 1466265
+
+ignore:
+  # Exclude everything outside the addon runtime/package allowlist:
+  # Core, Libs, locales, Media, Modules, Options, Settings, UI, Visibility,
+  # EnhanceTBC.toc, LICENSE, README.md, CHANGELOG.md
+  - .git
+  - .github
+  - .vscode
+  - spec
+  - test
+  - tools
+  - .busted
+  - .gitattributes
+  - .gitignore
+  - .luacheckrc
+  - .luacov
+  - .luarc.json
+  - .pkgmeta
+  - TESTING.md
+  - *.code-workspace
+  - *.rockspec
+  - luacov.report.out
+  - luacov.stats.out
+  - luacheck-0.21.0-1
+  - check_luacheck.lua
+  - check_busted.lua
+  
