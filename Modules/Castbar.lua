@@ -37,6 +37,7 @@ local CASTBAR_DEFAULTS = {
 
   skin = true,
   showChannelTicks = false,
+  classColorPlayerCastbar = false,
 
   castColor = { 0.25, 0.80, 0.25 },
   channelColor = { 0.25, 0.55, 1.00 },
@@ -570,6 +571,22 @@ local function ApplyPreviewTextLayout(bar)
   end
 end
 
+local function GetPreviewCastColor(db)
+  if db and db.classColorPlayerCastbar then
+    local H = GetStyleInternal()
+    if H and type(H.GetPlayerClassColor) == "function" then
+      local r, g, b = H.GetPlayerClassColor()
+      if type(r) == "number" and type(g) == "number" and type(b) == "number" then
+        return r, g, b
+      end
+    end
+  end
+
+  local cast = db and db.castColor or nil
+  cast = cast or { 0.25, 0.80, 0.25 }
+  return cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25
+end
+
 local function RefreshPreviewBar(force)
   local bar = mod._previewBar
   if not bar then return end
@@ -589,9 +606,9 @@ local function RefreshPreviewBar(force)
     bar:SetStatusBarTexture(texture)
   end
 
-  local cast = db.castColor or { 0.25, 0.80, 0.25 }
   if bar.SetStatusBarColor then
-    bar:SetStatusBarColor(cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25)
+    local r, g, b = GetPreviewCastColor(db)
+    bar:SetStatusBarColor(r, g, b)
   end
 
   ApplySkinBackdropColors(bar, { backdrop = bar }, db)

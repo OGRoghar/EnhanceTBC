@@ -162,6 +162,7 @@ ETBC.defaults = {
       decimals = 1,
       skin = true,
       showChannelTicks = false,
+      classColorPlayerCastbar = false,
       castColor = { 0.25, 0.80, 0.25 },
       channelColor = { 0.25, 0.55, 1.00 },
       nonInterruptibleColor = { 0.85, 0.25, 0.25 },

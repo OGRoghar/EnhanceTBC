@@ -66,6 +66,45 @@ local function IsPrimaryPlayerCastbar(bar)
   return bar == _G.PlayerCastingBarFrame or bar == _G.CastingBarFrame
 end
 
+local function GetPlayerClassColor()
+  if type(UnitClass) ~= "function" then return nil end
+
+  local _, class = UnitClass("player")
+  if not class then return nil end
+
+  if CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class] then
+    local c = CUSTOM_CLASS_COLORS[class]
+    return c.r, c.g, c.b
+  end
+
+  if RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+    local c = RAID_CLASS_COLORS[class]
+    return c.r, c.g, c.b
+  end
+
+  return nil
+end
+
+local function ShouldUsePlayerClassColor(bar, db)
+  return db and db.classColorPlayerCastbar and IsPrimaryPlayerCastbar(bar) and true or false
+end
+
+local function ResolveBarColors(bar, db)
+  local cast = db.castColor or { 0.25, 0.80, 0.25 }
+  local channel = db.channelColor or { 0.25, 0.55, 1.00 }
+  local nonInterrupt = db.nonInterruptibleColor or { 0.85, 0.25, 0.25 }
+
+  if ShouldUsePlayerClassColor(bar, db) then
+    local r, g, b = GetPlayerClassColor()
+    if type(r) == "number" and type(g) == "number" and type(b) == "number" then
+      cast = { r, g, b }
+      channel = { r, g, b }
+    end
+  end
+
+  return cast, channel, nonInterrupt
+end
+
 local function ApplyPlayerOffset(bar, active)
   if not IsPrimaryPlayerCastbar(bar) then return end
   local skin = EnsureSkin(bar)
@@ -102,9 +141,7 @@ local function ApplyBarColors(bar, active)
   local db = CallGetDB()
   if not db then return end
 
-  local cast = db.castColor or { 0.25, 0.80, 0.25 }
-  local channel = db.channelColor or { 0.25, 0.55, 1.00 }
-  local nonInterrupt = db.nonInterruptibleColor or { 0.85, 0.25, 0.25 }
+  local cast, channel, nonInterrupt = ResolveBarColors(bar, db)
   if bar.SetStartCastColor then
     bar:SetStartCastColor(cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25)
   end
@@ -113,6 +150,21 @@ local function ApplyBarColors(bar, active)
   end
   if bar.SetNonInterruptibleCastColor then
     bar:SetNonInterruptibleCastColor(nonInterrupt[1] or 0.85, nonInterrupt[2] or 0.25, nonInterrupt[3] or 0.25)
+  end
+
+  if bar.SetStatusBarColor then
+    local current
+    if bar.notInterruptible then
+      current = nonInterrupt
+    elseif bar.channeling then
+      current = channel
+    elseif bar.casting then
+      current = cast
+    end
+
+    if current then
+      bar:SetStatusBarColor(current[1] or 1, current[2] or 1, current[3] or 1)
+    end
   end
 end
 
@@ -184,3 +236,4 @@ H.ApplyBarColors = ApplyBarColors
 H.ApplySizing = ApplySizing
 H.ApplyTexture = ApplyTexture
 H.ApplyAlpha = ApplyAlpha
+H.GetPlayerClassColor = GetPlayerClassColor

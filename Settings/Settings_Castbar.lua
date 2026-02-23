@@ -25,6 +25,7 @@ local CASTBAR_DEFAULTS = {
 
   skin = true,
   showChannelTicks = false,
+  classColorPlayerCastbar = false,
 
   castColor = { 0.25, 0.80, 0.25 },
   channelColor = { 0.25, 0.55, 1.00 },
@@ -275,6 +276,18 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       },
 
       colorHeader = { type = "header", name = "Colors", order = 40 },
+
+      classColorPlayerCastbar = {
+        type = "toggle",
+        name = "Class-color player cast/channel",
+        desc = "Applies only to the player castbar. Overrides Casting and Channeling colors for player casts only. "
+          .. "Non-interruptible, target, and focus castbars continue using the custom color settings below.",
+        order = 40.1,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        get = function() return db.classColorPlayerCastbar end,
+        set = function(_, v) db.classColorPlayerCastbar = v and true or false; ETBC.ApplyBus:Notify("castbar") end,
+      },
 
       castColor = {
         type = "color",
