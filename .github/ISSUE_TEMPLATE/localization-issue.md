@@ -1,6 +1,6 @@
 ---
 name: Localization issue
-about: Describe this issue template's purpose here.
+about: Report incorrect, missing, or badly formatted translated text
 title: "[Localization]"
 labels: localization
 assignees: OGRoghar

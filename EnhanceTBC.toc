@@ -77,6 +77,10 @@ Core\MinimapButton.lua
 UI\Widgets\PreviewPanel.lua
 UI\Widgets\SectionCard.lua
 UI\Widgets\SearchHeader.lua
+UI\ConfigWindow_Theme.lua
+UI\ConfigWindow_Data.lua
+UI\ConfigWindow_Render.lua
+UI\ConfigWindow_Window.lua
 UI\ConfigWindow.lua
 
 # ==========================================================
@@ -111,10 +115,28 @@ Settings\Settings_CVars.lua
 # ==========================================================
 Modules\UI.lua
 Modules\Castbar.lua
+Modules\Castbar\Skin.lua
+Modules\Castbar\Layout.lua
+Modules\Castbar\Style.lua
+Modules\Castbar\Timing.lua
 Modules\UnitFrames.lua
 Modules\Unit_NamePlates.lua
+Modules\Unit_NamePlates\Data.lua
+Modules\Unit_NamePlates\Render.lua
+Modules\Unit_NamePlates\CombatLog.lua
+Modules\Unit_NamePlates\Lifecycle.lua
 Modules\ActionBars.lua
 Modules\MinimapPlus.lua
+Modules\MinimapPlus\Tracking.lua
+Modules\MinimapPlus\PerformanceFrame.lua
+Modules\MinimapPlus\IconsFrame.lua
+Modules\MinimapPlus\Timers.lua
+Modules\MinimapPlus\Sink.lua
+Modules\MinimapPlus\SinkButtons.lua
+Modules\MinimapPlus\SinkFrame.lua
+Modules\MinimapPlus\SinkScan.lua
+Modules\MinimapPlus\BlizzardAdapters.lua
+Modules\MinimapPlus\Events.lua
 Modules\Auras.lua
 Modules\ActionTracker.lua
 Modules\CombatText.lua

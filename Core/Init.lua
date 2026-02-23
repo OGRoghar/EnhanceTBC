@@ -6,13 +6,31 @@ local ADDON_NAME, ETBC = ...
 
 ETBC = ETBC or {}
 
+local function ResolveAddonVersion(addonName)
+  if C_AddOns and C_AddOns.GetAddOnMetadata then
+    local ok, v = pcall(C_AddOns.GetAddOnMetadata, addonName, "Version")
+    if ok and type(v) == "string" and v ~= "" then
+      return v
+    end
+  end
+
+  if GetAddOnMetadata then
+    local ok, v = pcall(GetAddOnMetadata, addonName, "Version")
+    if ok and type(v) == "string" and v ~= "" then
+      return v
+    end
+  end
+
+  return "0.0.0-dev"
+end
+
 -- Make the private addon namespace globally reachable for legacy code and /run debugging.
 -- We set both names for compatibility with older modules.
 _G.EnhanceTBC = ETBC
 _G.ETBC = ETBC
 
 ETBC.name = ADDON_NAME
-ETBC.version = ETBC.version or "1.2.9"
+ETBC.version = ETBC.version or ResolveAddonVersion(ADDON_NAME)
 
 ETBC.Modules = ETBC.Modules or {}
 ETBC.modules = ETBC.modules or {}

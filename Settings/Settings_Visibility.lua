@@ -7,7 +7,6 @@ local MODULE_KEYS = {
   "auras",
   "actiontracker",
   "combattext",
-  "gcdbar",
   "objectives",
 }
 
@@ -15,7 +14,6 @@ local MODULE_LABELS = {
   auras = "Auras",
   actiontracker = "Action Tracker",
   combattext = "Combat Text",
-  gcdbar = "GCD Bar",
   objectives = "Objectives",
 }
 
@@ -208,20 +206,10 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
         set = function(_, v) db.modulePresets.combattext = v; NotifyVisibility() end,
       },
 
-      moduleGCDBar = {
-        type = "select",
-        name = "GCD Bar",
-        order = 25,
-        values = PresetValues,
-        disabled = function() return not db.enabled end,
-        get = function() return db.modulePresets.gcdbar or "NONE" end,
-        set = function(_, v) db.modulePresets.gcdbar = v; NotifyVisibility() end,
-      },
-
       moduleObjectives = {
         type = "select",
         name = "Objectives",
-        order = 26,
+        order = 25,
         values = PresetValues,
         disabled = function() return not db.enabled end,
         get = function() return db.modulePresets.objectives or "NONE" end,

@@ -6,6 +6,8 @@ ETBC.Modules = ETBC.Modules or {}
 
 local mod = {}
 ETBC.Modules.MinimapPlus = mod
+mod.Internal = mod.Internal or {}
+mod.Internal.Shared = mod.Internal.Shared or {}
 
 local LDBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
 
@@ -76,6 +78,8 @@ local function GetBagNumSlots(bag)
   end
   return 0
 end
+mod.Internal.Shared.IsAddonLoadedCompat = IsAddonLoadedCompat
+mod.Internal.Shared.GetBagNumSlots = GetBagNumSlots
 
 local function GetBagNumFreeSlots(bag)
   if C and C.GetContainerNumFreeSlots then
@@ -88,6 +92,7 @@ local function GetBagNumFreeSlots(bag)
   end
   return 0
 end
+mod.Internal.Shared.GetBagNumFreeSlots = GetBagNumFreeSlots
 
 local function RunSetPointGuard(lockKey, fn)
   if state[lockKey] then return end
@@ -172,12 +177,31 @@ local function GetDB()
 
   return db
 end
+mod.Internal.Shared.RunSetPointGuard = RunSetPointGuard
+
+mod.Internal.Shared.state = state
+mod.Internal.Shared.GetDB = GetDB
+mod.Internal.Shared.TRACKING_NONE_TEXTURE = TRACKING_NONE_TEXTURE
+mod.Internal.Shared.LDBIcon = LDBIcon
+mod.Internal.Shared.SINK_ICON_SIZE = SINK_ICON_SIZE
+mod.Internal.Shared.SINK_ICON_SPACING = SINK_ICON_SPACING
+mod.Internal.Shared.SINK_PADDING = SINK_PADDING
+mod.Internal.Shared.SINK_MIN_WIDTH = SINK_MIN_WIDTH
+mod.Internal.Shared.SINK_MIN_HEIGHT = SINK_MIN_HEIGHT
+mod.Internal.Shared.SINK_TRACKING_ROW_HEIGHT = SINK_TRACKING_ROW_HEIGHT
+mod.Internal.Shared.ROUND_MASK_TEXTURE = ROUND_MASK_TEXTURE
+mod.Internal.Shared.SQUARE_MASK_TEXTURE = SQUARE_MASK_TEXTURE
+mod.Internal.Shared.RIGHT_MANAGED_FLAG = RIGHT_MANAGED_FLAG
+mod.Internal.Shared.LFG_POINT_FLAG = LFG_POINT_FLAG
+mod.Internal.Shared.CLOCK_POINT_FLAG = CLOCK_POINT_FLAG
 
 local function IsFeatureEnabled()
   local db = GetDB()
   local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
   return (generalEnabled and db.enabled) and true or false
 end
+
+mod.Internal.Shared.IsFeatureEnabled = IsFeatureEnabled
 
 local function ApplyMinimapShapeOverride(enabled)
   if enabled then
@@ -212,6 +236,8 @@ local function ApplyFont(fs, size)
   end
 end
 
+mod.Internal.Shared.ApplyFont = ApplyFont
+
 local function ApplyBackdrop(frame)
   if not frame or not frame.SetBackdrop then return end
   frame:SetBackdrop({
@@ -221,350 +247,144 @@ local function ApplyBackdrop(frame)
   frame:SetBackdropBorderColor(0.04, 0.04, 0.04)
 end
 
-local function GetTrackingEntries()
-  local entries = {}
-  if C_Minimap and C_Minimap.GetNumTrackingTypes and C_Minimap.GetTrackingInfo then
-    local count = tonumber(C_Minimap.GetNumTrackingTypes()) or 0
-    for index = 1, count do
-      local info = C_Minimap.GetTrackingInfo(index)
-      if info then
-        entries[#entries + 1] = {
-          index = index,
-          name = info.name or ("#" .. tostring(index)),
-          texture = info.texture,
-          active = info.active and true or false,
-          type = info.type,
-        }
-      end
-    end
-  end
-  return entries
+local function GetTrackingInternal()
+  return mod.Internal and mod.Internal.Tracking
 end
 
 local function GetTrackingSnapshot()
-  local snapshot = {
+  local H = GetTrackingInternal()
+  if H and H.GetTrackingSnapshot then
+    return H.GetTrackingSnapshot()
+  end
+  return {
     activeCount = 0,
     names = {},
     texture = TRACKING_NONE_TEXTURE,
   }
-
-  local entries = GetTrackingEntries()
-  local firstActiveTexture
-  local spellTexture
-  for _, entry in ipairs(entries) do
-    if entry.active then
-      snapshot.activeCount = snapshot.activeCount + 1
-      snapshot.names[#snapshot.names + 1] = entry.name
-      if not firstActiveTexture and entry.texture then
-        firstActiveTexture = entry.texture
-      end
-      if not spellTexture and entry.type == "spell" and entry.texture then
-        spellTexture = entry.texture
-      end
-    end
-  end
-
-  if spellTexture then
-    snapshot.texture = spellTexture
-  elseif firstActiveTexture then
-    snapshot.texture = firstActiveTexture
-  elseif GetTrackingTexture then
-    local icon = GetTrackingTexture()
-    if icon then
-      snapshot.texture = icon
-      snapshot.activeCount = 1
-      snapshot.names[1] = TRACKING or "Tracking"
-    end
-  end
-
-  return snapshot
 end
 
-local function CycleTrackingForward()
-  local db = GetDB()
-  if not db.enableTrackingQuickToggle then return false end
-  if not (C_Minimap and C_Minimap.GetNumTrackingTypes and C_Minimap.GetTrackingInfo and C_Minimap.SetTracking) then
-    return false
-  end
-
-  local ordered = {}
-  local activePos
-  local count = tonumber(C_Minimap.GetNumTrackingTypes()) or 0
-  for index = 1, count do
-    local info = C_Minimap.GetTrackingInfo(index)
-    if info then
-      ordered[#ordered + 1] = index
-      if info.active and not activePos then
-        activePos = #ordered
-      end
-    end
-  end
-
-  if #ordered == 0 then return false end
-
-  local nextPos = activePos and ((activePos % #ordered) + 1) or 1
-  if C_Minimap.ClearAllTracking then
-    C_Minimap.ClearAllTracking()
-  else
-    for _, index in ipairs(ordered) do
-      local info = C_Minimap.GetTrackingInfo(index)
-      if info and info.active then
-        C_Minimap.SetTracking(index, false)
-      end
-    end
-  end
-
-  C_Minimap.SetTracking(ordered[nextPos], true)
-  return true
-end
-
-local function ShowTrackingTooltip(anchor)
-  if not (GameTooltip and anchor) then return end
-
-  GameTooltip:SetOwner(anchor, "ANCHOR_BOTTOMLEFT")
-  GameTooltip:SetText(TRACKING or "Tracking", 1, 1, 1)
-
-  local snapshot = GetTrackingSnapshot()
-  if snapshot.activeCount > 0 then
-    local maxLines = math.min(#snapshot.names, 6)
-    for i = 1, maxLines do
-      GameTooltip:AddLine(snapshot.names[i], 0.8, 1.0, 0.8, true)
-    end
-    if #snapshot.names > maxLines then
-      GameTooltip:AddLine("...", 0.6, 0.6, 0.6)
-    end
-  else
-    GameTooltip:AddLine(MINIMAP_TRACKING_TOOLTIP_NONE or (NONE or "None"), 0.7, 0.7, 0.7, true)
-  end
-
-  local db = GetDB()
-  if db.enableTrackingQuickToggle then
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("Left-click to cycle tracking filters.", 0.8, 0.8, 0.8, true)
-  end
-  GameTooltip:Show()
-end
+mod.Internal.Shared.GetTrackingSnapshot = GetTrackingSnapshot
 
 local function TrackingWidget_OnEnter(self)
-  ShowTrackingTooltip(self)
+  local H = GetTrackingInternal()
+  if H and H.TrackingWidget_OnEnter then
+    H.TrackingWidget_OnEnter(self)
+  end
 end
 
 local function TrackingWidget_OnLeave()
-  if GameTooltip then GameTooltip:Hide() end
+  local H = GetTrackingInternal()
+  if H and H.TrackingWidget_OnLeave then
+    H.TrackingWidget_OnLeave()
+  end
 end
 
 local function TrackingWidget_OnClick()
-  if not CycleTrackingForward() then return end
-  if state.iconsFrame and state.iconsFrame.updateTrackingDisplay then
-    state.iconsFrame:updateTrackingDisplay()
-  end
-  if state.sinkFrame and state.sinkFrame.updateTrackingDisplay then
-    state.sinkFrame:updateTrackingDisplay()
+  local H = GetTrackingInternal()
+  if H and H.TrackingWidget_OnClick then
+    H.TrackingWidget_OnClick()
   end
 end
+
+mod.Internal.Shared.TrackingWidget_OnEnter = TrackingWidget_OnEnter
+mod.Internal.Shared.TrackingWidget_OnLeave = TrackingWidget_OnLeave
+mod.Internal.Shared.TrackingWidget_OnClick = TrackingWidget_OnClick
 
 local function IconsEnabled()
   local db = GetDB()
   return db.enabled and db.minimap_icons
 end
+mod.Internal.Shared.IconsEnabled = IconsEnabled
 
 local function PerformanceEnabled()
   local db = GetDB()
   return db.enabled and db.minimap_performance
 end
+mod.Internal.Shared.PerformanceEnabled = PerformanceEnabled
 
-local function CancelTicker(t)
-  if t and t.Cancel then t:Cancel() end
+local function GetTimersInternal()
+  return mod.Internal and mod.Internal.Timers
 end
 
 local function StopTickers()
-  CancelTicker(state.msTicker)
-  CancelTicker(state.fpsTicker)
-  CancelTicker(state.friendsTicker)
-  CancelTicker(state.guildTicker)
-  CancelTicker(state.sinkScanTicker)
-  state.msTicker = nil
-  state.fpsTicker = nil
-  state.friendsTicker = nil
-  state.guildTicker = nil
-  state.sinkScanTicker = nil
-end
-
-local function NewTicker(interval, fn)
-  if ETBC and ETBC.StartRepeatingTimer then
-    local t = ETBC:StartRepeatingTimer(interval, fn)
-    if t then return t end
+  local H = GetTimersInternal()
+  if H and H.StopTickers then
+    H.StopTickers()
+    return
   end
-  if C_Timer and C_Timer.NewTicker then
-    return C_Timer.NewTicker(interval, fn)
-  end
-  return nil
 end
 
 local function AfterDelay(delay, fn)
-  if ETBC and ETBC.StartTimer then
-    local t = ETBC:StartTimer(delay, fn)
-    if t then return t end
-  end
-  if C_Timer and C_Timer.After then
-    C_Timer.After(delay, fn)
-    return true
+  local H = GetTimersInternal()
+  if H and H.AfterDelay then
+    return H.AfterDelay(delay, fn)
   end
   fn()
   return true
 end
 
+mod.Internal.Shared.AfterDelay = AfterDelay
+
 local function StartTickers()
-  StopTickers()
-  local db = GetDB()
-  if not db.enabled then return end
-
-  if db.minimap_performance and state.performanceFrame then
-    state.msTicker = NewTicker(30, function()
-      if state.performanceFrame and state.performanceFrame.updateMsDisplay then
-        state.performanceFrame:updateMsDisplay()
-      end
-    end)
-    state.fpsTicker = NewTicker(1, function()
-      if state.performanceFrame and state.performanceFrame.updateFpsDisplay then
-        state.performanceFrame:updateFpsDisplay()
-      end
-    end)
+  local H = GetTimersInternal()
+  if H and H.StartTickers then
+    H.StartTickers()
   end
+end
 
-  if db.minimap_icons and state.iconsFrame then
-    state.friendsTicker = NewTicker(5, function()
-      if state.iconsFrame and state.iconsFrame.updateFriendsDisplay then
-        state.iconsFrame:updateFriendsDisplay()
-      end
-    end)
-    state.guildTicker = NewTicker(5, function()
-      if state.iconsFrame and state.iconsFrame.updateGuildDisplay then
-        state.iconsFrame:updateGuildDisplay()
-      end
-    end)
-  end
-
-  if db.sink_addons and state.sinkFrame then
-    local interval = tonumber(db.sink_scan_interval) or 5
-    if interval < 1 then interval = 1 end
-    state.sinkScanTicker = NewTicker(interval, function()
-      -- Periodic scans avoid global namespace iteration; full scans are event-driven.
-      mod:ScanForAddonButtons(false)
-    end)
-  end
+local function GetSinkInternal()
+  return mod.Internal and mod.Internal.Sink
 end
 
 local function ApplySinkAnchor()
-  if not state.sinkFrame then return end
-  local db = GetDB()
-  state.sinkFrame:ClearAllPoints()
-
-  if db.sink_moved and type(db.sink_anchor) == "table" then
-    state.sinkFrame:SetPoint(
-      db.sink_anchor.point or "CENTER",
-      UIParent,
-      db.sink_anchor.relPoint or "CENTER",
-      db.sink_anchor.x or 0,
-      db.sink_anchor.y or 0
-    )
-  else
-    state.sinkFrame:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMLEFT", -6, 0)
+  local H = GetSinkInternal()
+  if H and H.ApplySinkAnchor then
+    H.ApplySinkAnchor()
   end
 end
 
+mod.Internal.Shared.ApplySinkAnchor = ApplySinkAnchor
+
 local function SetManagedButtonsShown(shown)
-  for btn in pairs(state.sinkManaged) do
-    if btn then
-      if shown then
-        if btn.Show then btn:Show() end
-      else
-        if btn.Hide then btn:Hide() end
-      end
-    end
+  local H = GetSinkInternal()
+  if H and H.SetManagedButtonsShown then
+    H.SetManagedButtonsShown(shown)
   end
+end
+
+local function GetEventsInternal()
+  return mod.Internal and mod.Internal.Events
+end
+
+local function GetSinkButtonsInternal()
+  return mod.Internal and mod.Internal.SinkButtons
+end
+
+local function GetSinkFrameInternal()
+  return mod.Internal and mod.Internal.SinkFrame
+end
+
+local function GetSinkScanInternal()
+  return mod.Internal and mod.Internal.SinkScan
+end
+
+local function GetPerformanceFrameInternal()
+  return mod.Internal and mod.Internal.PerformanceFrame
+end
+
+local function GetIconsFrameInternal()
+  return mod.Internal and mod.Internal.IconsFrame
+end
+
+local function GetBlizzardAdaptersInternal()
+  return mod.Internal and mod.Internal.BlizzardAdapters
 end
 
 local function EnsureEventFrame()
-  if state.eventFrame then return end
-
-  state.eventFrame = CreateFrame("Frame", "EnhanceTBC_MinimapEventFrame")
-  state.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-  state.eventFrame:RegisterEvent("ADDON_LOADED")
-  state.eventFrame:RegisterEvent("BAG_UPDATE")
-  state.eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-  state.eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-  state.eventFrame:RegisterEvent("MERCHANT_CLOSED")
-  state.eventFrame:RegisterEvent("FRIENDLIST_UPDATE")
-  state.eventFrame:RegisterEvent("BN_FRIEND_INFO_CHANGED")
-  state.eventFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
-  state.eventFrame:RegisterEvent("PLAYER_GUILD_UPDATE")
-  state.eventFrame:RegisterEvent("MINIMAP_UPDATE_TRACKING")
-  state.eventFrame:SetScript("OnEvent", function(_, event, arg1)
-    if not IsFeatureEnabled() then return end
-
-    if event == "ADDON_LOADED" then
-      if arg1 == "Blizzard_TimeManager" then
-        mod:StyleTimeManagerClockButton()
-      elseif arg1 == "Blizzard_GroupFinder_VanillaStyle" then
-        mod:MoveMinimapLFGButton()
-      elseif arg1 == "Blizzard_BattlefieldMap" then
-        mod:StyleBattlefieldMinimap()
-      end
-      mod:ScanForAddonButtons(true)
-      return
-    end
-
-    if event == "PLAYER_ENTERING_WORLD" then
-      if state.iconsFrame then
-        state.iconsFrame:updateInventoryDisplay()
-        state.iconsFrame:updateDurabilityDisplay()
-        state.iconsFrame:updateFriendsDisplay()
-        state.iconsFrame:updateGuildDisplay()
-        if state.iconsFrame.updateTrackingDisplay then
-          state.iconsFrame:updateTrackingDisplay()
-        end
-      end
-      if state.sinkFrame and state.sinkFrame.updateTrackingDisplay then
-        state.sinkFrame:updateTrackingDisplay()
-      end
-      mod:StyleTimeManagerClockButton()
-      mod:MoveMinimapLFGButton()
-      mod:StyleBattlefieldMinimap()
-      mod:ScanForAddonButtons(true)
-      return
-    end
-
-    if event == "BAG_UPDATE" and type(arg1) == "number" and arg1 <= NUM_BAG_SLOTS then
-      if state.iconsFrame then state.iconsFrame:updateInventoryDisplay() end
-      return
-    end
-
-    if event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_REGEN_ENABLED" or event == "MERCHANT_CLOSED" then
-      if state.iconsFrame then state.iconsFrame:updateDurabilityDisplay() end
-      if event == "PLAYER_REGEN_ENABLED" then mod:ScanForAddonButtons(true) end
-      return
-    end
-
-    if event == "FRIENDLIST_UPDATE" or event == "BN_FRIEND_INFO_CHANGED" then
-      if state.iconsFrame then state.iconsFrame:updateFriendsDisplay() end
-      return
-    end
-
-    if event == "GUILD_ROSTER_UPDATE" or event == "PLAYER_GUILD_UPDATE" then
-      if state.iconsFrame then state.iconsFrame:updateGuildDisplay() end
-      return
-    end
-
-    if event == "MINIMAP_UPDATE_TRACKING" then
-      if state.iconsFrame and state.iconsFrame.updateTrackingDisplay then
-        state.iconsFrame:updateTrackingDisplay()
-      end
-      if state.sinkFrame and state.sinkFrame.updateTrackingDisplay then
-        state.sinkFrame:updateTrackingDisplay()
-      end
-    end
-  end)
+  local H = GetEventsInternal()
+  if H and H.EnsureEventFrame then
+    H.EnsureEventFrame()
+  end
 end
 
 function mod:StyleMinimap()
@@ -758,639 +578,68 @@ function mod:StyleMinimap()
 end
 
 function mod.CreatePerformanceFrame()
-  if state.performanceFrame or not Minimap then return end
-  local frame = CreateFrame("Frame", "EnhanceTBC_MinimapPerformanceFrame", Minimap, "BackdropTemplate")
-  frame:SetSize(Minimap:GetWidth(), 17)
-  frame:SetPoint("BOTTOM", 0, 0)
-
-  frame.ms_text = frame:CreateFontString(nil, "OVERLAY")
-  frame.ms_text:SetSize(40, frame:GetHeight())
-  frame.ms_text:SetPoint("LEFT", 90, 0)
-  frame.ms_text:SetJustifyH("LEFT")
-  frame.ms_text:SetJustifyV("MIDDLE")
-  ApplyFont(frame.ms_text, 8)
-
-  frame.fps_text = frame:CreateFontString(nil, "OVERLAY")
-  frame.fps_text:SetSize(45, frame:GetHeight())
-  frame.fps_text:SetPoint("LEFT", 126, 0)
-  frame.fps_text:SetJustifyH("LEFT")
-  frame.fps_text:SetJustifyV("MIDDLE")
-  ApplyFont(frame.fps_text, 8)
-
-  function frame:updateMsDisplay()
-    if not PerformanceEnabled() then return end
-    local _, _, _, latency = GetNetStats()
-    if latency then
-      if latency > 999 then latency = 999 end
-      self.ms_text:SetText(latency .. "ms")
-      if latency < 100 then
-        self.ms_text:SetTextColor(0, 0.75, 0.2)
-      elseif latency < 250 then
-        self.ms_text:SetTextColor(1, 0.82, 0)
-      else
-        self.ms_text:SetTextColor(0.8, 0, 0)
-      end
-    end
+  local H = GetPerformanceFrameInternal()
+  if H and H.CreatePerformanceFrame then
+    H.CreatePerformanceFrame()
   end
-
-  function frame:updateFpsDisplay()
-    if not PerformanceEnabled() then return end
-    local framerate = GetFramerate()
-    if framerate then
-      self.fps_text:SetText(math.floor(framerate + 0.5) .. "fps")
-    end
-  end
-
-  if not PerformanceEnabled() then frame:Hide() end
-  state.performanceFrame = frame
 end
 
 function mod.CreateIconsFrame()
-  if state.iconsFrame or not Minimap then return end
-
-  local frame = CreateFrame("Frame", "EnhanceTBC_MinimapIconsFrame", Minimap, "BackdropTemplate")
-  frame:SetSize(Minimap:GetWidth(), 22)
-  frame:SetPoint("TOP", 0, 22)
-
-  frame.friends_texture = CreateFrame("Frame", nil, frame)
-  frame.friends_texture:SetSize(12.5, 12.5)
-  frame.friends_texture:SetPoint("LEFT", 0, 0)
-  frame.friends_texture.icon = frame.friends_texture:CreateTexture(nil, "OVERLAY")
-  frame.friends_texture.icon:SetAllPoints(true)
-  frame.friends_texture.icon:SetTexture("Interface\\FriendsFrame\\Battlenet-Battleneticon")
-  frame.friends_texture.icon:SetTexCoord(0.2, 0.8, 0.2, 0.8)
-
-  frame.friends_text = frame:CreateFontString(nil, "OVERLAY")
-  frame.friends_text:SetSize(25, frame:GetHeight())
-  frame.friends_text:SetPoint("LEFT", 14, 0)
-  frame.friends_text:SetJustifyH("LEFT")
-  frame.friends_text:SetJustifyV("MIDDLE")
-  ApplyFont(frame.friends_text, 8.5)
-
-  frame.guild_texture = CreateFrame("Frame", nil, frame)
-  frame.guild_texture:SetSize(12.5, 12.5)
-  frame.guild_texture:SetPoint("LEFT", 39, 0)
-  frame.guild_texture.icon = frame.guild_texture:CreateTexture(nil, "OVERLAY")
-  frame.guild_texture.icon:SetAllPoints(true)
-  frame.guild_texture.icon:SetTexture("Interface\\Icons\\achievement_guildperk_everybodysfriend")
-  frame.guild_texture.icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-
-  frame.guild_text = frame:CreateFontString(nil, "OVERLAY")
-  frame.guild_text:SetSize(25, frame:GetHeight())
-  frame.guild_text:SetPoint("LEFT", 53, 0)
-  frame.guild_text:SetJustifyH("LEFT")
-  frame.guild_text:SetJustifyV("MIDDLE")
-  ApplyFont(frame.guild_text, 8.5)
-
-  frame.tracking_button = CreateFrame("Button", nil, frame)
-  frame.tracking_button:SetSize(14, 14)
-  frame.tracking_button:SetPoint("LEFT", 78, 0)
-  frame.tracking_button:RegisterForClicks("LeftButtonUp")
-  frame.tracking_button:SetScript("OnEnter", TrackingWidget_OnEnter)
-  frame.tracking_button:SetScript("OnLeave", TrackingWidget_OnLeave)
-  frame.tracking_button:SetScript("OnClick", TrackingWidget_OnClick)
-
-  frame.tracking_icon = frame.tracking_button:CreateTexture(nil, "OVERLAY")
-  frame.tracking_icon:SetSize(12.5, 12.5)
-  frame.tracking_icon:SetPoint("CENTER")
-  frame.tracking_icon:SetTexCoord(0.05, 0.95, 0.05, 0.95)
-  frame.tracking_icon:SetTexture(TRACKING_NONE_TEXTURE)
-  frame.tracking_button:Hide()
-
-  frame.inventory_text = frame:CreateFontString(nil, "OVERLAY")
-  frame.inventory_text:SetSize(50, frame:GetHeight())
-  frame.inventory_text:SetPoint("RIGHT", 23, 0)
-  frame.inventory_text:SetJustifyH("LEFT")
-  frame.inventory_text:SetJustifyV("MIDDLE")
-  ApplyFont(frame.inventory_text, 8.5)
-
-  frame.inventory_text_texture = CreateFrame("Frame", nil, frame)
-  frame.inventory_text_texture:SetSize(12.5, 12.5)
-  frame.inventory_text_texture:SetPoint("RIGHT", -30, 0)
-  frame.inventory_text_texture.icon = frame.inventory_text_texture:CreateTexture(nil, "OVERLAY")
-  frame.inventory_text_texture.icon:SetAllPoints(true)
-  frame.inventory_text_texture.icon:SetTexture("Interface\\Buttons\\Button-Backpack-Up")
-  frame.inventory_text_texture.icon:SetTexCoord(0.07, 0.94, 0.07, 0.94)
-
-  frame.durability_text = frame:CreateFontString(nil, "OVERLAY")
-  frame.durability_text:SetSize(40, frame:GetHeight())
-  frame.durability_text:SetPoint("RIGHT", -33, 0)
-  frame.durability_text:SetJustifyH("LEFT")
-  frame.durability_text:SetJustifyV("MIDDLE")
-  ApplyFont(frame.durability_text, 8.5)
-
-  frame.durability_text_texture = CreateFrame("Frame", nil, frame)
-  frame.durability_text_texture:SetSize(12.5, 12.5)
-  frame.durability_text_texture:SetPoint("RIGHT", -75, 0)
-  frame.durability_text_texture.icon = frame.durability_text_texture:CreateTexture(nil, "OVERLAY")
-  frame.durability_text_texture.icon:SetAllPoints(true)
-  frame.durability_text_texture.icon:SetTexture("Interface\\MerchantFrame\\UI-Merchant-RepairIcons")
-  frame.durability_text_texture.icon:SetTexCoord(0.31, 0.54, 0.06, 0.52)
-
-  local durabilitySlots = { 1, 3, 5, 6, 7, 8, 9, 10, 16, 17, 18 }
-
-  function frame:updateFriendsDisplay()
-    if not IconsEnabled() then return end
-    local friends
-    if BNGetNumFriends then
-      friends = select(2, BNGetNumFriends())
-    elseif GetNumFriends then
-      friends = GetNumFriends()
-    end
-    if friends then self.friends_text:SetText(friends) else self.friends_text:SetText("--") end
+  local H = GetIconsFrameInternal()
+  if H and H.CreateIconsFrame then
+    H.CreateIconsFrame()
   end
-
-  function frame:updateGuildDisplay()
-    if not IconsEnabled() then return end
-    local guildTotal, guildOnline = GetNumGuildMembers()
-    if guildTotal and guildTotal > 0 and guildOnline then
-      self.guild_text:SetText(guildOnline)
-    else
-      self.guild_text:SetText("--")
-    end
-  end
-
-  function frame:updateTrackingDisplay()
-    if not IconsEnabled() then return end
-    local db = GetDB()
-    local show = db.showTrackingState and true or false
-    self.tracking_button:SetShown(show)
-    if not show then return end
-
-    local snapshot = GetTrackingSnapshot()
-    self.tracking_icon:SetTexture(snapshot.texture or TRACKING_NONE_TEXTURE)
-    if self.tracking_icon.SetDesaturated then
-      self.tracking_icon:SetDesaturated(snapshot.activeCount == 0)
-    end
-    self.tracking_icon:SetAlpha(snapshot.activeCount > 0 and 1 or 0.5)
-  end
-
-  function frame:updateInventoryDisplay()
-    if not IconsEnabled() then return end
-    local emptySlots, totalSlots = 0, 0
-    for i = 0, NUM_BAG_SLOTS do
-      emptySlots = emptySlots + GetBagNumFreeSlots(i)
-      totalSlots = totalSlots + GetBagNumSlots(i)
-    end
-    if totalSlots > 0 then
-      self.inventory_text:SetText((totalSlots - emptySlots) .. "/" .. totalSlots)
-    else
-      self.inventory_text:SetText("0/0")
-    end
-  end
-
-  function frame:updateDurabilityDisplay()
-    if not IconsEnabled() then return end
-    local totalDurability, equippedSlots = 0, 0
-    for _, slot in pairs(durabilitySlots) do
-      local cur, maxv = GetInventoryItemDurability(slot)
-      if cur and maxv then
-        if cur < maxv then
-          totalDurability = totalDurability + math.floor(cur / maxv * 100 + 0.5)
-        else
-          totalDurability = totalDurability + 100
-        end
-        equippedSlots = equippedSlots + 1
-      end
-    end
-    if equippedSlots > 0 then
-      local durability = math.floor(totalDurability / equippedSlots + 0.5)
-      self.durability_text:SetText(durability .. "%")
-      if durability <= 25 then
-        self.durability_text:SetTextColor(0.8, 0, 0)
-      elseif durability <= 50 then
-        self.durability_text:SetTextColor(1, 0.82, 0)
-      else
-        self.durability_text:SetTextColor(1, 1, 1)
-      end
-    else
-      self.durability_text:SetText("100%")
-      self.durability_text:SetTextColor(1, 1, 1)
-    end
-  end
-
-  if not IconsEnabled() then frame:Hide() end
-  state.iconsFrame = frame
 end
 
 function mod.EnsureSinkFrame()
-  if state.sinkFrame then return end
-
-  state.sinkFrame = CreateFrame("Frame", "EnhanceTBC_MinimapSinkFrame", UIParent, "BackdropTemplate")
-  state.sinkFrame:SetSize(SINK_MIN_WIDTH, SINK_MIN_HEIGHT)
-  state.sinkFrame:SetFrameStrata("LOW")
-  state.sinkFrame:SetFrameLevel(1)
-  state.sinkFrame:SetMovable(true)
-  state.sinkFrame:EnableMouse(false)
-  state.sinkFrame:SetClipsChildren(true)
-  state.sinkFrame:SetClampedToScreen(true)
-
-  if state.sinkFrame.SetBackdrop then
-    state.sinkFrame:SetBackdrop({
-      bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-      tile = true,
-      tileSize = 16,
-      edgeSize = 12,
-      insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    state.sinkFrame:SetBackdropColor(0.03, 0.06, 0.03, 0.75)
-    state.sinkFrame:SetBackdropBorderColor(0.2, 1.0, 0.2, 0.8)
+  local H = GetSinkFrameInternal()
+  if H and H.EnsureSinkFrame then
+    H.EnsureSinkFrame()
   end
-
-  state.sinkFrame.emptyText = state.sinkFrame:CreateFontString(nil, "OVERLAY")
-  state.sinkFrame.emptyText:SetPoint("CENTER", state.sinkFrame, "CENTER", 0, 0)
-  ApplyFont(state.sinkFrame.emptyText, 9)
-  state.sinkFrame.emptyText:SetText("No addon minimap buttons")
-  state.sinkFrame.emptyText:Hide()
-
-  state.sinkFrame.trackingButton = CreateFrame("Button", nil, state.sinkFrame)
-  state.sinkFrame.trackingButton:SetHeight(SINK_TRACKING_ROW_HEIGHT)
-  state.sinkFrame.trackingButton:SetPoint("TOPLEFT", state.sinkFrame, "TOPLEFT", SINK_PADDING, -3)
-  state.sinkFrame.trackingButton:SetPoint("TOPRIGHT", state.sinkFrame, "TOPRIGHT", -SINK_PADDING, -3)
-  state.sinkFrame.trackingButton:RegisterForClicks("LeftButtonUp")
-  state.sinkFrame.trackingButton:SetScript("OnEnter", TrackingWidget_OnEnter)
-  state.sinkFrame.trackingButton:SetScript("OnLeave", TrackingWidget_OnLeave)
-  state.sinkFrame.trackingButton:SetScript("OnClick", TrackingWidget_OnClick)
-  state.sinkFrame.trackingButton.icon = state.sinkFrame.trackingButton:CreateTexture(nil, "OVERLAY")
-  state.sinkFrame.trackingButton.icon:SetSize(12.5, 12.5)
-  state.sinkFrame.trackingButton.icon:SetPoint("LEFT", 0, 0)
-  state.sinkFrame.trackingButton.icon:SetTexCoord(0.05, 0.95, 0.05, 0.95)
-  state.sinkFrame.trackingButton.icon:SetTexture(TRACKING_NONE_TEXTURE)
-  state.sinkFrame.trackingButton.text = state.sinkFrame.trackingButton:CreateFontString(nil, "OVERLAY")
-  state.sinkFrame.trackingButton.text:SetPoint("LEFT", state.sinkFrame.trackingButton.icon, "RIGHT", 4, 0)
-  state.sinkFrame.trackingButton.text:SetPoint("RIGHT", state.sinkFrame.trackingButton, "RIGHT", -2, 0)
-  state.sinkFrame.trackingButton.text:SetJustifyH("LEFT")
-  state.sinkFrame.trackingButton.text:SetJustifyV("MIDDLE")
-  ApplyFont(state.sinkFrame.trackingButton.text, 8)
-  state.sinkFrame.trackingButton:Hide()
-
-  function state.sinkFrame:updateTrackingDisplay()
-    local db = GetDB()
-    local show = IsFeatureEnabled() and db.showTrackingState and db.sink_addons and db.sink_visible
-    local changed = (self._trackingShown ~= show)
-    self._trackingShown = show
-
-    if self.trackingButton then
-      self.trackingButton:SetShown(show)
-      if show then
-        local snapshot = GetTrackingSnapshot()
-        self.trackingButton.icon:SetTexture(snapshot.texture or TRACKING_NONE_TEXTURE)
-        if self.trackingButton.icon.SetDesaturated then
-          self.trackingButton.icon:SetDesaturated(snapshot.activeCount == 0)
-        end
-        self.trackingButton.icon:SetAlpha(snapshot.activeCount > 0 and 1 or 0.5)
-        if snapshot.activeCount > 0 then
-          if snapshot.activeCount == 1 then
-            self.trackingButton.text:SetText(snapshot.names[1] or (TRACKING or "Tracking"))
-          else
-            self.trackingButton.text:SetText(tostring(snapshot.activeCount) .. " active")
-          end
-          self.trackingButton.text:SetTextColor(0.65, 1.0, 0.65)
-        else
-          self.trackingButton.text:SetText(NONE or "None")
-          self.trackingButton.text:SetTextColor(0.75, 0.75, 0.75)
-        end
-      end
-    end
-
-    if changed then
-      mod:LayoutSinkButtons()
-    end
-  end
-
-  state.sinkDragHandle = CreateFrame("Button", "EnhanceTBC_MinimapSinkDragHandle", UIParent, "BackdropTemplate")
-  state.sinkDragHandle:SetSize(14, 14)
-  state.sinkDragHandle:SetPoint("BOTTOMRIGHT", state.sinkFrame, "BOTTOMRIGHT", 2, -2)
-  state.sinkDragHandle:SetFrameStrata("DIALOG")
-  state.sinkDragHandle:SetFrameLevel(500)
-  state.sinkDragHandle:EnableMouse(true)
-  state.sinkDragHandle:RegisterForDrag("LeftButton")
-  if state.sinkDragHandle.SetBackdrop then
-    state.sinkDragHandle:SetBackdrop({
-      bgFile = "Interface/Buttons/WHITE8x8",
-      edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-      tile = true,
-      tileSize = 8,
-      edgeSize = 10,
-      insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    state.sinkDragHandle:SetBackdropColor(0.10, 0.20, 0.10, 0.90)
-    state.sinkDragHandle:SetBackdropBorderColor(0.20, 1.00, 0.20, 0.95)
-  end
-  state.sinkDragHandle:SetScript("OnDragStart", function()
-    state.sinkFrame:StartMoving()
-  end)
-  state.sinkDragHandle:SetScript("OnDragStop", function()
-    state.sinkFrame:StopMovingOrSizing()
-    local db = GetDB()
-    local cx, cy = state.sinkFrame:GetCenter()
-    local ux, uy = UIParent:GetCenter()
-    if cx and cy and ux and uy then
-      db.sink_anchor.point = "CENTER"
-      db.sink_anchor.relPoint = "CENTER"
-      db.sink_anchor.x = math.floor((cx - ux) + 0.5)
-      db.sink_anchor.y = math.floor((cy - uy) + 0.5)
-      db.sink_moved = true
-      db.sinkPoint = db.sink_anchor.point
-      db.sinkRelPoint = db.sink_anchor.relPoint
-      db.sinkX = db.sink_anchor.x
-      db.sinkY = db.sink_anchor.y
-      ApplySinkAnchor()
-    end
-  end)
-
-  ApplySinkAnchor()
 end
 
-function mod.IsBlacklisted(_self, btn, name)
-  if not btn then return true end
-  if type(name) == "string" and (
-    name:find("^EnhanceTBC_")
-    or name:find("^LibDBIcon10_EnhanceTBC")
-  ) then
-    return true
+function mod.IsBlacklisted(self, btn, name)
+  local H = GetSinkButtonsInternal()
+  if H and H.IsBlacklisted then
+    return H.IsBlacklisted(self, btn, name)
   end
-  if LDBIcon and LDBIcon.GetMinimapButton then
-    local etbcBtn = LDBIcon:GetMinimapButton("EnhanceTBC")
-    if btn == etbcBtn then return true end
-  end
-  if btn == Minimap
-    or btn == MinimapCluster
-    or btn == state.iconsFrame
-    or btn == state.performanceFrame
-  then
-    return true
-  end
-  if btn == state.sinkFrame then return true end
-  if btn == MinimapZoneTextButton or btn == MinimapToggleButton then return true end
-  if btn == MinimapZoomIn or btn == MinimapZoomOut then return true end
-  if btn == MiniMapTracking or btn == MiniMapMailFrame or btn == MiniMapBattlefieldFrame then return true end
-  if btn == MiniMapVoiceChatFrame or btn == MiniMapWorldMapButton or btn == LFGMinimapFrame then return true end
-
-  local db = GetDB()
-  if not db.includeCalendar then
-    if btn == GameTimeFrame or btn == TimeManagerClockButton then return true end
-  end
-  if not db.includeQueue then
-    if btn == QueueStatusMinimapButton then return true end
-  end
-  if not db.includeTracking then
-    if btn == MiniMapTracking then return true end
-  end
-  if not db.includeMail then
-    if btn == MiniMapMailFrame then return true end
-  end
-  if not db.includeDifficulty then
-    if btn == MiniMapInstanceDifficulty then return true end
-  end
-  return false
+  return true
 end
 
 function mod:LooksLikeMinimapButton(btn)
-  if not btn then return false end
-  local name = btn.GetName and btn:GetName() or nil
-  if self:IsBlacklisted(btn, name) then return false end
-  if btn.IsShown and not btn:IsShown() then return false end
-  if btn.IsProtected and btn:IsProtected() and InCombatLockdown and InCombatLockdown() then
-    return false
+  local H = GetSinkButtonsInternal()
+  if H and H.LooksLikeMinimapButton then
+    return H.LooksLikeMinimapButton(self, btn)
   end
-  local objectType = btn.GetObjectType and btn:GetObjectType() or nil
-  if objectType ~= "Button" and objectType ~= "CheckButton" then return false end
-  if type(name) == "string" and name:find("^LibDBIcon10_") then return true end
   return false
 end
 
-function mod.CaptureSinkButton(_self, btn)
-  if type(btn) == "table" and not btn.GetObjectType and btn.button then
-    btn = btn.button
+function mod.CaptureSinkButton(self, btn)
+  local H = GetSinkButtonsInternal()
+  if H and H.CaptureSinkButton then
+    H.CaptureSinkButton(self, btn)
   end
-  if not btn or state.sinkManaged[btn] then return end
-  if InCombatLockdown and InCombatLockdown() then return end
-  if type(btn.ClearAllPoints) ~= "function" then return end
-  if type(btn.SetPoint) ~= "function" then return end
-
-  local info = {
-    parent = btn.GetParent and btn:GetParent() or UIParent,
-    width = btn.GetWidth and btn:GetWidth() or nil,
-    height = btn.GetHeight and btn:GetHeight() or nil,
-    scale = btn.GetScale and btn:GetScale() or nil,
-    points = {},
-    strata = btn.GetFrameStrata and btn:GetFrameStrata() or nil,
-    level = btn.GetFrameLevel and btn:GetFrameLevel() or nil,
-  }
-
-  if btn.GetNumPoints and btn.GetPoint then
-    local n = btn:GetNumPoints() or 0
-    for i = 1, n do
-      local p, rel, rp, x, y = btn:GetPoint(i)
-      info.points[#info.points + 1] = { p, rel, rp, x, y }
-    end
-  end
-
-  state.sinkManaged[btn] = info
-  btn:ClearAllPoints()
-  if btn.SetParent and state.sinkFrame then
-    btn:SetParent(state.sinkFrame)
-    local scheduled = AfterDelay(0.2, function()
-      if btn.SetParent and state.sinkFrame then
-        btn:SetParent(state.sinkFrame)
-        -- Only keep if parent is correct
-        local repar = (btn.GetParent and btn:GetParent()) or nil
-        if repar ~= state.sinkFrame then
-          state.sinkManaged[btn] = nil
-        end
-      end
-    end)
-    if not scheduled then
-      -- Fallback: check immediately
-      local repar = (btn.GetParent and btn:GetParent()) or nil
-      if repar ~= state.sinkFrame then
-        state.sinkManaged[btn] = nil
-      end
-    end
-  end
-  if btn.SetFrameStrata then btn:SetFrameStrata("MEDIUM") end
-
-  local baseW = tonumber(info.width) or 20
-  local baseH = tonumber(info.height) or 20
-  local base = math.max(baseW, baseH, 1)
-  local targetScale = SINK_ICON_SIZE / base
-  if targetScale > 1 then targetScale = 1 end
-  if targetScale < 0.55 then targetScale = 0.55 end
-  if btn.SetScale then btn:SetScale(targetScale) end
-  if btn.SetSize then btn:SetSize(baseW, baseH) end
-  if btn.SetHitRectInsets then btn:SetHitRectInsets(0, 0, 0, 0) end
 end
 
 function mod.RestoreSinkButtons()
-  if InCombatLockdown and InCombatLockdown() then return end
-
-  for btn, info in pairs(state.sinkManaged) do
-    if btn and info then
-      if btn.SetParent and info.parent then btn:SetParent(info.parent) end
-      btn:ClearAllPoints()
-      if info.points and #info.points > 0 and btn.SetPoint then
-        for i = 1, #info.points do
-          local p = info.points[i]
-          btn:SetPoint(p[1], p[2], p[3], p[4], p[5])
-        end
-      end
-      if btn.SetSize and info.width and info.height then btn:SetSize(info.width, info.height) end
-      if btn.SetScale and info.scale then btn:SetScale(info.scale) end
-      if btn.SetFrameStrata and info.strata then btn:SetFrameStrata(info.strata) end
-      if btn.SetFrameLevel and info.level then btn:SetFrameLevel(info.level) end
-      if btn.Show then btn:Show() end
-    end
-    state.sinkManaged[btn] = nil
+  local H = GetSinkButtonsInternal()
+  if H and H.RestoreSinkButtons then
+    H.RestoreSinkButtons()
   end
 end
 
 function mod.LayoutSinkButtons()
-  if not state.sinkFrame then return end
-  local buttons = {}
-  for btn in pairs(state.sinkManaged) do
-    if btn and type(btn.ClearAllPoints) == "function" and type(btn.SetPoint) == "function" then
-      -- Only show if parent is still sinkFrame
-      if btn.GetParent and btn:GetParent() == state.sinkFrame then
-        buttons[#buttons + 1] = btn
-      else
-        state.sinkManaged[btn] = nil
-      end
-    else
-      state.sinkManaged[btn] = nil
-    end
-  end
-
-  table.sort(buttons, function(a, b)
-    local na = (a and a.GetName and a:GetName()) or ""
-    local nb = (b and b.GetName and b:GetName()) or ""
-    return na < nb
-  end)
-
-  local count = #buttons
-  local btnSize = SINK_ICON_SIZE + 6
-  local spacing = SINK_ICON_SPACING
-  local pad = SINK_PADDING
-  local trackingRowHeight = 0
-  if state.sinkFrame.trackingButton
-    and state.sinkFrame.trackingButton.IsShown
-    and state.sinkFrame.trackingButton:IsShown()
-  then
-    trackingRowHeight = SINK_TRACKING_ROW_HEIGHT
-  end
-  local cols = 1
-  if count > 1 then
-    cols = math.min(count, math.max(4, math.ceil(math.sqrt(count))))
-  end
-  if cols < 1 then cols = 1 end
-
-  local rows = math.max(1, math.ceil(count / cols))
-  local contentWidth = (cols * btnSize) + ((cols - 1) * spacing)
-  local contentHeight = (rows * btnSize) + ((rows - 1) * spacing)
-  local width = (pad * 2) + contentWidth
-  local height = (pad * 2) + contentHeight + trackingRowHeight
-
-  if count == 0 then
-    width = 140
-    height = SINK_MIN_HEIGHT + trackingRowHeight
-  end
-
-  if width < SINK_MIN_WIDTH then width = SINK_MIN_WIDTH end
-  if height < (SINK_MIN_HEIGHT + trackingRowHeight) then
-    height = SINK_MIN_HEIGHT + trackingRowHeight
-  end
-
-  state.sinkFrame:SetSize(width, height)
-
-  local availableHeight = height - trackingRowHeight
-  local startY = trackingRowHeight + math.floor((availableHeight - contentHeight) / 2 + 0.5)
-  for i = 1, count do
-    local btn = buttons[i]
-    local row = math.floor((i - 1) / cols)
-    local indexInRow = (i - 1) % cols
-    local rowCount = math.min(cols, count - (row * cols))
-    local rowWidth = (rowCount * btnSize) + ((rowCount - 1) * spacing)
-    local startX = math.floor((width - rowWidth) / 2 + 0.5)
-    local x = startX + (indexInRow * (btnSize + spacing))
-    local y = -startY - (row * (btnSize + spacing))
-    if btn and btn.ClearAllPoints and btn.SetPoint then
-      btn:ClearAllPoints()
-      btn:SetPoint("TOPLEFT", state.sinkFrame, "TOPLEFT", x, y)
-    end
-  end
-
-  if state.sinkFrame.emptyText then
-    state.sinkFrame.emptyText:SetShown(count == 0)
-    if count == 0 and not state.sinkEmptyNotified and DEFAULT_CHAT_FRAME then
-      DEFAULT_CHAT_FRAME:AddMessage(
-        "|cff33ff99EnhanceTBC|r No minimap buttons could be moved to the sink. "
-          .. "Some buttons are protected by Blizzard or other addons and cannot be moved."
-      )
-      state.sinkEmptyNotified = true
-    elseif count > 0 then
-      state.sinkEmptyNotified = false
-    end
+  local H = GetSinkButtonsInternal()
+  if H and H.LayoutSinkButtons then
+    H.LayoutSinkButtons()
   end
 end
 
 function mod:ScanForAddonButtons(fullScan)
-  local db = GetDB()
-  if not (db.enabled and db.sink_addons and state.sinkFrame) then return end
-  if InCombatLockdown and InCombatLockdown() then return end
-
-  -- Only keep LibDBIcon buttons managed by the sink.
-  for btn, info in pairs(state.sinkManaged) do
-    local name = btn and btn.GetName and btn:GetName() or nil
-    if not (type(name) == "string" and name:find("^LibDBIcon10_")) then
-      if btn and info then
-        if btn.SetParent and info.parent then btn:SetParent(info.parent) end
-        if btn.ClearAllPoints then btn:ClearAllPoints() end
-        if info.points and btn.SetPoint then
-          for i = 1, #info.points do
-            local p = info.points[i]
-            btn:SetPoint(p[1], p[2], p[3], p[4], p[5])
-          end
-        end
-        if btn.SetSize and info.width and info.height then btn:SetSize(info.width, info.height) end
-        if btn.SetScale and info.scale then btn:SetScale(info.scale) end
-        if btn.SetFrameStrata and info.strata then btn:SetFrameStrata(info.strata) end
-        if btn.SetFrameLevel and info.level then btn:SetFrameLevel(info.level) end
-        if btn.Show then btn:Show() end
-      end
-      state.sinkManaged[btn] = nil
-    end
+  local H = GetSinkScanInternal()
+  if H and H.ScanForAddonButtons then
+    H.ScanForAddonButtons(self, fullScan)
   end
-
-  local function TryCapture(candidate)
-    if type(candidate) == "table" and not candidate.GetObjectType and candidate.button then
-      candidate = candidate.button
-    end
-    if mod:LooksLikeMinimapButton(candidate) then
-      mod:CaptureSinkButton(candidate)
-      return true
-    end
-    return false
-  end
-
-  if LDBIcon and LDBIcon.objects and LDBIcon.GetMinimapButton then
-    for ldbName in pairs(LDBIcon.objects) do
-      local ok, btn = pcall(LDBIcon.GetMinimapButton, LDBIcon, ldbName)
-      if ok and btn then
-        TryCapture(btn)
-      end
-    end
-  end
-
-  if fullScan ~= false then
-    for name, obj in pairs(_G) do
-      if type(name) == "string" and name:find("^LibDBIcon10_") then
-        TryCapture(obj)
-      end
-    end
-  end
-
-  self:LayoutSinkButtons()
 end
 
 function mod.ApplyWidgetVisibility()
@@ -1415,112 +664,37 @@ function mod.ApplyWidgetVisibility()
 end
 
 function mod.StyleTimeManagerClockButton()
-  if not IsAddonLoadedCompat("Blizzard_TimeManager") then return end
-  if not IsFeatureEnabled() then return end
-
-  if TimeManagerClockButton then
-    TimeManagerClockButton:SetSize(35, 20)
-    TimeManagerClockButton:ClearAllPoints()
-    TimeManagerClockButton:SetPoint("BOTTOM", Minimap, "BOTTOM", 0, 6, CLOCK_POINT_FLAG)
-    if not state.clockPointHooked then
-      hooksecurefunc(TimeManagerClockButton, "SetPoint", function(frame, _, _, _, _, _, flag)
-        if flag == CLOCK_POINT_FLAG then return end
-        if not IsFeatureEnabled() then return end
-        RunSetPointGuard("inClockPointHook", function()
-          frame:ClearAllPoints()
-          frame:SetPoint("BOTTOM", Minimap, "BOTTOM", 0, 6, CLOCK_POINT_FLAG)
-        end)
-      end)
-      state.clockPointHooked = true
-    end
-
-    local label = select(2, TimeManagerClockButton:GetRegions())
-    if label and label.SetJustifyH then
-      label:SetJustifyH("CENTER")
-      ApplyFont(label, 12)
-    end
-
-    for i, region in pairs({ TimeManagerClockButton:GetRegions() }) do
-      if i ~= 2 and region and region.Hide then
-        region:Hide()
-      end
-    end
-
-    if StopwatchFrame and StopwatchFrame.GetRegions then
-      for _, region in pairs({ StopwatchFrame:GetRegions() }) do
-        if region and region.SetVertexColor then
-          region:SetVertexColor(0.2, 0.2, 0.2)
-        end
-      end
-    end
-  end
-
-  if TimeManagerFrame then
-    TimeManagerFrame:ClearAllPoints()
-    TimeManagerFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -10, -215)
+  local H = GetBlizzardAdaptersInternal()
+  if H and H.StyleTimeManagerClockButton then
+    H.StyleTimeManagerClockButton()
   end
 end
 
 function mod.MoveMinimapLFGButton()
-  if not IsAddonLoadedCompat("Blizzard_GroupFinder_VanillaStyle") then return end
-  if not LFGMinimapFrame then return end
-
-  LFGMinimapFrame:SetScale(0.85)
-  LFGMinimapFrame:ClearAllPoints()
-  LFGMinimapFrame:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", 1.5, 85, LFG_POINT_FLAG)
-
-  if not state.lfgPointHooked then
-    hooksecurefunc(LFGMinimapFrame, "SetPoint", function(self, _, _, _, _, _, flag)
-      if flag == LFG_POINT_FLAG then return end
-      RunSetPointGuard("inLfgHook", function()
-        self:ClearAllPoints()
-        self:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", 1.5, 85, LFG_POINT_FLAG)
-      end)
-    end)
-    state.lfgPointHooked = true
+  local H = GetBlizzardAdaptersInternal()
+  if H and H.MoveMinimapLFGButton then
+    H.MoveMinimapLFGButton()
   end
 end
 
 function mod.StyleBattlefieldMinimap()
-  if not IsAddonLoadedCompat("Blizzard_BattlefieldMap") then return end
-  if not BattlefieldMapFrame then return end
-
-  BattlefieldMapFrame:SetScale(0.84)
-
-  if BattlefieldMapFrame.BorderFrame and BattlefieldMapFrame.BorderFrame.GetRegions then
-    for _, region in pairs({ BattlefieldMapFrame.BorderFrame:GetRegions() }) do
-      if region and region.SetVertexColor then
-        region:SetVertexColor(0.2, 0.2, 0.2)
-      end
-    end
+  local H = GetBlizzardAdaptersInternal()
+  if H and H.StyleBattlefieldMinimap then
+    H.StyleBattlefieldMinimap()
   end
 end
 
 function mod.MoveQuestWatchFrame()
-  local frame = _G["UIParentRightManagedFrameContainer"]
-  if not frame then return end
-
-  frame:SetScale(0.9)
-  if not state.questWatchHooked then
-    hooksecurefunc(frame, "SetPoint", function(self, posA, anchor, posB, _, _, flag)
-      if not IsFeatureEnabled() then return end
-      if flag == RIGHT_MANAGED_FLAG then return end
-      RunSetPointGuard("inRightManagedHook", function()
-        self:ClearAllPoints()
-        self:SetPoint(posA, anchor, posB, -90, -255, RIGHT_MANAGED_FLAG)
-      end)
-    end)
-    state.questWatchHooked = true
+  local H = GetBlizzardAdaptersInternal()
+  if H and H.MoveQuestWatchFrame then
+    H.MoveQuestWatchFrame()
   end
 end
 
 function mod.UpdateMinimapMask()
-  if not Minimap or not Minimap.SetMaskTexture then return end
-  local db = GetDB()
-  if db.enabled and db.square_mask then
-    Minimap:SetMaskTexture(SQUARE_MASK_TEXTURE)
-  else
-    Minimap:SetMaskTexture(ROUND_MASK_TEXTURE)
+  local H = GetBlizzardAdaptersInternal()
+  if H and H.UpdateMinimapMask then
+    H.UpdateMinimapMask()
   end
 end
 

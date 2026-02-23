@@ -24,6 +24,10 @@ _G.ETBC = ETBC
 local PROFILE_COMM_PREFIX = "ETBCP1"
 local PROFILE_EXPORT_VERSION = 1
 local blizPanel
+local REMOVED_PROFILE_KEYS = {
+  gcdbar = true,
+  player_nameplates = true,
+}
 
 local function NotifyAllSettings()
   if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAllNow then
@@ -54,11 +58,37 @@ local function ReplaceTable(dst, src)
   end
 end
 
+local function SanitizeVisibilityProfile(v)
+  if type(v) ~= "table" then return end
+  if type(v.modulePresets) == "table" then
+    v.modulePresets.gcdbar = nil
+  end
+  if type(v.modules) == "table" then
+    v.modules.gcdbar = nil
+  end
+end
+
+local function SanitizeProfileTable(profile)
+  if type(profile) ~= "table" then return profile end
+
+  for key in pairs(REMOVED_PROFILE_KEYS) do
+    profile[key] = nil
+  end
+
+  SanitizeVisibilityProfile(profile.visibility)
+  return profile
+end
+
 local function BuildProfilePayload(self)
+  local profileCopy = DeepCopy(self.db.profile)
+  SanitizeProfileTable(profileCopy)
+
   return {
     version = PROFILE_EXPORT_VERSION,
     addon = ADDON_NAME,
-    profile = DeepCopy(self.db.profile),
+    interface = 20505,
+    client = "TBC Anniversary",
+    profile = profileCopy,
     at = time and time() or 0,
   }
 end
@@ -103,7 +133,25 @@ local function ApplyImportedProfile(self, payload)
   if type(payload) ~= "table" or type(payload.profile) ~= "table" then
     return false, "invalid payload"
   end
-  ReplaceTable(self.db.profile, payload.profile)
+  if payload.addon ~= nil and tostring(payload.addon) ~= ADDON_NAME then
+    return false, "wrong addon payload"
+  end
+  if payload.version ~= nil then
+    local v = tonumber(payload.version)
+    if (not v) or v > PROFILE_EXPORT_VERSION then
+      return false, "unsupported payload version"
+    end
+  end
+  if payload.interface ~= nil then
+    local iface = tonumber(payload.interface)
+    if iface and iface ~= 20505 then
+      return false, ("unsupported interface: %s"):format(tostring(payload.interface))
+    end
+  end
+
+  local sanitizedProfile = DeepCopy(payload.profile)
+  SanitizeProfileTable(sanitizedProfile)
+  ReplaceTable(self.db.profile, sanitizedProfile)
   NotifyAllSettings()
   return true
 end
