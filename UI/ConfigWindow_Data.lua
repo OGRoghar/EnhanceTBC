@@ -88,6 +88,8 @@ H.KEY_TO_CATEGORY = {
   castbar = "Combat",
   unitframes = "Combat",
   actionbars = "Combat",
+  swingtimer = "Combat",
+  nameplates = "Combat",
 
   tooltip = "Utility",
   sound = "Utility",

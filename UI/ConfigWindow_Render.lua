@@ -20,12 +20,16 @@ local ThemeHelpers = ConfigWindow.Internal.Theme or {}
 local DataHelpers = ConfigWindow.Internal.Data or {}
 
 local THEME = ThemeHelpers.THEME
+local SetBackdrop = ThemeHelpers.SetBackdrop
+local SetTextColor = ThemeHelpers.SetTextColor
+local TrySetFont = ThemeHelpers.TrySetFont
 local StyleHeadingWidget = ThemeHelpers.StyleHeadingWidget
 local StyleLabelWidget = ThemeHelpers.StyleLabelWidget
 local StyleCheckBoxWidget = ThemeHelpers.StyleCheckBoxWidget
 local StyleButtonWidget = ThemeHelpers.StyleButtonWidget
 local StyleSliderWidget = ThemeHelpers.StyleSliderWidget
 local StyleDropdownWidget = ThemeHelpers.StyleDropdownWidget
+local StyleEditBoxWidget = ThemeHelpers.StyleEditBoxWidget
 local StyleColorWidget = ThemeHelpers.StyleColorWidget
 local StyleInlineGroup = ThemeHelpers.StyleInlineGroup
 local HasWidget = ThemeHelpers.HasWidget
@@ -284,6 +288,127 @@ local function AddColor(container, opt, info)
   container:AddChild(w)
 end
 
+local function StyleMultiLineInputWidget(w)
+  if not w then return end
+
+  if w.label and SetTextColor then
+    SetTextColor(w.label, THEME.text)
+    TrySetFont(w.label, 12, nil)
+  end
+
+  if w.scrollBG and SetBackdrop then
+    SetBackdrop(w.scrollBG, THEME.bg, THEME.border, 1)
+  end
+
+  local edit = w.editBox or w.editbox
+  if edit then
+    if edit.SetTextColor then
+      edit:SetTextColor(THEME.text[1], THEME.text[2], THEME.text[3], THEME.text[4])
+    end
+    TrySetFont(edit, 12, nil)
+  end
+
+  if w.button and w.button.GetFontString then
+    local fs = w.button:GetFontString()
+    if fs then
+      SetTextColor(fs, THEME.text)
+      TrySetFont(fs, 11, "OUTLINE")
+    end
+  end
+end
+
+local function ApplyInputWidth(w, opt, multiline)
+  local width = opt and opt.width or nil
+
+  if width == "full" then
+    if w.SetFullWidth then w:SetFullWidth(true) end
+    return
+  end
+
+  if multiline then
+    -- Multiline inputs are more usable when allowed to span the full content width.
+    if w.SetFullWidth then w:SetFullWidth(true) end
+    return
+  end
+
+  if width == "double" and w.SetWidth then
+    w:SetWidth(420)
+  elseif width == "half" and w.SetWidth then
+    w:SetWidth(170)
+  elseif width == "normal" and w.SetWidth then
+    w:SetWidth(220)
+  end
+end
+
+local function AddInput(container, opt, info)
+  local wantsMultiline = opt.multiline and true or false
+  local useMultiline = wantsMultiline and HasWidget("MultiLineEditBox") and true or false
+  local widgetType = useMultiline and "MultiLineEditBox" or "EditBox"
+  local w = AceGUI:Create(widgetType)
+
+  local label = ResolveText(opt.name, info, opt)
+  if label == "" then label = tostring(opt._id or "") end
+  if w.SetLabel then
+    w:SetLabel(label)
+  end
+
+  if useMultiline then
+    if w.SetNumLines then
+      w:SetNumLines(6)
+    end
+    if w.DisableButton then
+      w:DisableButton(false)
+    end
+  end
+
+  ApplyInputWidth(w, opt, useMultiline)
+  if w.SetDisabled then
+    w:SetDisabled(IsDisabled(opt, info))
+  end
+
+  local val = SafeGet(opt, info)
+  if val == nil then val = "" end
+  if type(val) ~= "string" then
+    val = tostring(val)
+  end
+  if w.SetText then
+    w:SetText(val)
+  end
+
+  if useMultiline then
+    StyleMultiLineInputWidget(w)
+  elseif StyleEditBoxWidget then
+    StyleEditBoxWidget(w)
+  end
+
+  SetWidgetDescription(container, w, opt.desc)
+
+  local function CommitValue(_, _, v)
+    if v == nil and w.GetText then
+      v = w:GetText()
+    end
+    SafeSet(opt, info, tostring(v or ""))
+  end
+
+  if w.SetCallback then
+    w:SetCallback("OnEnterPressed", CommitValue)
+    if useMultiline then
+      w:SetCallback("OnEditFocusLost", function()
+        CommitValue()
+      end)
+    end
+  end
+
+  if (not useMultiline) and w.editbox and w.editbox.HookScript and not w._etbcFocusCommitHooked then
+    w._etbcFocusCommitHooked = true
+    w.editbox:HookScript("OnEditFocusLost", function()
+      CommitValue()
+    end)
+  end
+
+  container:AddChild(w)
+end
+
 local function AddExecute(container, opt, info)
   if opt.desc and opt.desc ~= "" then
     AddDesc(container, opt.desc, GameFontHighlightSmall)
@@ -312,6 +437,12 @@ local function AddExecute(container, opt, info)
   end)
 
   container:AddChild(w)
+end
+
+local function AddUnsupportedOption(container, opt)
+  local typeName = tostring(opt and opt.type or "nil")
+  local id = tostring(opt and opt._id or "?")
+  AddDesc(container, "Unsupported setting type: " .. typeName .. " (" .. id .. ")", GameFontHighlightSmall)
 end
 
 -- ---------------------------------------------------------
@@ -346,7 +477,15 @@ local function NormalizeArgs(argsTable, cache)
   return list
 end
 
-local function AnyMatchInGroup(groupOpt, q, pathStack, normalizeCache)
+local function ShouldSuppressCustomOption(opt, pathStack, renderCtx)
+  if type(opt) ~= "table" or type(renderCtx) ~= "table" then return false end
+  if not renderCtx.hideRootEnabled then return false end
+  if opt._id ~= "enabled" or opt.type ~= "toggle" then return false end
+  if type(pathStack) ~= "table" or #pathStack ~= 1 then return false end
+  return true
+end
+
+local function AnyMatchInGroup(groupOpt, q, pathStack, normalizeCache, renderCtx)
   if not q or q == "" then return true end
   if OptionMatchesSearch(groupOpt, q) then return true end
   if type(groupOpt.args) ~= "table" then return false end
@@ -354,11 +493,11 @@ local function AnyMatchInGroup(groupOpt, q, pathStack, normalizeCache)
   local list = NormalizeArgs(groupOpt.args, normalizeCache)
   for _, child in ipairs(list) do
     local info = MakeInfo(pathStack, child)
-    if not IsHidden(child, info) then
+    if (not IsHidden(child, info)) and (not ShouldSuppressCustomOption(child, pathStack, renderCtx)) then
       if child.type == "group" then
         local nextPath = { unpack(pathStack or {}) }
         nextPath[#nextPath + 1] = child._id
-        if AnyMatchInGroup(child, q, nextPath, normalizeCache) then return true end
+        if AnyMatchInGroup(child, q, nextPath, normalizeCache, renderCtx) then return true end
       else
         if OptionMatchesSearch(child, q) then return true end
       end
@@ -368,17 +507,17 @@ local function AnyMatchInGroup(groupOpt, q, pathStack, normalizeCache)
   return false
 end
 
-local function CountMatchesInGroup(groupOpt, q, pathStack, normalizeCache)
+local function CountMatchesInGroup(groupOpt, q, pathStack, normalizeCache, renderCtx)
   if type(groupOpt) ~= "table" or type(groupOpt.args) ~= "table" then return 0 end
   local count = 0
   local list = NormalizeArgs(groupOpt.args, normalizeCache)
   for _, child in ipairs(list) do
     local info = MakeInfo(pathStack, child)
-    if not IsHidden(child, info) then
+    if (not IsHidden(child, info)) and (not ShouldSuppressCustomOption(child, pathStack, renderCtx)) then
       if child.type == "group" then
         local nextPath = { unpack(pathStack or {}) }
         nextPath[#nextPath + 1] = child._id
-        count = count + CountMatchesInGroup(child, q, nextPath, normalizeCache)
+        count = count + CountMatchesInGroup(child, q, nextPath, normalizeCache, renderCtx)
       else
         if OptionMatchesSearch(child, q) then
           count = count + 1
@@ -389,16 +528,16 @@ local function CountMatchesInGroup(groupOpt, q, pathStack, normalizeCache)
   return count
 end
 
-local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache)
+local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache, renderCtx)
   local list = NormalizeArgs(args, normalizeCache)
   for _, opt in ipairs(list) do
     local info = MakeInfo(pathStack, opt)
-    if not IsHidden(opt, info) then
+    if (not IsHidden(opt, info)) and (not ShouldSuppressCustomOption(opt, pathStack, renderCtx)) then
       if opt.type == "group" then
         local nextPath = { unpack(pathStack or {}) }
         nextPath[#nextPath + 1] = opt._id
 
-        if AnyMatchInGroup(opt, q, nextPath, normalizeCache) then
+        if AnyMatchInGroup(opt, q, nextPath, normalizeCache, renderCtx) then
           if opt.inline then
             local useSectionCard = HasWidget("ETBC_SectionCard")
             local grpType = useSectionCard and "ETBC_SectionCard" or "InlineGroup"
@@ -421,7 +560,7 @@ local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache
             end
 
             if type(opt.args) == "table" then
-              RenderArgsRecursive(grp, opt.args, q, nextPath, normalizeCache)
+              RenderArgsRecursive(grp, opt.args, q, nextPath, normalizeCache, renderCtx)
             end
             AddSpacer(container, 8)
           else
@@ -431,7 +570,7 @@ local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache
               AddSpacer(container, 4)
             end
             if type(opt.args) == "table" then
-              RenderArgsRecursive(container, opt.args, q, nextPath, normalizeCache)
+              RenderArgsRecursive(container, opt.args, q, nextPath, normalizeCache, renderCtx)
             end
             AddSeparator(container, 0.45)
             AddSpacer(container, 8)
@@ -453,8 +592,12 @@ local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache
             AddSelect(container, opt, info)
           elseif opt.type == "color" then
             AddColor(container, opt, info)
+          elseif opt.type == "input" then
+            AddInput(container, opt, info)
           elseif opt.type == "execute" then
             AddExecute(container, opt, info)
+          else
+            AddUnsupportedOption(container, opt)
           end
         end
       end
@@ -485,6 +628,7 @@ local MODULE_SUMMARY = {
   chatim = "Chat QoL tools and readability improvements.",
   friends = "Friends list decorations and quick status cues.",
   mover = "Move-mode and anchor management for supported UI blocks.",
+  nameplates = "Unit nameplate sizing, castbars, debuff displays, and color behavior.",
 }
 
 local MODULE_PREVIEW_OVERRIDES = {
@@ -622,6 +766,10 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
 
   local q = tostring(searchText or ""):lower()
   local normalizeCache = {}
+  local moduleDB = ETBC.db and ETBC.db.profile and ETBC.db.profile[moduleKey]
+  local renderCtx = {
+    hideRootEnabled = type(moduleDB) == "table" and moduleDB.enabled ~= nil and true or false,
+  }
   AddModuleHeaderBlock(scroll, g, moduleKey)
   AddSpacer(scroll, 6)
 
@@ -654,11 +802,11 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
 
   if searchWidget and searchWidget.SetResultCount then
     local rootGroup = { args = args }
-    local matchCount = CountMatchesInGroup(rootGroup, q, { moduleKey }, normalizeCache)
+    local matchCount = CountMatchesInGroup(rootGroup, q, { moduleKey }, normalizeCache, renderCtx)
     searchWidget:SetResultCount(matchCount)
   end
 
-  RenderArgsRecursive(scroll, args, q, { moduleKey }, normalizeCache)
+  RenderArgsRecursive(scroll, args, q, { moduleKey }, normalizeCache, renderCtx)
   if q ~= "" and scroll.children and #scroll.children <= 1 then
     AddDesc(scroll, "No options match the current search.", GameFontHighlightSmall)
   end
@@ -691,6 +839,7 @@ H.AddToggle = AddToggle
 H.AddRange = AddRange
 H.AddSelect = AddSelect
 H.AddColor = AddColor
+H.AddInput = AddInput
 H.AddExecute = AddExecute
 H.NormalizeArgs = NormalizeArgs
 H.AnyMatchInGroup = AnyMatchInGroup
