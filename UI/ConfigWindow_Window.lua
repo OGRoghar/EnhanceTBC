@@ -164,8 +164,70 @@ local function StyleTreeWidget(tree)
   StyleTreeButtons(tree)
 end
 
+local function UpdateHeaderMoverButton(win)
+  if not (win and win.frame and win.frame._etbcHeaderMoverBtn) then return end
+
+  local btn = win.frame._etbcHeaderMoverBtn
+  local mover = ETBC and ETBC.Mover or nil
+  local p = ETBC and ETBC.db and ETBC.db.profile or nil
+  local moverDB = p and p.mover or nil
+  local generalEnabled = p and p.general and p.general.enabled ~= false or false
+
+  local canToggle = mover and (mover.ToggleMasterMove or mover.SetMasterMove) and generalEnabled
+  local active = moverDB and moverDB.enabled and moverDB.moveMode and moverDB.unlocked and true or false
+
+  btn._etbcCanUse = canToggle and true or false
+  btn._etbcActive = active and true or false
+  if not btn._etbcCanUse then
+    btn._etbcHover = false
+  end
+
+  if btn.SetEnabled then
+    btn:SetEnabled(btn._etbcCanUse)
+  end
+  if btn.EnableMouse then
+    btn:EnableMouse(btn._etbcCanUse)
+  end
+
+  if btn.text then
+    if not btn._etbcCanUse then
+      btn.text:SetText("Mover N/A")
+      btn.text:SetTextColor(THEME.muted[1], THEME.muted[2], THEME.muted[3], 1)
+    elseif btn._etbcActive then
+      btn.text:SetText("Exit Move")
+      btn.text:SetTextColor(THEME.text[1], THEME.text[2], THEME.text[3], 1)
+    else
+      btn.text:SetText("Move Mode")
+      btn.text:SetTextColor(THEME.text[1], THEME.text[2], THEME.text[3], 1)
+    end
+    TrySetFont(btn.text, 11, "OUTLINE")
+  end
+
+  if btn.SetBackdropColor and btn.SetBackdropBorderColor then
+    if not btn._etbcCanUse then
+      btn:SetBackdropColor(THEME.panel2[1], THEME.panel2[2], THEME.panel2[3], 0.65)
+      btn:SetBackdropBorderColor(THEME.border[1], THEME.border[2], THEME.border[3], 0.65)
+    elseif btn._etbcActive then
+      btn:SetBackdropColor(0.08, 0.12, 0.08, 0.96)
+      btn:SetBackdropBorderColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
+    elseif btn._etbcHover then
+      btn:SetBackdropColor(THEME.panel2[1], THEME.panel2[2], THEME.panel2[3], 0.96)
+      btn:SetBackdropBorderColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
+    else
+      btn:SetBackdropColor(THEME.panel2[1], THEME.panel2[2], THEME.panel2[3], 0.90)
+      btn:SetBackdropBorderColor(THEME.border[1], THEME.border[2], THEME.border[3], 1)
+    end
+  end
+
+  if btn.SetAlpha then
+    btn:SetAlpha(btn._etbcCanUse and 1 or 0.85)
+  end
+end
+
 local function ApplyWindowStyle(win)
   if not win or not win.frame then return end
+  local headerMoverWidth = 116
+  local headerRightInset = headerMoverWidth + 24
 
   SetBackdrop(win.frame, THEME.bg, THEME.border, 1)
 
@@ -194,7 +256,7 @@ local function ApplyWindowStyle(win)
 
     local status = strip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     status:SetPoint("LEFT", strip, "LEFT", 100, -14)
-    status:SetPoint("RIGHT", strip, "RIGHT", -10, -14)
+    status:SetPoint("RIGHT", strip, "RIGHT", -headerRightInset, -14)
     status:SetJustifyH("LEFT")
     status:SetTextColor(THEME.muted[1], THEME.muted[2], THEME.muted[3], 1)
     status:SetText("TBC Anniversary UI | Live settings | /etbc")
@@ -216,12 +278,83 @@ local function ApplyWindowStyle(win)
     win.frame._etbcLogo = logo
   end
 
+  if win.frame._etbcHeaderStrip and not win.frame._etbcHeaderMoverBtn then
+    local btn = CreateFrame(
+      "Button",
+      nil,
+      win.frame._etbcHeaderStrip,
+      BackdropTemplateMixin and "BackdropTemplate" or nil
+    )
+    btn:SetSize(headerMoverWidth, 24)
+    btn:SetPoint("RIGHT", win.frame._etbcHeaderStrip, "RIGHT", -10, 0)
+    btn._etbcHover = false
+    SetBackdrop(btn, THEME.panel2, THEME.border, 1)
+
+    local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    text:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    text:SetJustifyH("CENTER")
+    text:SetJustifyV("MIDDLE")
+    btn.text = text
+
+    if not btn._etbcHooksInstalled then
+      btn._etbcHooksInstalled = true
+
+      btn:SetScript("OnEnter", function(self)
+        self._etbcHover = true
+        UpdateHeaderMoverButton(state.win or win)
+        if GameTooltip then
+          GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+          if self._etbcCanUse then
+            if self._etbcActive then
+              GameTooltip:AddLine("Exit mover mode", THEME.accent[1], THEME.accent[2], THEME.accent[3])
+            else
+              GameTooltip:AddLine("Enter mover mode", THEME.accent[1], THEME.accent[2], THEME.accent[3])
+              GameTooltip:AddLine("Entering mover mode closes the config window.", 1, 0.82, 0, true)
+            end
+          else
+            GameTooltip:AddLine("Mover unavailable", 1, 0.4, 0.4)
+            GameTooltip:AddLine("General and Mover must be enabled.", 0.8, 0.8, 0.8, true)
+          end
+          GameTooltip:Show()
+        end
+      end)
+
+      btn:SetScript("OnLeave", function(self)
+        self._etbcHover = false
+        UpdateHeaderMoverButton(state.win or win)
+        if GameTooltip then
+          GameTooltip:Hide()
+        end
+      end)
+
+      btn:SetScript("OnClick", function(self)
+        if not self._etbcCanUse then return end
+        local mover = ETBC and ETBC.Mover or nil
+        if not mover then return end
+        if mover.ToggleMasterMove then
+          mover:ToggleMasterMove()
+          return
+        end
+        if mover.SetMasterMove then
+          local p = ETBC and ETBC.db and ETBC.db.profile or nil
+          local moverDB = p and p.mover or nil
+          local nextState = not (moverDB and moverDB.moveMode)
+          mover:SetMasterMove(nextState and true or false)
+        end
+      end)
+    end
+
+    win.frame._etbcHeaderMoverBtn = btn
+  end
+
   if win.titletext and win.frame._etbcHeaderStrip then
     win.titletext:ClearAllPoints()
     win.titletext:SetPoint("LEFT", win.frame._etbcHeaderStrip, "LEFT", 100, 14)
-    win.titletext:SetPoint("RIGHT", win.frame._etbcHeaderStrip, "RIGHT", -10, 14)
+    win.titletext:SetPoint("RIGHT", win.frame._etbcHeaderStrip, "RIGHT", -headerRightInset, 14)
     win.titletext:SetJustifyH("LEFT")
   end
+
+  UpdateHeaderMoverButton(win)
 
   -- Move AceGUI content below header strip and keep generous bottom area.
   if win.content then
@@ -785,4 +918,12 @@ end
 
 H.state = state
 H.BuildWindow = BuildWindow
+
+if ETBC.ApplyBus and ETBC.ApplyBus.Register then
+  ETBC.ApplyBus:Register("mover", function()
+    if state and state.win then
+      ApplyWindowStyle(state.win)
+    end
+  end)
+end
 
