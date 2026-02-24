@@ -479,6 +479,16 @@ end
 
 local function ShouldSuppressCustomOption(opt, pathStack, renderCtx)
   if type(opt) ~= "table" or type(renderCtx) ~= "table" then return false end
+
+  -- Avoid duplicate theme controls in the custom /etbc window:
+  -- keep the dedicated UI -> Config Window theme selector, and hide the
+  -- General -> UI global addon theme selector here only.
+  if opt._id == "theme" and opt.type == "select" and type(pathStack) == "table" and #pathStack == 2 then
+    if pathStack[1] == "general" and pathStack[2] == "ui" then
+      return true
+    end
+  end
+
   if not renderCtx.hideRootEnabled then return false end
   if opt._id ~= "enabled" or opt.type ~= "toggle" then return false end
   if type(pathStack) ~= "table" or #pathStack ~= 1 then return false end
@@ -655,6 +665,226 @@ local PREVIEW_KEY_BY_MODULE = {
   combattext = "combattext",
 }
 
+local MODULE_PREVIEW_RUNTIME_NAMES = {
+  castbar = "Castbar",
+  swingtimer = "SwingTimer",
+  cooldowns = "CooldownText",
+  combattext = "CombatText",
+  actiontracker = "ActionTracker",
+  auras = "Auras",
+}
+
+local function GetModuleConfigPreviewStyle(moduleKey)
+  local modules = ETBC and ETBC.Modules or nil
+  if type(modules) ~= "table" or not moduleKey then
+    return nil
+  end
+
+  local runtimeKey = MODULE_PREVIEW_RUNTIME_NAMES[moduleKey]
+  local module = (runtimeKey and modules[runtimeKey]) or modules[moduleKey]
+  if type(module) ~= "table" then
+    return nil
+  end
+
+  local shared = module.Internal and module.Internal.Shared
+  if not (type(shared) == "table" and type(shared.GetConfigPreviewStyle) == "function") then
+    return nil
+  end
+
+  local ok, style = pcall(shared.GetConfigPreviewStyle)
+  if ok and type(style) == "table" then
+    return style
+  end
+  return nil
+end
+
+local function ApplyProviderPreviewStyle(preview, style, fallbackOverride)
+  if type(style) ~= "table" or not preview then
+    return false
+  end
+
+  local disabled = style.disabled
+  if disabled == nil and style.enabled ~= nil then
+    disabled = not (style.enabled and true or false)
+  end
+  if disabled ~= nil and preview.SetDisabled then
+    preview:SetDisabled(disabled and true or false)
+  end
+
+  if style.previewText ~= nil and preview.SetPreviewText then
+    preview:SetPreviewText(style.previewText or "")
+  end
+
+  if type(style.previewFont) == "table" and preview.SetPreviewFont then
+    local f = style.previewFont
+    preview:SetPreviewFont(f.path or f[1], f.size or f[2], f.flags or f.outline or f[3])
+  end
+
+  if type(style.previewTextColor) == "table" and preview.SetPreviewTextColor then
+    local c = style.previewTextColor
+    preview:SetPreviewTextColor(c.r or c[1], c.g or c[2], c.b or c[3], c.a or c[4] or 1)
+  end
+
+  local useBar = style.useBar
+  if useBar == nil and type(fallbackOverride) == "table" and fallbackOverride.useBar ~= nil then
+    useBar = fallbackOverride.useBar and true or false
+  end
+
+  if useBar and preview.EnableBar then
+    preview:EnableBar(true)
+
+    if preview.SetBarValue then
+      local v = style.barValue
+      if v == nil then v = style.value end -- legacy provider alias (castbar)
+      if v == nil and type(fallbackOverride) == "table" then v = fallbackOverride.barValue end
+      preview:SetBarValue(tonumber(v) or 65)
+    end
+
+    if preview.SetBarColor and type(style.barColor) == "table" then
+      local c = style.barColor
+      preview:SetBarColor(c.r or c[1], c.g or c[2], c.b or c[3], c.a or c[4] or 1)
+    end
+
+    if preview.SetBarTexture and type(style.barTexture) == "string" and style.barTexture ~= "" then
+      preview:SetBarTexture(style.barTexture)
+    end
+
+    if preview.SetBarAlpha and style.barAlpha ~= nil then
+      preview:SetBarAlpha(style.barAlpha)
+    end
+
+    local barText = style.barText
+    if barText == nil then barText = style.labelText end -- legacy provider alias (castbar)
+    if barText ~= nil and preview.SetBarText then
+      preview:SetBarText(barText)
+    end
+
+    if preview.SetBarTextFont then
+      if type(style.barTextFont) == "table" then
+        local f = style.barTextFont
+        preview:SetBarTextFont(f.path or f[1], f.size or f[2], f.flags or f.outline or f[3])
+      elseif type(style.fontPath) == "string" and style.fontPath ~= "" then
+        -- legacy provider aliases (castbar)
+        preview:SetBarTextFont(style.fontPath, style.fontSize or 12, style.outline)
+      end
+    end
+  elseif preview.EnableBar then
+    preview:EnableBar(false)
+  end
+
+  return true
+end
+
+local function GetCastbarConfigPreviewStyle()
+  local modules = ETBC and ETBC.Modules or nil
+  local castbar = modules and modules.Castbar or nil
+  local shared = castbar and castbar.Internal and castbar.Internal.Shared or nil
+  if not (shared and type(shared.GetConfigPreviewStyle) == "function") then
+    return nil
+  end
+  local ok, style = pcall(shared.GetConfigPreviewStyle)
+  if ok and type(style) == "table" then
+    return style
+  end
+  return nil
+end
+
+local function ApplyCastbarPreviewWidget(preview)
+  local style = GetCastbarConfigPreviewStyle()
+  if not style then return false end
+
+  if preview.SetDisabled then
+    preview:SetDisabled(not (style.enabled and true or false))
+  end
+  if preview.EnableBar then
+    preview:EnableBar(true)
+  end
+  if preview.SetBarValue then
+    preview:SetBarValue(tonumber(style.value) or 42)
+  end
+  if preview.SetBarColor and type(style.barColor) == "table" then
+    local c = style.barColor
+    preview:SetBarColor(c[1], c[2], c[3], c[4] or 1)
+  end
+  if preview.SetBarTexture and type(style.barTexture) == "string" and style.barTexture ~= "" then
+    preview:SetBarTexture(style.barTexture)
+  end
+  if preview.SetBarText and style.labelText ~= nil then
+    preview:SetBarText(style.labelText)
+  end
+  if preview.SetBarTextFont and type(style.fontPath) == "string" and style.fontPath ~= "" then
+    preview:SetBarTextFont(style.fontPath, style.fontSize or 12, style.outline)
+  end
+
+  return true
+end
+
+local MODULE_PREVIEW_APPLIERS = {
+  castbar = ApplyCastbarPreviewWidget,
+}
+
+local function ApplyModulePreviewWidget(preview, moduleKey, group)
+  if not preview then return end
+
+  if preview.ResetPreviewStyles then
+    preview:ResetPreviewStyles()
+  end
+
+  local override = MODULE_PREVIEW_OVERRIDES[moduleKey]
+  local previewText = (override and override.text)
+    or MODULE_SUMMARY[moduleKey]
+    or ("Live preview for " .. tostring((group and group.name) or moduleKey or "module") .. " settings.")
+
+  if preview.SetTitle then
+    local groupName = (group and group.name) or tostring(moduleKey or "Module")
+    preview:SetTitle(groupName .. " Preview")
+  end
+  if preview.SetPreviewText then
+    preview:SetPreviewText(previewText)
+  end
+  if preview.SetIcon then
+    preview:SetIcon(group and group.icon or nil)
+  end
+
+  local providerStyle = GetModuleConfigPreviewStyle(moduleKey)
+  if ApplyProviderPreviewStyle(preview, providerStyle, override) then
+    return
+  end
+
+  local appliedCustom = false
+  local applier = MODULE_PREVIEW_APPLIERS[moduleKey]
+  if type(applier) == "function" then
+    local ok, applied = pcall(applier, preview, moduleKey, group, override)
+    if ok and applied then
+      appliedCustom = true
+    end
+  end
+
+  if appliedCustom then
+    return
+  end
+
+  if preview.SetDisabled then
+    preview:SetDisabled(false)
+  end
+
+  if override and override.useBar then
+    if preview.EnableBar then
+      preview:EnableBar(true)
+    end
+    if preview.SetBarValue then
+      preview:SetBarValue(override.barValue or 65)
+    end
+    if preview.SetBarColor then
+      preview:SetBarColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
+    end
+  else
+    if preview.EnableBar then
+      preview:EnableBar(false)
+    end
+  end
+end
+
 local function GetPreviewApplyKey(moduleKey)
   local key = PREVIEW_KEY_BY_MODULE[moduleKey]
   if key then return key end
@@ -744,6 +974,9 @@ end
 
 local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget)
   if not scroll then return end
+  scroll._etbcPreviewWidget = nil
+  scroll._etbcPreviewModuleKey = nil
+  scroll._etbcPreviewGroup = nil
   scroll:ReleaseChildren()
 
   local g = FindGroup(groups, moduleKey)
@@ -775,21 +1008,11 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
 
   if HasWidget("ETBC_PreviewPanel") then
     local preview = AceGUI:Create("ETBC_PreviewPanel")
-    local override = MODULE_PREVIEW_OVERRIDES[moduleKey]
-    local previewText = (override and override.text)
-      or MODULE_SUMMARY[moduleKey]
-      or ("Live preview for " .. g.name .. " settings.")
     preview:SetFullWidth(true)
-    preview:SetTitle(g.name .. " Preview")
-    preview:SetPreviewText(previewText)
-    preview:SetIcon(g.icon)
-    if override and override.useBar then
-      preview:EnableBar(true)
-      preview:SetBarValue(override.barValue or 65)
-      preview:SetBarColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
-    else
-      preview:EnableBar(false)
-    end
+    ApplyModulePreviewWidget(preview, moduleKey, g)
+    scroll._etbcPreviewWidget = preview
+    scroll._etbcPreviewModuleKey = moduleKey
+    scroll._etbcPreviewGroup = g
     scroll:AddChild(preview)
     AddSpacer(scroll, 8)
     AddSeparator(scroll, 0.6)
@@ -817,6 +1040,15 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
   if scroll.UpdateScroll then
     scroll:UpdateScroll()
   end
+end
+
+local function RefreshPreviewWidget(scroll, moduleKey)
+  if not scroll then return end
+  local preview = scroll._etbcPreviewWidget
+  local storedKey = scroll._etbcPreviewModuleKey
+  if not preview or not storedKey then return end
+  if moduleKey and moduleKey ~= storedKey then return end
+  ApplyModulePreviewWidget(preview, storedKey, scroll._etbcPreviewGroup)
 end
 
 
@@ -849,4 +1081,5 @@ H.GetPreviewApplyKey = GetPreviewApplyKey
 H.ToggleModulePreview = ToggleModulePreview
 H.AddModuleHeaderBlock = AddModuleHeaderBlock
 H.RenderOptions = RenderOptions
+H.RefreshPreviewWidget = RefreshPreviewWidget
 

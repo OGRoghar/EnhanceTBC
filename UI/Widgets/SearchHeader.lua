@@ -179,6 +179,11 @@ local function Constructor()
     UpdatePlaceholder(self)
   end
 
+  function widget:RefreshTheme()
+    ApplyTheme()
+    UpdatePlaceholder(self)
+  end
+
   editbox:SetScript("OnEditFocusGained", function(selfEdit)
     local theme = GetTheme()
     SetBackdrop(selfEdit, theme.bg, theme.accent)

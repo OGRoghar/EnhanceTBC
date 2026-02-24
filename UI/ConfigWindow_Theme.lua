@@ -30,6 +30,81 @@ H.THEME = {
   muted   = { 0.70, 0.78, 0.70, 1.00 },
 }
 
+H.DEFAULT_THEME_KEY = "EnhanceGreen"
+
+H.CONFIG_THEMES = {
+  EnhanceGreen = {
+    bg      = { 0.05, 0.07, 0.05, 0.98 },
+    panel   = { 0.07, 0.09, 0.07, 0.95 },
+    panel2  = { 0.06, 0.08, 0.06, 0.95 },
+    panel3  = { 0.04, 0.06, 0.04, 0.96 },
+    border  = { 0.12, 0.20, 0.12, 0.95 },
+    accent  = { 0.20, 1.00, 0.20, 1.00 },
+    text    = { 0.90, 0.96, 0.90, 1.00 },
+    muted   = { 0.70, 0.78, 0.70, 1.00 },
+  },
+  WoWBasic = {
+    bg      = { 0.09, 0.07, 0.05, 0.98 },
+    panel   = { 0.15, 0.11, 0.07, 0.95 },
+    panel2  = { 0.13, 0.10, 0.06, 0.95 },
+    panel3  = { 0.11, 0.08, 0.05, 0.96 },
+    border  = { 0.56, 0.42, 0.22, 0.98 },
+    accent  = { 0.92, 0.76, 0.34, 1.00 },
+    text    = { 0.96, 0.92, 0.82, 1.00 },
+    muted   = { 0.80, 0.72, 0.58, 1.00 },
+  },
+}
+
+local CONFIG_THEME_CHOICES = {
+  EnhanceGreen = "Enhance Green",
+  WoWBasic = "WoW Basic",
+}
+
+local function CopyColorInto(dst, src)
+  if type(src) ~= "table" then
+    return dst
+  end
+  dst = type(dst) == "table" and dst or {}
+  dst[1] = tonumber(src[1]) or 0
+  dst[2] = tonumber(src[2]) or 0
+  dst[3] = tonumber(src[3]) or 0
+  dst[4] = tonumber(src[4]) or 1
+  return dst
+end
+
+function H.GetConfigThemeChoices()
+  return CONFIG_THEME_CHOICES
+end
+
+function H.NormalizeConfigThemeKey(key)
+  key = tostring(key or "")
+  if H.CONFIG_THEMES[key] then
+    return key
+  end
+  return H.DEFAULT_THEME_KEY
+end
+
+function H.ApplyConfigTheme(key)
+  local themeKey = H.NormalizeConfigThemeKey(key)
+  local source = H.CONFIG_THEMES[themeKey] or H.CONFIG_THEMES[H.DEFAULT_THEME_KEY]
+  if type(source) ~= "table" then
+    return H.DEFAULT_THEME_KEY
+  end
+
+  for name, color in pairs(source) do
+    H.THEME[name] = CopyColorInto(H.THEME[name], color)
+  end
+
+  H._activeConfigThemeKey = themeKey
+  return themeKey
+end
+
+function H.GetActiveConfigThemeKey()
+  return H._activeConfigThemeKey or H.DEFAULT_THEME_KEY
+end
+
+H.ApplyConfigTheme(H.DEFAULT_THEME_KEY)
+
 function H.SetBackdrop(frame, bg, edge, edgeSize)
   if not frame or type(frame.SetBackdrop) ~= "function" then return end
   frame:SetBackdrop({
@@ -101,7 +176,10 @@ function H.StyleCheckBoxWidget(w)
     w.check:SetVertexColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
   end
   if w.checkbg then
-    w.checkbg:SetVertexColor(0.86, 0.90, 0.86, 1)
+    local r = (THEME.panel2[1] * 0.70) + (THEME.text[1] * 0.25)
+    local g = (THEME.panel2[2] * 0.70) + (THEME.text[2] * 0.25)
+    local b = (THEME.panel2[3] * 0.70) + (THEME.text[3] * 0.25)
+    w.checkbg:SetVertexColor(r, g, b, 1)
   end
   if w.highlight then
     w.highlight:SetVertexColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.65)

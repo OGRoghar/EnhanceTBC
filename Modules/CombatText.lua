@@ -3,6 +3,8 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CombatText = mod
+mod.Internal = mod.Internal or {}
+mod.Internal.Shared = mod.Internal.Shared or {}
 local Compat = ETBC.Compat or {}
 
 local LSM = ETBC.LSM
@@ -595,6 +597,60 @@ local function Apply()
     ClearAll()
   end
 end
+
+local function ColorizeLine(r, g, b, a, text)
+  r = tonumber(r) or 1
+  g = tonumber(g) or 1
+  b = tonumber(b) or 1
+  a = tonumber(a) or 1
+  if r < 0 then r = 0 elseif r > 1 then r = 1 end
+  if g < 0 then g = 0 elseif g > 1 then g = 1 end
+  if b < 0 then b = 0 elseif b > 1 then b = 1 end
+  if a < 0 then a = 0 elseif a > 1 then a = 1 end
+  local ah = math.floor((a * 255) + 0.5)
+  local rh = math.floor((r * 255) + 0.5)
+  local gh = math.floor((g * 255) + 0.5)
+  local bh = math.floor((b * 255) + 0.5)
+  return ("|c%02x%02x%02x%02x%s|r"):format(ah, rh, gh, bh, tostring(text or ""))
+end
+
+local function GetConfigPreviewStyle()
+  local p = ETBC and ETBC.db and ETBC.db.profile or nil
+  local db = p and p.combattext or nil
+  if type(db) ~= "table" then
+    return nil
+  end
+
+  local function SafePreviewColor(kind, isCrit, schoolMask, fr, fg, fb, fa)
+    local ok, r, g, b, a = pcall(ColorFor, db, kind, isCrit, schoolMask)
+    if ok and type(r) == "number" and type(g) == "number" and type(b) == "number" then
+      return r, g, b, a
+    end
+    return fr, fg, fb, fa
+  end
+
+  local damageR, damageG, damageB, damageA = SafePreviewColor("DAMAGE", false, 4, 1.0, 0.25, 0.25, 1)
+  local critR, critG, critB, critA = SafePreviewColor("DAMAGE", true, 4, 1.0, 0.8, 0.2, 1)
+  local healR, healG, healB, healA = SafePreviewColor("HEAL", false, nil, 0.25, 1.0, 0.35, 1)
+
+  local lines = {
+    ColorizeLine(damageR, damageG, damageB, damageA, "OUT Fireball: -1243"),
+    ColorizeLine(healR, healG, healB, healA, "OUT +812"),
+    ColorizeLine(critR, critG, critB, critA, "CRIT Lava Burst: -2140"),
+  }
+
+  return {
+    enabled = db.enabled and true or false,
+    previewText = table.concat(lines, "\n"),
+    previewFont = {
+      path = SafeFont(db.font),
+      size = tonumber(db.size) or 18,
+      flags = OutlineFlag(db.outline),
+    },
+    useBar = false,
+  }
+end
+mod.Internal.Shared.GetConfigPreviewStyle = GetConfigPreviewStyle
 
 ETBC.ApplyBus:Register("combattext", Apply)
 ETBC.ApplyBus:Register("general", Apply)

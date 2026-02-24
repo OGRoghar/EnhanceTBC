@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2.12 - 2026-02-24
+- Added:
+	- Lightweight live `/etbc` config preview syncing for `SwingTimer`, `Cooldown Text`, `CombatText`, `ActionTracker`, and `Auras` using module-specific preview style providers.
+	- Selectable custom `/etbc` config-window theme palettes with a new `WoW Basic` option and live theme switching.
+- Changed:
+	- Improved custom preview panel widget capabilities (text color, bar alpha, style reset) to support module-themed previews without full pane re-renders.
+	- Refined `/etbc` theme UX by hiding the duplicate `General -> UI -> Addon UI theme` control in the custom config window (while preserving it for shared settings surfaces).
+	- Cleaned WoW-theme visual leaks in the config window by replacing remaining hardcoded green-biased chrome colors with theme-derived styling.
+	- Updated General settings live-update info text to use theme styling instead of hardcoded inline colors.
+
 ## v1.2.11 - 2026-02-23
 - Added:
 	- Castbar+ option to class-color the player castbar's casting/channeling states while preserving custom non-interruptible and latency colors.

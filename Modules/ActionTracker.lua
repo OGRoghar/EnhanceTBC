@@ -3,6 +3,8 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.ActionTracker = mod
+mod.Internal = mod.Internal or {}
+mod.Internal.Shared = mod.Internal.Shared or {}
 local Compat = ETBC.Compat or {}
 
 local LSM = ETBC.LSM
@@ -380,6 +382,64 @@ local function Apply()
     wipe(entries)
   end
 end
+
+local function GetConfigPreviewStyle()
+  local p = ETBC and ETBC.db and ETBC.db.profile or nil
+  local db = p and p.actiontracker or nil
+  if type(db) ~= "table" then
+    return nil
+  end
+
+  local nt = db.nameText or {}
+  local border = db.border or {}
+  local barColor
+  if border.enabled and type(border.color) == "table" then
+    barColor = { border.color.r or 0.15, border.color.g or 0.30, border.color.b or 0.15, border.color.a or 1 }
+  else
+    barColor = { 0.16, 0.22, 0.16, 1 }
+  end
+
+  local pr, pg, pb, pa
+  if nt.classColor then
+    local _, class = UnitClass("player")
+    if class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+      local c = RAID_CLASS_COLORS[class]
+      pr, pg, pb, pa = c.r, c.g, c.b, 1
+    end
+  end
+  if pr == nil then
+    local c = nt.color or {}
+    pr = c.r or 0.9
+    pg = c.g or 0.9
+    pb = c.b or 0.9
+    pa = c.a or 1
+  end
+  local summary = string.format(
+    "%dx row, %dpx icons | %s/%s growth%s",
+    tonumber(db.perRow) or 1,
+    tonumber(db.iconSize) or 28,
+    tostring(db.growthX or "LEFT"),
+    tostring(db.growthY or "DOWN"),
+    (db.showName and " | Names shown") or ""
+  )
+
+  local fontPath = SafeFont(nt.font)
+  local fontFlags = OutlineFlag(nt.outline)
+  local fontSize = tonumber(nt.size) or 12
+
+  return {
+    enabled = db.enabled and true or false,
+    previewText = summary,
+    previewFont = { path = fontPath, size = fontSize, flags = fontFlags },
+    previewTextColor = { pr or 1, pg or 1, pb or 1, pa or 1 },
+    useBar = true,
+    barValue = 58,
+    barColor = barColor,
+    barText = (db.showName and "Action Tracker") or "Tracker Row",
+    barTextFont = { path = fontPath, size = fontSize, flags = fontFlags },
+  }
+end
+mod.Internal.Shared.GetConfigPreviewStyle = GetConfigPreviewStyle
 
 ETBC.ApplyBus:Register("actiontracker", Apply)
 ETBC.ApplyBus:Register("general", Apply)

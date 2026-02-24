@@ -19,8 +19,8 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
 
       liveUpdateInfo = {
         type = "description",
-        name = "|cff00ff00✓ Live Updates:|r Most settings apply immediately without requiring a /reload.\n"
-          .. "|cffffaa00Note:|r Some CVars and certain UI changes may require a reload to take full effect.",
+        name = "✓ Live Updates: Most settings apply immediately without requiring a /reload.\n"
+          .. "Note: Some CVars and certain UI changes may require a reload to take full effect.",
         order = 0.5,
         width = "full",
       },
@@ -45,7 +45,7 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
         args = {
           theme = {
             type = "select",
-            name = "Theme",
+            name = "Addon UI theme",
             order = 1,
             values = {
               WarcraftGreen = "Warcraft Green",

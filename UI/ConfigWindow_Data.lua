@@ -32,6 +32,7 @@ function H.GetUIDB()
   if db.treewidth == nil then db.treewidth = 280 end
   if db.lastModule == nil then db.lastModule = "auras" end
   if db.search == nil then db.search = "" end
+  if db.theme == nil then db.theme = "EnhanceGreen" end
 
   -- Don't overwrite tree status table every time (keeps expand/collapse state).
   db.treeStatus = db.treeStatus or {}

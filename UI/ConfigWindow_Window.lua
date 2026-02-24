@@ -23,6 +23,7 @@ local RenderHelpers = ConfigWindow.Internal.Render or {}
 
 local LOGO_PATH = ThemeHelpers.LOGO_PATH
 local THEME = ThemeHelpers.THEME
+local ApplyConfigTheme = ThemeHelpers.ApplyConfigTheme
 local SetBackdrop = ThemeHelpers.SetBackdrop
 local TrySetFont = ThemeHelpers.TrySetFont
 local StyleEditBoxWidget = ThemeHelpers.StyleEditBoxWidget
@@ -36,6 +37,7 @@ local BuildTree = DataHelpers.BuildTree
 
 local AddDesc = RenderHelpers.AddDesc
 local RenderOptions = RenderHelpers.RenderOptions
+local RefreshPreviewWidget = RenderHelpers.RefreshPreviewWidget
 
 -- ---------------------------------------------------------
 -- Window lifecycle & layout
@@ -164,6 +166,14 @@ local function StyleTreeWidget(tree)
   StyleTreeButtons(tree)
 end
 
+local function GetTintedPanelColor(alpha)
+  local factor = 0.16
+  local r = (THEME.panel2[1] * (1 - factor)) + (THEME.accent[1] * factor)
+  local g = (THEME.panel2[2] * (1 - factor)) + (THEME.accent[2] * factor)
+  local b = (THEME.panel2[3] * (1 - factor)) + (THEME.accent[3] * factor)
+  return r, g, b, alpha or 0.96
+end
+
 local function UpdateHeaderMoverButton(win)
   if not (win and win.frame and win.frame._etbcHeaderMoverBtn) then return end
 
@@ -208,7 +218,8 @@ local function UpdateHeaderMoverButton(win)
       btn:SetBackdropColor(THEME.panel2[1], THEME.panel2[2], THEME.panel2[3], 0.65)
       btn:SetBackdropBorderColor(THEME.border[1], THEME.border[2], THEME.border[3], 0.65)
     elseif btn._etbcActive then
-      btn:SetBackdropColor(0.08, 0.12, 0.08, 0.96)
+      local r, g, b, a = GetTintedPanelColor(0.96)
+      btn:SetBackdropColor(r, g, b, a)
       btn:SetBackdropBorderColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
     elseif btn._etbcHover then
       btn:SetBackdropColor(THEME.panel2[1], THEME.panel2[2], THEME.panel2[3], 0.96)
@@ -404,6 +415,52 @@ local function ApplyWindowStyle(win)
   end
 end
 
+local function RefreshTheme()
+  if not (state and state.win and state.win.frame) then return end
+
+  local uiDB = GetUIDB()
+  if uiDB and type(ApplyConfigTheme) == "function" then
+    uiDB.theme = ApplyConfigTheme(uiDB.theme)
+  end
+
+  ApplyWindowStyle(state.win)
+
+  if state.tree then
+    StyleTreeWidget(state.tree)
+  end
+
+  if state.rightScroll then
+    if state.rightScroll.frame then
+      SetBackdrop(state.rightScroll.frame, THEME.panel2, THEME.border, 1)
+    end
+    if state.rightScroll.scrollbar then
+      StyleScrollbar(state.rightScroll.scrollbar)
+    end
+  end
+
+  if state.search then
+    if type(state.search.RefreshTheme) == "function" then
+      pcall(state.search.RefreshTheme, state.search)
+    else
+      StyleEditBoxWidget(state.search)
+    end
+  end
+
+  if state.groups and state.rightScroll then
+    local moduleKey = state.currentModuleKey
+    if not moduleKey and state.groups[1] then
+      moduleKey = state.groups[1].key
+    end
+    if moduleKey then
+      local q = ""
+      if state.search and state.search.GetText then
+        q = tostring(state.search:GetText() or "")
+      end
+      RenderOptions(state.rightScroll, state.groups, moduleKey, q, state.search)
+    end
+  end
+end
+
 local function SaveWindow()
   local db = GetUIDB()
   if not db or not state.win or not state.win.frame then return end
@@ -581,6 +638,9 @@ local function BuildWindow()
   if state.win then return end
   local db = GetUIDB()
   if not db then return end
+  if type(ApplyConfigTheme) == "function" then
+    db.theme = ApplyConfigTheme(db.theme)
+  end
 
   local groups = GatherGroups()
   state.groups = groups
@@ -918,12 +978,32 @@ end
 
 H.state = state
 H.BuildWindow = BuildWindow
+H.RefreshTheme = RefreshTheme
 
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then
+  local function RefreshCurrentPreviewFor(moduleKey)
+    if not (state and state.win and state.currentModuleKey == moduleKey and state.rightScroll) then
+      return
+    end
+    if type(RefreshPreviewWidget) == "function" then
+      RefreshPreviewWidget(state.rightScroll, moduleKey)
+    elseif RenderHelpers and type(RenderHelpers.RefreshPreviewWidget) == "function" then
+      RenderHelpers.RefreshPreviewWidget(state.rightScroll, moduleKey)
+    end
+  end
+
   ETBC.ApplyBus:Register("mover", function()
     if state and state.win then
       ApplyWindowStyle(state.win)
     end
   end)
+
+  local previewRefreshKeys = { "castbar", "swingtimer", "cooldowns", "combattext", "actiontracker", "auras" }
+  for i = 1, #previewRefreshKeys do
+    local key = previewRefreshKeys[i]
+    ETBC.ApplyBus:Register(key, function()
+      RefreshCurrentPreviewFor(key)
+    end)
+  end
 end
 

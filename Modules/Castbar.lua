@@ -587,6 +587,27 @@ local function GetPreviewCastColor(db)
   return cast[1] or 0.25, cast[2] or 0.80, cast[3] or 0.25
 end
 
+local function GetConfigPreviewStyle()
+  local db = GetDB()
+  if not db then return nil end
+
+  local r, g, b = GetPreviewCastColor(db)
+  local texture = LSM_Fetch("statusbar", db.texture, "Interface\\TargetingFrame\\UI-StatusBar")
+  local fontPath = LSM_Fetch("font", db.font, "Fonts\\FRIZQT__.TTF")
+
+  return {
+    enabled = db.enabled and true or false,
+    barColor = { r or 0.25, g or 0.80, b or 0.25, 1 },
+    barTexture = texture,
+    fontPath = fontPath,
+    fontSize = tonumber(db.fontSize) or 12,
+    outline = db.outline or "",
+    labelText = "Preview Cast",
+    value = 42,
+  }
+end
+mod.Internal.Shared.GetConfigPreviewStyle = GetConfigPreviewStyle
+
 local function RefreshPreviewBar(force)
   local bar = mod._previewBar
   if not bar then return end

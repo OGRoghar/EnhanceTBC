@@ -7,6 +7,8 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.SwingTimer = mod
+mod.Internal = mod.Internal or {}
+mod.Internal.Shared = mod.Internal.Shared or {}
 
 local driver
 local mainHandFrame, mainHandBar, mainHandBg, mainHandSpark
@@ -617,6 +619,36 @@ local function Apply()
     driver:Hide()
   end
 end
+
+local function GetConfigPreviewStyle()
+  local db = GetDB()
+  if not db then return nil end
+
+  local r, g, b
+  if db.colorMode == "CLASS" then
+    r, g, b = GetClassColor()
+  else
+    local c = db.customColor or {}
+    r = c.r or 0.20
+    g = c.g or 1.00
+    b = c.b or 0.20
+  end
+
+  local modeText = (db.colorMode == "CLASS") and "Class color" or "Custom color"
+  local handText = (db.showOffHand and true or false) and "Main-hand + off-hand preview." or "Main-hand preview only."
+
+  return {
+    enabled = db.enabled and true or false,
+    previewText = handText .. " " .. modeText .. " with " .. tostring(db.texture or "Blizzard") .. " texture.",
+    useBar = true,
+    barValue = 65,
+    barColor = { r or 0.20, g or 1.00, b or 0.20, 1 },
+    barTexture = GetTexturePath(db.texture),
+    barText = (db.showOffHand and "MH + OH") or "Main-hand",
+    barAlpha = tonumber(db.alpha) or 1,
+  }
+end
+mod.Internal.Shared.GetConfigPreviewStyle = GetConfigPreviewStyle
 
 ETBC.ApplyBus:Register("swingtimer", Apply)
 ETBC.ApplyBus:Register("general", Apply)

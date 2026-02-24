@@ -84,7 +84,25 @@ local function Constructor()
     preview = preview,
     bar = bar,
     barText = barText,
+    _defaultBarTexture = "Interface\\TargetingFrame\\UI-StatusBar",
   }
+
+  if preview and preview.GetFont then
+    local font, size, flags = preview:GetFont()
+    widget._defaultPreviewFont = { font, size, flags }
+  end
+  if barText and barText.GetFont then
+    local font, size, flags = barText:GetFont()
+    widget._defaultBarTextFont = { font, size, flags }
+  end
+  if preview and preview.GetTextColor then
+    local r, g, b, a = preview:GetTextColor()
+    widget._defaultPreviewTextColor = { r or 1, g or 1, b or 1, a or 1 }
+  end
+  if barText and barText.GetTextColor then
+    local r, g, b, a = barText:GetTextColor()
+    widget._defaultBarTextColor = { r or 1, g or 1, b or 1, a or 1 }
+  end
 
   local function UpdateTextAnchors(self)
     self.title:ClearAllPoints()
@@ -100,6 +118,9 @@ local function Constructor()
   function widget:OnAcquire()
     local theme = GetTheme()
     SetBackdrop(self.frame, theme.panel or theme.bg, theme.border, 1)
+    if self.ResetPreviewStyles then
+      self:ResetPreviewStyles()
+    end
     self:SetTitle("Preview")
     self:SetPreviewText("Live preview for current module settings.")
     self:SetIcon(nil)
@@ -122,6 +143,12 @@ local function Constructor()
 
   function widget:SetPreviewText(text)
     self.preview:SetText(text or "")
+  end
+
+  function widget:SetPreviewTextColor(r, g, b, a)
+    if self.preview and self.preview.SetTextColor then
+      self.preview:SetTextColor(r or 1, g or 1, b or 1, a or 1)
+    end
   end
 
   function widget:SetIcon(texturePathOrID)
@@ -151,6 +178,24 @@ local function Constructor()
     self.barText:SetText(("%d%%"):format(v))
   end
 
+  function widget:SetBarText(text)
+    if self.barText then
+      self.barText:SetText(text or "")
+    end
+  end
+
+  function widget:SetBarTextFont(fontPath, size, flags)
+    if self.barText and self.barText.SetFont and fontPath and fontPath ~= "" then
+      pcall(self.barText.SetFont, self.barText, fontPath, size or 12, flags)
+    end
+  end
+
+  function widget:SetBarAlpha(a)
+    if self.bar and self.bar.SetAlpha then
+      self.bar:SetAlpha(tonumber(a) or 1)
+    end
+  end
+
   function widget:SetBarColor(r, g, b, a)
     self.bar:SetStatusBarColor(r or 0.2, g or 0.8, b or 0.3, a or 1)
   end
@@ -165,6 +210,45 @@ local function Constructor()
   function widget:SetDisabled(disabled)
     self.disabled = disabled and true or false
     self.frame:SetAlpha(self.disabled and 0.65 or 1.0)
+  end
+
+  function widget:ResetPreviewStyles()
+    local theme = GetTheme()
+
+    if self.preview and self.preview.SetFont and self._defaultPreviewFont and self._defaultPreviewFont[1] then
+      pcall(
+        self.preview.SetFont,
+        self.preview,
+        self._defaultPreviewFont[1],
+        self._defaultPreviewFont[2] or 12,
+        self._defaultPreviewFont[3]
+      )
+    end
+    if self.barText and self.barText.SetFont and self._defaultBarTextFont and self._defaultBarTextFont[1] then
+      pcall(
+        self.barText.SetFont,
+        self.barText,
+        self._defaultBarTextFont[1],
+        self._defaultBarTextFont[2] or 12,
+        self._defaultBarTextFont[3]
+      )
+    end
+
+    local ptc = self._defaultPreviewTextColor or (theme.muted or { 0.7, 0.78, 0.7, 1 })
+    self:SetPreviewTextColor(ptc[1], ptc[2], ptc[3], ptc[4] or 1)
+
+    local btc = self._defaultBarTextColor or (theme.text or { 1, 1, 1, 1 })
+    if self.barText and self.barText.SetTextColor then
+      self.barText:SetTextColor(btc[1], btc[2], btc[3], btc[4] or 1)
+    end
+
+    self:SetBarAlpha(1)
+    if self.SetBarTexture then
+      self:SetBarTexture(self._defaultBarTexture)
+    end
+    local barColor = theme.accent or theme.border or { 0.2, 0.8, 0.3, 1 }
+    self:SetBarColor(barColor[1], barColor[2], barColor[3], barColor[4] or 1)
+    self:SetDisabled(false)
   end
 
   return AceGUI:RegisterAsWidget(widget)

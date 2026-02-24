@@ -3,6 +3,8 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.Auras = mod
+mod.Internal = mod.Internal or {}
+mod.Internal.Shared = mod.Internal.Shared or {}
 
 local LSM = ETBC.LSM
 
@@ -943,6 +945,69 @@ local function Apply()
   end
 
 end
+
+local function GetConfigPreviewStyle()
+  local p = ETBC and ETBC.db and ETBC.db.profile or nil
+  local db = p and p.auras or nil
+  if type(db) ~= "table" then
+    return nil
+  end
+
+  local border = db.border or {}
+  local barColor
+  if border.enabled and border.debuffTypeColors and DEBUFF_COLORS and DEBUFF_COLORS.Magic then
+    local c = DEBUFF_COLORS.Magic
+    barColor = { c.r or 0.20, c.g or 0.60, c.b or 1.00, c.a or 1 }
+  elseif border.enabled and type(border.color) == "table" then
+    local c = border.color
+    barColor = { c.r or 0.15, c.g or 0.30, c.b or 0.15, c.a or 1 }
+  else
+    barColor = { 0.14, 0.18, 0.14, 1 }
+  end
+
+  local textInfo = nil
+  if db.showDurationText and type(db.durationText) == "table" then
+    textInfo = db.durationText
+  elseif db.showCountText and type(db.countText) == "table" then
+    textInfo = db.countText
+  end
+
+  local previewFont
+  local barTextFont
+  if textInfo then
+    local fontPath = SafeFont(textInfo.font)
+    local fontSize = tonumber(textInfo.size) or 12
+    local flags = OutlineFlag(textInfo.outline)
+    previewFont = { path = fontPath, size = fontSize, flags = flags }
+    barTextFont = { path = fontPath, size = fontSize, flags = flags }
+  end
+
+  local buffs = db.buffs or {}
+  local debuffs = db.debuffs or {}
+  local previewText = string.format(
+    "Buffs %s (%d/%d) | Debuffs %s (%d/%d) | Duration %s | Count %s",
+    (buffs.enabled and "on" or "off"),
+    tonumber(buffs.perRow) or 0,
+    tonumber(buffs.iconSize) or 0,
+    (debuffs.enabled and "on" or "off"),
+    tonumber(debuffs.perRow) or 0,
+    tonumber(debuffs.iconSize) or 0,
+    (db.showDurationText and "on" or "off"),
+    (db.showCountText and "on" or "off")
+  )
+
+  return {
+    enabled = db.enabled and true or false,
+    previewText = previewText,
+    previewFont = previewFont,
+    useBar = true,
+    barValue = 72,
+    barColor = barColor,
+    barText = "Aura Icons",
+    barTextFont = barTextFont,
+  }
+end
+mod.Internal.Shared.GetConfigPreviewStyle = GetConfigPreviewStyle
 
 ETBC.ApplyBus:Register("auras", Apply)
 ETBC.ApplyBus:Register("general", Apply)

@@ -7,6 +7,8 @@ local _, ETBC = ...
 ETBC.Modules = ETBC.Modules or {}
 local mod = {}
 ETBC.Modules.CooldownText = mod
+mod.Internal = mod.Internal or {}
+mod.Internal.Shared = mod.Internal.Shared or {}
 
 local driver
 local tracked = {}   -- [cooldownFrame] = state
@@ -469,6 +471,48 @@ local function Apply()
   StartDriver()
   needRebuild = true
 end
+
+local function HexColorLine(color, text)
+  local c = color or {}
+  local r = tonumber(c.r or c[1] or 1) or 1
+  local g = tonumber(c.g or c[2] or 1) or 1
+  local b = tonumber(c.b or c[3] or 1) or 1
+  if r < 0 then r = 0 elseif r > 1 then r = 1 end
+  if g < 0 then g = 0 elseif g > 1 then g = 1 end
+  if b < 0 then b = 0 elseif b > 1 then b = 1 end
+  local rh = math.floor((r * 255) + 0.5)
+  local gh = math.floor((g * 255) + 0.5)
+  local bh = math.floor((b * 255) + 0.5)
+  return ("|cff%02x%02x%02x%s|r"):format(rh, gh, bh, tostring(text or ""))
+end
+
+local function GetConfigPreviewStyle()
+  local db = GetDB()
+  if not db then return nil end
+
+  local fontPath = LSM_Fetch("font", db.font, DEFAULT_FONT_PATH)
+  if type(fontPath) ~= "string" or fontPath == "" then
+    fontPath = DEFAULT_FONT_PATH
+  end
+
+  local sample = table.concat({
+    HexColorLine(db.colorNormal, "120s  Ready later"),
+    HexColorLine(db.colorSoon, "4.2s  Soon"),
+    HexColorLine(db.colorNow, "1.1s  Now"),
+  }, "\n")
+
+  return {
+    enabled = db.enabled and true or false,
+    previewText = sample,
+    previewFont = {
+      path = fontPath,
+      size = tonumber(db.size) or 16,
+      flags = db.outline or "",
+    },
+    useBar = false,
+  }
+end
+mod.Internal.Shared.GetConfigPreviewStyle = GetConfigPreviewStyle
 
 ETBC.ApplyBus:Register("cooldowns", Apply)
 ETBC.ApplyBus:Register("general", Apply)

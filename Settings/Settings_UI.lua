@@ -16,6 +16,59 @@ local function GetDB()
   return db
 end
 
+local function GetConfigWindowThemeHelpers()
+  local ui = ETBC and ETBC.UI
+  local cw = ui and ui.ConfigWindow
+  local internal = cw and cw.Internal
+  return internal and internal.Theme or nil, internal and internal.Window or nil
+end
+
+local function GetConfigWindowDB()
+  local themeHelpers = select(1, GetConfigWindowThemeHelpers())
+  local dataHelpers = ETBC and ETBC.UI and ETBC.UI.ConfigWindow and ETBC.UI.ConfigWindow.Internal
+    and ETBC.UI.ConfigWindow.Internal.Data or nil
+
+  if dataHelpers and type(dataHelpers.GetUIDB) == "function" then
+    return dataHelpers.GetUIDB()
+  end
+
+  if not (ETBC and ETBC.db and ETBC.db.profile) then return nil end
+  ETBC.db.profile.ui = ETBC.db.profile.ui or {}
+  ETBC.db.profile.ui.config = ETBC.db.profile.ui.config or {}
+  local cfg = ETBC.db.profile.ui.config
+  if cfg.theme == nil then
+    cfg.theme = (themeHelpers and themeHelpers.DEFAULT_THEME_KEY) or "EnhanceGreen"
+  end
+  return cfg
+end
+
+local function GetConfigThemeChoices()
+  local themeHelpers = select(1, GetConfigWindowThemeHelpers())
+  if themeHelpers and type(themeHelpers.GetConfigThemeChoices) == "function" then
+    return themeHelpers.GetConfigThemeChoices()
+  end
+  return {
+    EnhanceGreen = "Enhance Green",
+    WoWBasic = "WoW Basic",
+  }
+end
+
+local function SetConfigWindowTheme(themeKey)
+  local cfg = GetConfigWindowDB()
+  if not cfg then return end
+
+  local themeHelpers, windowHelpers = GetConfigWindowThemeHelpers()
+  cfg.theme = tostring(themeKey or "")
+
+  if themeHelpers and type(themeHelpers.ApplyConfigTheme) == "function" then
+    cfg.theme = themeHelpers.ApplyConfigTheme(cfg.theme)
+  end
+
+  if windowHelpers and type(windowHelpers.RefreshTheme) == "function" then
+    pcall(windowHelpers.RefreshTheme)
+  end
+end
+
 local function EnsureDefaults()
   if not ETBC.db or not ETBC.db.profile then return end
   GetDB()
@@ -84,6 +137,27 @@ ETBC.SettingsRegistry:RegisterGroup("ui", {
         set = function(_, v)
           db.deleteWordForHighQuality = v and true or false
           ETBC.ApplyBus:Notify("ui")
+        end,
+      },
+
+      configWindowHeader = { type = "header", name = "Config Window", order = 60 },
+
+      configWindowTheme = {
+        type = "select",
+        name = "Config window theme",
+        desc = "Applies only to the custom /etbc config window and updates live when it is open.",
+        order = 61,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        values = function()
+          return GetConfigThemeChoices()
+        end,
+        get = function()
+          local cfg = GetConfigWindowDB()
+          return (cfg and cfg.theme) or "EnhanceGreen"
+        end,
+        set = function(_, v)
+          SetConfigWindowTheme(v)
         end,
       },
 
