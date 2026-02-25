@@ -59,7 +59,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       preview = {
         type = "toggle",
         name = "Preview Mode",
-        desc = "Show dummy auras for layout testing.",
+        desc = "Shows dummy aura icons for in-world layout testing (separate from the /etbc preview card).",
         order = 2,
         get = function() return db.preview end,
         set = function(_, v) db.preview = v and true or false; ETBC.ApplyBus:Notify("auras") end,
@@ -68,6 +68,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       common = {
         type = "group",
         name = "Common",
+        desc = "Shared aura behavior, tooltip handling, icon trimming, and update strategy.",
         order = 10,
         inline = true,
         args = {
@@ -110,6 +111,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       sorting = {
         type = "group",
         name = "Sorting",
+        desc = "Sort order for shown aura icons when multiple auras are visible.",
         order = 20,
         inline = true,
         args = {
@@ -135,6 +137,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       cooldowns = {
         type = "group",
         name = "Cooldowns",
+        desc = "Cooldown spiral display options for aura icons.",
         order = 30,
         inline = true,
         args = {
@@ -151,6 +154,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       text = {
         type = "group",
         name = "Text",
+        desc = "Duration/count text toggles and font styling for aura icons.",
         order = 35,
         inline = true,
         args = {
@@ -230,6 +234,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       borders = {
         type = "group",
         name = "Borders",
+        desc = "Aura icon border styling, including optional debuff-type coloring.",
         order = 40,
         inline = true,
         args = {
@@ -271,6 +276,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       buffs = {
         type = "group",
         name = "Buffs",
+        desc = "Enable and configure the buff icon set layout and anchor.",
         order = 60,
         args = {
           enabled = {
@@ -284,6 +290,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
           layout = {
             type = "group",
             name = "Layout",
+            desc = "Buff icon size, spacing, row count, and growth directions.",
             order = 10,
             inline = true,
             args = {
@@ -318,6 +325,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
           anchor = {
             type = "group",
             name = "Anchor",
+            desc = "Buff anchor point and offset relative to the tracked frame.",
             order = 20,
             inline = true,
             args = {
@@ -349,6 +357,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
       debuffs = {
         type = "group",
         name = "Debuffs",
+        desc = "Enable and configure the debuff icon set layout and anchor.",
         order = 70,
         args = {
           enabled = {
@@ -362,6 +371,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
           layout = {
             type = "group",
             name = "Layout",
+            desc = "Debuff icon size, spacing, row count, and growth directions.",
             order = 10,
             inline = true,
             args = {
@@ -396,6 +406,7 @@ ETBC.SettingsRegistry:RegisterGroup("auras", {
           anchor = {
             type = "group",
             name = "Anchor",
+            desc = "Debuff anchor point and offset relative to the tracked frame.",
             order = 20,
             inline = true,
             args = {

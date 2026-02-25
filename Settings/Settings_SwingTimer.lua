@@ -99,7 +99,7 @@ ETBC.SettingsRegistry:RegisterGroup("swingtimer", {
       preview = {
         type = "toggle",
         name = "Preview (show bars)",
-        desc = "For positioning and styling. Does not require combat.",
+        desc = "Shows the module's in-world swing bars for positioning/styling (separate from the /etbc preview card).",
         order = 3,
         width = "full",
         get = function() return db.preview end,
@@ -121,6 +121,7 @@ ETBC.SettingsRegistry:RegisterGroup("swingtimer", {
       layout = {
         type = "group",
         name = "Layout",
+        desc = "Bar dimensions and alpha settings shared by the swing timer bars.",
         order = 10,
         inline = true,
         args = {
@@ -169,6 +170,7 @@ ETBC.SettingsRegistry:RegisterGroup("swingtimer", {
       visuals = {
         type = "group",
         name = "Visuals",
+        desc = "Texture, fill direction, spark, and bar color mode settings.",
         order = 20,
         inline = true,
         args = {
@@ -224,6 +226,7 @@ ETBC.SettingsRegistry:RegisterGroup("swingtimer", {
       visibility = {
         type = "group",
         name = "Visibility",
+        desc = "Combat-state visibility rules for when swing bars should be shown.",
         order = 30,
         inline = true,
         args = {
@@ -249,6 +252,7 @@ ETBC.SettingsRegistry:RegisterGroup("swingtimer", {
       fade = {
         type = "group",
         name = "Fade",
+        desc = "Fade timing after swings are ready or bars become idle.",
         order = 40,
         inline = true,
         args = {

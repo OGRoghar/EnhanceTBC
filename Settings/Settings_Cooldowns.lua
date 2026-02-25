@@ -166,6 +166,7 @@ ETBC.SettingsRegistry:RegisterGroup("cooldowns", {
       mmssThreshold = {
         type = "range",
         name = "Use MM:SS at (seconds)",
+        desc = "Cooldowns at or above this value use MM:SS formatting instead of larger-unit formatting.",
         order = 31,
         min = 30, max = 600, step = 5,
         disabled = function() return not db.enabled end,
@@ -186,6 +187,7 @@ ETBC.SettingsRegistry:RegisterGroup("cooldowns", {
       tenthsThreshold = {
         type = "range",
         name = "Tenths threshold (seconds)",
+        desc = "Cooldowns at or below this value can show tenths when \"Show tenths near ready\" is enabled.",
         order = 33,
         min = 0.5, max = 10.0, step = 0.1,
         disabled = function() return not (db.enabled and db.showTenths) end,
@@ -284,6 +286,7 @@ ETBC.SettingsRegistry:RegisterGroup("cooldowns", {
       soonThreshold = {
         type = "range",
         name = "Soon threshold",
+        desc = "Cooldowns at or below this time use the Soon color (unless they are also in the Now threshold).",
         order = 56,
         min = 1.0, max = 20.0, step = 0.5,
         disabled = function() return not db.enabled end,
@@ -294,6 +297,7 @@ ETBC.SettingsRegistry:RegisterGroup("cooldowns", {
       nowThreshold = {
         type = "range",
         name = "Now threshold",
+        desc = "Cooldowns at or below this time use the Now color and override the Soon color.",
         order = 57,
         min = 0.5, max = 10.0, step = 0.5,
         disabled = function() return not db.enabled end,
@@ -304,6 +308,7 @@ ETBC.SettingsRegistry:RegisterGroup("cooldowns", {
       colorNormal = {
         type = "color",
         name = "Normal",
+        desc = "Text color for cooldowns above the Soon threshold.",
         order = 58,
         disabled = function() return not db.enabled end,
         get = function() local c=db.colorNormal; return c[1],c[2],c[3] end,
@@ -313,6 +318,7 @@ ETBC.SettingsRegistry:RegisterGroup("cooldowns", {
       colorSoon = {
         type = "color",
         name = "Soon",
+        desc = "Text color for cooldowns at/below Soon threshold but above Now threshold.",
         order = 59,
         disabled = function() return not db.enabled end,
         get = function() local c=db.colorSoon; return c[1],c[2],c[3] end,
@@ -322,6 +328,7 @@ ETBC.SettingsRegistry:RegisterGroup("cooldowns", {
       colorNow = {
         type = "color",
         name = "Now",
+        desc = "Text color for cooldowns at/below the Now threshold (highest priority color).",
         order = 60,
         disabled = function() return not db.enabled end,
         get = function() local c=db.colorNow; return c[1],c[2],c[3] end,

@@ -139,6 +139,7 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
       whisper = {
         type = "group",
         name = "Whisper Sounds",
+        desc = "Configure whisper notification sounds and anti-spam behavior for incoming/outgoing whispers.",
         order = 40,
         inline = true,
         args = {
@@ -178,6 +179,7 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
           throttle = {
             type = "range",
             name = "Throttle (sec)",
+            desc = "Minimum time between whisper sound plays to reduce spam during rapid messages.",
             order = 5,
             min = 0, max = 10, step = 0.1,
             get = function() return db.whisperSoundThrottle end,
@@ -190,6 +192,7 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
       copy = {
         type = "group",
         name = "Copy Chat",
+        desc = "Configure the copy-chat command/button behavior and which chat frame is used as the source.",
         order = 50,
         inline = true,
         args = {

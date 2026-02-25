@@ -54,6 +54,8 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       preview = {
         type = "toggle",
         name = "Preview Mode",
+        desc = "Shows sample floating combat text events for positioning/styling "
+          .. "(separate from the /etbc preview card).",
         order = 2,
         get = function() return db.preview end,
         set = function(_, v) db.preview = v and true or false; ETBC.ApplyBus:Notify("combattext") end,
@@ -62,6 +64,7 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       blizzard = {
         type = "group",
         name = "Blizzard Combat Text",
+        desc = "Compatibility controls for Blizzard Floating Combat Text while this module is enabled.",
         order = 5,
         inline = true,
         args = {
@@ -93,6 +96,7 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       tracking = {
         type = "group",
         name = "Tracking",
+        desc = "Choose which combat events are captured and how incoming/outgoing directions are labeled.",
         order = 6,
         inline = true,
         args = {
@@ -125,6 +129,7 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       content = {
         type = "group",
         name = "Content",
+        desc = "Select which result types and extra text details are shown in the combat text stream.",
         order = 20,
         inline = true,
         args = {
@@ -191,11 +196,13 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       spam = {
         type = "group",
         name = "Spam Control",
+        desc = "Throttle and line-limit controls to reduce text spam in busy combat.",
         order = 30,
         inline = true,
         args = {
           throttleWindow = {
             type = "range", name = "Throttle Window (sec)", order = 1,
+            desc = "Groups rapid events inside this window to reduce spam and improve readability.",
             min = 0.05, max = 0.50, step = 0.01,
             get = function() return db.throttleWindow end,
             set = function(_, v) db.throttleWindow = v; ETBC.ApplyBus:Notify("combattext") end,
@@ -212,6 +219,7 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       anim = {
         type = "group",
         name = "Animation",
+        desc = "Control float direction, distance, duration, fade timing, and horizontal spread.",
         order = 40,
         inline = true,
         args = {
@@ -251,6 +259,7 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       visuals = {
         type = "group",
         name = "Visuals",
+        desc = "Text styling and color precedence for normal combat text lines.",
         order = 50,
         inline = true,
         args = {
@@ -309,6 +318,7 @@ ETBC.SettingsRegistry:RegisterGroup("combattext", {
       crit = {
         type = "group",
         name = "Crit Highlight",
+        desc = "Separate visual emphasis for critical events (scale and optional crit color override).",
         order = 60,
         inline = true,
         args = {

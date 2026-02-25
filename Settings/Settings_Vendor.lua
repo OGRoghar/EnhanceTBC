@@ -92,6 +92,7 @@ ETBC.SettingsRegistry:RegisterGroup("vendor", {
       repair = {
         type = "group",
         name = "Auto Repair",
+        desc = "Automatic equipment repairs and guild-repair usage when a merchant is opened.",
         order = 10,
         inline = true,
         args = {
@@ -126,6 +127,7 @@ ETBC.SettingsRegistry:RegisterGroup("vendor", {
       sell = {
         type = "group",
         name = "Auto Sell Junk",
+        desc = "Automatic junk-selling rules, safety checks, and value confirmation settings.",
         order = 20,
         inline = true,
         args = {
@@ -187,6 +189,7 @@ ETBC.SettingsRegistry:RegisterGroup("vendor", {
       throttle = {
         type = "group",
         name = "Performance",
+        desc = "Throttle item selling in batches to reduce vendor action bursts.",
         order = 30,
         inline = true,
         args = {
@@ -221,6 +224,7 @@ ETBC.SettingsRegistry:RegisterGroup("vendor", {
       lists = {
         type = "group",
         name = "Lists (Item IDs)",
+        desc = "Whitelist/blacklist item ID controls for filtering what the vendor module may auto-sell.",
         order = 40,
         args = {
           whitelistEnabled = {

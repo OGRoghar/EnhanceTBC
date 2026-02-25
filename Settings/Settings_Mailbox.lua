@@ -158,12 +158,14 @@ ETBC.SettingsRegistry:RegisterGroup("mailbox", {
       perf = {
         type = "group",
         name = "Performance",
+        desc = "Throttle mailbox actions to reduce taint-prone spam and improve reliability on busy inboxes.",
         order = 40,
         inline = true,
         args = {
           throttleEnabled = {
             type = "toggle",
             name = "Throttle Actions",
+            desc = "Processes mailbox actions in small batches instead of one burst. Recommended for reliability.",
             order = 1,
             get = function() return db.throttle.enabled end,
             set = function(_, v) db.throttle.enabled = v and true or false; ETBC.ApplyBus:Notify("mailbox") end,
@@ -198,6 +200,7 @@ ETBC.SettingsRegistry:RegisterGroup("mailbox", {
       pending = {
         type = "group",
         name = "Command Queue Safety",
+        desc = "Waits for Blizzard mailbox commands to finish before sending the next action.",
         order = 45,
         inline = true,
         args = {

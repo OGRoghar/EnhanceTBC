@@ -179,6 +179,16 @@ local function BuildLeafDescription(group, optId, opt)
     moduleRef = moduleName
   end
 
+  local idLower = tostring(optId or ""):lower()
+  local nameLower = tostring(nameText or ""):lower()
+  local previewHint = (idLower == "preview") or nameLower:find("preview", 1, true)
+
+  if previewHint and opt.type == "toggle" then
+    return "Toggles the module's in-world dummy preview for positioning/styling (separate from the /etbc preview card)."
+  elseif previewHint and opt.type == "execute" then
+    return "Runs the module's in-world preview action immediately (separate from the /etbc preview card)."
+  end
+
   local base
   if opt.type == "toggle" then
     base = "Turns " .. nameText .. " on or off for " .. moduleRef .. "."

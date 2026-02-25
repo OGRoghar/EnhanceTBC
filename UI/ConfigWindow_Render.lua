@@ -33,6 +33,7 @@ local StyleEditBoxWidget = ThemeHelpers.StyleEditBoxWidget
 local StyleColorWidget = ThemeHelpers.StyleColorWidget
 local StyleInlineGroup = ThemeHelpers.StyleInlineGroup
 local HasWidget = ThemeHelpers.HasWidget
+local GetUIDB = DataHelpers.GetUIDB
 local FindGroup = DataHelpers.FindGroup
 
 -- ---------------------------------------------------------
@@ -480,6 +481,13 @@ end
 local function ShouldSuppressCustomOption(opt, pathStack, renderCtx)
   if type(opt) ~= "table" or type(renderCtx) ~= "table" then return false end
 
+  -- /etbc already shows a module summary card at the top of the page.
+  if opt._id == "__etbcModuleIntro" and opt.type == "description" then
+    if type(pathStack) == "table" and #pathStack == 1 then
+      return true
+    end
+  end
+
   -- Avoid duplicate theme controls in the custom /etbc window:
   -- keep the dedicated UI -> Config Window theme selector, and hide the
   -- General -> UI global addon theme selector here only.
@@ -489,10 +497,77 @@ local function ShouldSuppressCustomOption(opt, pathStack, renderCtx)
     end
   end
 
+  -- Preview-capable modules expose a custom header action in /etbc; hide the
+  -- duplicate root preview toggle in this renderer only.
+  if renderCtx.hideRootPreview and opt._id == "preview" and opt.type == "toggle" then
+    if type(pathStack) == "table" and #pathStack == 1 then
+      return true
+    end
+  end
+
   if not renderCtx.hideRootEnabled then return false end
   if opt._id ~= "enabled" or opt.type ~= "toggle" then return false end
   if type(pathStack) ~= "table" or #pathStack ~= 1 then return false end
   return true
+end
+
+local function RelayoutParents(widget)
+  local p = widget
+  while p do
+    if p.DoLayout then
+      pcall(p.DoLayout, p)
+    end
+    if p.UpdateScroll then
+      pcall(p.UpdateScroll, p)
+    end
+    p = p.parent
+  end
+end
+
+local function BuildSectionPathKey(pathStack)
+  if type(pathStack) ~= "table" or #pathStack == 0 then
+    return nil
+  end
+  local parts = {}
+  for i = 1, #pathStack do
+    parts[i] = tostring(pathStack[i] or "")
+  end
+  return table.concat(parts, ".")
+end
+
+local function GetSectionCollapsed(moduleKey, sectionPathKey)
+  if not moduleKey or not sectionPathKey then return false end
+  local uiDB = type(GetUIDB) == "function" and GetUIDB() or nil
+  if type(uiDB) ~= "table" then return false end
+  uiDB.sectionCollapsed = uiDB.sectionCollapsed or {}
+  local mod = uiDB.sectionCollapsed[moduleKey]
+  if type(mod) ~= "table" then return false end
+  return mod[sectionPathKey] and true or false
+end
+
+local function SetSectionCollapsed(moduleKey, sectionPathKey, collapsed)
+  if not moduleKey or not sectionPathKey then return end
+  local uiDB = type(GetUIDB) == "function" and GetUIDB() or nil
+  if type(uiDB) ~= "table" then return end
+  uiDB.sectionCollapsed = uiDB.sectionCollapsed or {}
+  uiDB.sectionCollapsed[moduleKey] = uiDB.sectionCollapsed[moduleKey] or {}
+  uiDB.sectionCollapsed[moduleKey][sectionPathKey] = collapsed and true or false
+end
+
+local function GetPreviewCollapsed(moduleKey)
+  if not moduleKey then return false end
+  local uiDB = type(GetUIDB) == "function" and GetUIDB() or nil
+  if type(uiDB) ~= "table" then return false end
+  uiDB.previewCollapsed = uiDB.previewCollapsed or {}
+  return uiDB.previewCollapsed[moduleKey] and true or false
+end
+
+local function SetPreviewCollapsed(moduleKey, collapsed)
+  if not moduleKey then return end
+  local uiDB = type(GetUIDB) == "function" and GetUIDB() or nil
+  if type(uiDB) ~= "table" then return end
+  uiDB.previewCollapsed = uiDB.previewCollapsed or {}
+  uiDB.previewCollapsed[moduleKey] = collapsed and true or false
 end
 
 local function AnyMatchInGroup(groupOpt, q, pathStack, normalizeCache, renderCtx)
@@ -552,6 +627,10 @@ local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache
             local useSectionCard = HasWidget("ETBC_SectionCard")
             local grpType = useSectionCard and "ETBC_SectionCard" or "InlineGroup"
             local grp = AceGUI:Create(grpType)
+            local searchActive = (q ~= nil and q ~= "")
+            local moduleKey = renderCtx.moduleKey or (type(pathStack) == "table" and pathStack[1]) or nil
+            local sectionPathKey = BuildSectionPathKey(nextPath)
+
             if grp.SetTitle then
               grp:SetTitle(ResolveText(opt.name, info, opt))
             end
@@ -563,6 +642,23 @@ local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache
             if not useSectionCard then
               StyleInlineGroup(grp)
             end
+
+            if useSectionCard and grp.SetCollapsible and grp.SetCollapsed then
+              if searchActive then
+                grp:SetCollapsible(false)
+                grp:SetCollapsed(false)
+              else
+                grp:SetCollapsible(true)
+                grp:SetCollapsed(GetSectionCollapsed(moduleKey, sectionPathKey))
+                if grp.SetOnToggle then
+                  grp:SetOnToggle(function(sectionCard, collapsed)
+                    SetSectionCollapsed(moduleKey, sectionPathKey, collapsed and true or false)
+                    RelayoutParents(sectionCard)
+                  end)
+                end
+              end
+            end
+
             container:AddChild(grp)
 
             if (not useSectionCard) and opt.desc and opt.desc ~= "" then
@@ -836,8 +932,12 @@ local function ApplyModulePreviewWidget(preview, moduleKey, group)
     or ("Live preview for " .. tostring((group and group.name) or moduleKey or "module") .. " settings.")
 
   if preview.SetTitle then
-    local groupName = (group and group.name) or tostring(moduleKey or "Module")
-    preview:SetTitle(groupName .. " Preview")
+    if preview._etbcManagedOuterTitle then
+      preview:SetTitle("")
+    else
+      local groupName = (group and group.name) or tostring(moduleKey or "Module")
+      preview:SetTitle(groupName .. " Preview")
+    end
   end
   if preview.SetPreviewText then
     preview:SetPreviewText(previewText)
@@ -1000,23 +1100,56 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
   local q = tostring(searchText or ""):lower()
   local normalizeCache = {}
   local moduleDB = ETBC.db and ETBC.db.profile and ETBC.db.profile[moduleKey]
+  local previewApplyKey = GetPreviewApplyKey(moduleKey)
   local renderCtx = {
     hideRootEnabled = type(moduleDB) == "table" and moduleDB.enabled ~= nil and true or false,
+    hideRootPreview = previewApplyKey ~= nil,
+    moduleKey = moduleKey,
   }
   AddModuleHeaderBlock(scroll, g, moduleKey)
-  AddSpacer(scroll, 6)
+  AddSpacer(scroll, 4)
 
   if HasWidget("ETBC_PreviewPanel") then
+    local previewContainer = scroll
+    local previewCollapsed = GetPreviewCollapsed(moduleKey)
+    local usePreviewCard = HasWidget("ETBC_SectionCard")
+
+    if usePreviewCard then
+      local previewCard = AceGUI:Create("ETBC_SectionCard")
+      previewCard:SetTitle("Preview")
+      if previewCard.SetDescription then
+        previewCard:SetDescription("Live visual preview for this module's /etbc settings.")
+      end
+      previewCard:SetFullWidth(true)
+      previewCard:SetLayout("List")
+      if previewCard.SetCollapsible and previewCard.SetCollapsed then
+        previewCard:SetCollapsible(true)
+        previewCard:SetCollapsed(previewCollapsed)
+        if previewCard.SetOnToggle then
+          previewCard:SetOnToggle(function(sectionCard, collapsed)
+            SetPreviewCollapsed(moduleKey, collapsed and true or false)
+            RelayoutParents(sectionCard)
+          end)
+        end
+      end
+      scroll:AddChild(previewCard)
+      previewContainer = previewCard
+    end
+
     local preview = AceGUI:Create("ETBC_PreviewPanel")
+    preview._etbcManagedOuterTitle = usePreviewCard and true or false
     preview:SetFullWidth(true)
     ApplyModulePreviewWidget(preview, moduleKey, g)
     scroll._etbcPreviewWidget = preview
     scroll._etbcPreviewModuleKey = moduleKey
     scroll._etbcPreviewGroup = g
-    scroll:AddChild(preview)
-    AddSpacer(scroll, 8)
-    AddSeparator(scroll, 0.6)
-    AddSpacer(scroll, 8)
+    previewContainer:AddChild(preview)
+
+    AddSpacer(scroll, 6)
+    if (not usePreviewCard) or (not previewCollapsed) then
+      AddSeparator(scroll, 0.6)
+      AddSpacer(scroll, 6)
+    end
   end
 
   -- Ensure we pass an args table.

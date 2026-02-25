@@ -50,7 +50,7 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
       preview = {
         type = "toggle",
         name = "Preview Mode",
-        desc = "Shows dummy actions so you can position and style the tracker.",
+        desc = "Shows dummy tracked actions for in-world positioning/styling (separate from the /etbc preview card).",
         order = 2,
         get = function() return db.preview end,
         set = function(_, v) db.preview = v and true or false; ETBC.ApplyBus:Notify("actiontracker") end,
@@ -59,6 +59,7 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
       tracking = {
         type = "group",
         name = "Tracking",
+        desc = "What to track and how long entries are kept in the tracker list.",
         order = 10,
         inline = true,
         args = {
@@ -107,6 +108,7 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
       layout = {
         type = "group",
         name = "Layout",
+        desc = "Icon size, spacing, row count, and growth direction for the tracker grid.",
         order = 20,
         inline = true,
         args = {
@@ -156,6 +158,7 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
       visuals = {
         type = "group",
         name = "Visuals",
+        desc = "Cooldown spiral, borders, and spell-name text styling for tracker entries.",
         order = 30,
         inline = true,
         args = {

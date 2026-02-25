@@ -169,6 +169,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
       optionIDGroup = {
         type = "group",
         name = "Option ID Matching",
+        desc = "Manage locale-safe numeric gossip option IDs used when Match by Option ID is enabled.",
         order = 17,
         inline = true,
         args = {
@@ -184,6 +185,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           addOptionID = {
             type = "execute",
             name = "Add ID",
+            desc = "Adds the numeric Option ID from the field above to the auto-select ID list.",
             order = 2,
             func = function()
               local id = tonumber(TrimText(tempOptionID))
@@ -201,6 +203,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
           clearOptionIDs = {
             type = "execute",
             name = "Clear IDs",
+            desc = "Removes all configured Option IDs from the auto-select ID list.",
             order = 3,
             func = function()
               db.optionIDs = {}
@@ -231,6 +234,7 @@ ETBC.SettingsRegistry:RegisterGroup("autogossip", {
       currentOptions = {
         type = "group",
         name = "Current Auto-Select Patterns",
+        desc = "Read-only summary of text patterns currently configured for auto-selection.",
         order = 20,
         inline = true,
         args = {

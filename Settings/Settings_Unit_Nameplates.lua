@@ -140,6 +140,7 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       enemy_nameplate_player_debuffs = {
         type = "toggle",
         name = "Show player debuffs",
+        desc = "Shows your tracked debuffs separately on enemy nameplates when available.",
         order = 18,
         width = "full",
         disabled = function() return not db.enabled end,
@@ -257,6 +258,7 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       class_colored_nameplates = {
         type = "toggle",
         name = "Class colored nameplates",
+        desc = "Uses class colors on friendly player nameplates when the client provides class info.",
         order = 41,
         width = "full",
         disabled = function() return not db.enabled end,
@@ -267,6 +269,7 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       friendly_nameplate_default_color = {
         type = "toggle",
         name = "Use default friendly color",
+        desc = "Keeps Blizzard's default friendly nameplate colors instead of EnhanceTBC recoloring.",
         order = 42,
         width = "full",
         disabled = function() return not db.enabled end,
@@ -280,6 +283,7 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       nameplate_unit_target_color = {
         type = "toggle",
         name = "Highlight enemy targetting you",
+        desc = "Highlights enemy nameplates when that unit is currently targeting you.",
         order = 43,
         width = "full",
         disabled = function() return not db.enabled end,
@@ -293,6 +297,7 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       totem_nameplate_colors = {
         type = "toggle",
         name = "Totem color overrides",
+        desc = "Applies totem-specific colors to supported enemy totem nameplates.",
         order = 44,
         width = "full",
         disabled = function() return not db.enabled end,

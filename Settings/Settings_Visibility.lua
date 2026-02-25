@@ -225,6 +225,7 @@ ETBC.SettingsRegistry:RegisterGroup("visibility", {
       previewNow = {
         type = "execute",
         name = "Preview current visibility",
+        desc = "Prints the current allow/block state for supported modules to chat using the active visibility rules.",
         order = 31,
         disabled = function() return not db.enabled end,
         func = function()

@@ -341,6 +341,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       showLatency = {
         type = "toggle",
         name = "Show latency safe zone",
+        desc = "Shows the player castbar latency overlay using the source below. Applies to the player castbar only.",
         order = 51,
         width = "full",
         disabled = function() return not db.enabled end,
@@ -351,6 +352,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       latencyMode = {
         type = "select",
         name = "Latency source",
+        desc = "Choose whether the player latency overlay uses cast-event timing or current network latency estimates.",
         order = 52,
         disabled = function() return not (db.enabled and db.showLatency) end,
         values = function()
@@ -363,6 +365,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       latencyAlpha = {
         type = "range",
         name = "Latency alpha",
+        desc = "Adjusts the opacity of the player latency safe-zone overlay.",
         order = 53,
         min = 0.0, max = 1.0, step = 0.01,
         disabled = function() return not (db.enabled and db.showLatency) end,
@@ -373,6 +376,8 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       latencyColor = {
         type = "color",
         name = "Latency color",
+        desc = "Sets the player latency safe-zone overlay color. "
+          .. "This does not affect cast/channel/non-interruptible bar colors.",
         order = 54,
         disabled = function() return not (db.enabled and db.showLatency) end,
         get = function() local c=db.latencyColor; return c[1],c[2],c[3] end,
@@ -416,6 +421,7 @@ ETBC.SettingsRegistry:RegisterGroup("castbar", {
       preview = {
         type = "execute",
         name = "Show Preview",
+        desc = "Shows the module's in-world castbar preview briefly (separate from the /etbc preview card).",
         order = 70,
         width = "full",
         disabled = function() return not db.enabled end,

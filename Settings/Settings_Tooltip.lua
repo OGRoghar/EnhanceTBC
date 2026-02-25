@@ -79,6 +79,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
       content = {
         type = "group",
         name = "Content",
+        desc = "Control which extra unit/item/spell metadata lines are added to tooltips.",
         order = 10,
         inline = true,
         args = {
@@ -114,6 +115,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
           },
           showSpellId = {
             type = "toggle", name = "Show Spell ID", order = 7,
+            desc = "Adds Spell ID lines to spell tooltips and spell-related tooltip contexts.",
             get = function() return db.showSpellId end,
             set = function(_, v) db.showSpellId = v and true or false; ETBC.ApplyBus:Notify("tooltip") end,
           },
@@ -159,6 +161,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
       items = {
         type = "group",
         name = "Item Extras",
+        desc = "Extra item-specific tooltip lines, summaries, and quality-of-life item details.",
         order = 15,
         inline = true,
         args = {
@@ -199,6 +202,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
       behavior = {
         type = "group",
         name = "Behavior",
+        desc = "Tooltip anchoring, offsets, and scaling behavior.",
         order = 20,
         inline = true,
         args = {
@@ -234,6 +238,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
       skin = {
         type = "group",
         name = "Skin",
+        desc = "Subtle visual styling for the tooltip background, glow, and border.",
         order = 25,
         inline = true,
         args = {
@@ -299,6 +304,7 @@ ETBC.SettingsRegistry:RegisterGroup("tooltip", {
       healthbar = {
         type = "group",
         name = "Health Bar",
+        desc = "Customize the tooltip health bar styling and color behavior for unit tooltips.",
         order = 30,
         inline = true,
         args = {

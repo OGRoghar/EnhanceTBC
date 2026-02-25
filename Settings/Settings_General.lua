@@ -40,6 +40,8 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
       ui = {
         type = "group",
         name = "UI",
+        desc = "Global addon UI frame theming/scaling used by shared EnhanceTBC windows "
+          .. "(not the /etbc config theme selector).",
         order = 10,
         inline = true,
         args = {
@@ -74,6 +76,7 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
           debug = {
             type = "toggle",
             name = "Debug Logging",
+            desc = "Enables extra debug output for troubleshooting. Leave off during normal play.",
             order = 3,
             get = function() return ETBC.db.profile.general.debug end,
             set = function(_, v)
