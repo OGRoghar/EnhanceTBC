@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.13 - 2026-02-25
+- Fixed:
+	- Prevented `ChatIM` URL-link clicks (`url:` hyperlinks) from triggering `ItemRefTooltip:SetHyperlink(): Unknown link type` errors when other addons (for example Questie/NovaInstanceTracker) hook item-ref clicks.
+	- Restored `/etbc` popup footer spacing so the AceGUI frame status bar and bottom close button are no longer covered by the TreeGroup/content area.
+- Changed:
+	- `/etbc` config preview pane now renders only for modules with an actual config-preview implementation, reducing clutter on modules without meaningful previews.
+	- Opening `/etbc` now hides the Blizzard options panel behind it (if open), which also avoids stacked config-window overlap.
+
 ## v1.2.12 - 2026-02-24
 - Added:
 	- Lightweight live `/etbc` config preview syncing for `SwingTimer`, `Cooldown Text`, `CombatText`, `ActionTracker`, and `Auras` using module-specific preview style providers.

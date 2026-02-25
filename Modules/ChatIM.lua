@@ -222,24 +222,70 @@ local function UnregisterFilters()
   end
 end
 
+local function HandleURLLink(link)
+  if type(link) ~= "string" then return false end
+  if link:sub(1, 4) ~= "url:" then return false end
+
+  local url = link:sub(5)
+  if type(url) ~= "string" then
+    return true
+  end
+  url = url:gsub("^%s+", ""):gsub("%s+$", "")
+  if url == "" then
+    return true
+  end
+
+  local eb = ChatEdit_ChooseBoxForSend and ChatEdit_ChooseBoxForSend() or nil
+  if eb then
+    if ChatEdit_ActivateChat then
+      ChatEdit_ActivateChat(eb)
+    end
+    if eb.Insert then
+      eb:Insert(url)
+    end
+    if eb.HighlightText then
+      eb:HighlightText()
+    end
+  end
+
+  return true
+end
+
 local function HookURLClick()
   if mod._urlHooked then return end
   mod._urlHooked = true
 
-  hooksecurefunc("SetItemRef", function(link)
-    if type(link) ~= "string" then return end
-    if link:sub(1, 4) ~= "url:" then return end
+  if _G and type(_G.SetItemRef) == "function" and _G.SetItemRef ~= mod._setItemRefWrapper then
+    mod._origSetItemRef = _G.SetItemRef
+    mod._setItemRefWrapper = function(link, text, button, chatFrame, ...)
+      if HandleURLLink(link) then
+        return
+      end
 
-    local url = link:sub(5)
-    if not url or url == "" then return end
-
-    local eb = ChatEdit_ChooseBoxForSend()
-    if eb then
-      ChatEdit_ActivateChat(eb)
-      eb:Insert(url)
-      eb:HighlightText()
+      if mod._origSetItemRef then
+        return mod._origSetItemRef(link, text, button, chatFrame, ...)
+      end
     end
-  end)
+    _G.SetItemRef = mod._setItemRefWrapper
+  end
+
+  if ItemRefTooltip and type(ItemRefTooltip.SetHyperlink) == "function"
+      and ItemRefTooltip.SetHyperlink ~= mod._itemRefTooltipSetHyperlinkWrapper then
+    mod._origItemRefTooltipSetHyperlink = ItemRefTooltip.SetHyperlink
+    mod._itemRefTooltipSetHyperlinkWrapper = function(self, link, ...)
+      if HandleURLLink(link) then
+        if self and self.Hide and self.IsShown and self:IsShown() then
+          self:Hide()
+        end
+        return
+      end
+
+      if mod._origItemRefTooltipSetHyperlink then
+        return mod._origItemRefTooltipSetHyperlink(self, link, ...)
+      end
+    end
+    ItemRefTooltip.SetHyperlink = mod._itemRefTooltipSetHyperlinkWrapper
+  end
 end
 
 -- --------------------

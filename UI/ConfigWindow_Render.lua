@@ -794,6 +794,22 @@ local function GetModuleConfigPreviewStyle(moduleKey)
   return nil
 end
 
+local function HasConfigPreviewProvider(moduleKey)
+  local modules = ETBC and ETBC.Modules or nil
+  if type(modules) ~= "table" or not moduleKey then
+    return false
+  end
+
+  local runtimeKey = MODULE_PREVIEW_RUNTIME_NAMES[moduleKey]
+  local module = (runtimeKey and modules[runtimeKey]) or modules[moduleKey]
+  if type(module) ~= "table" then
+    return false
+  end
+
+  local shared = module.Internal and module.Internal.Shared
+  return type(shared) == "table" and type(shared.GetConfigPreviewStyle) == "function"
+end
+
 local function ApplyProviderPreviewStyle(preview, style, fallbackOverride)
   if type(style) ~= "table" or not preview then
     return false
@@ -918,6 +934,14 @@ end
 local MODULE_PREVIEW_APPLIERS = {
   castbar = ApplyCastbarPreviewWidget,
 }
+
+local function HasConfigPreviewPane(moduleKey)
+  if not moduleKey then return false end
+  if MODULE_PREVIEW_OVERRIDES[moduleKey] ~= nil then return true end
+  if MODULE_PREVIEW_APPLIERS[moduleKey] ~= nil then return true end
+  if HasConfigPreviewProvider(moduleKey) then return true end
+  return false
+end
 
 local function ApplyModulePreviewWidget(preview, moduleKey, group)
   if not preview then return end
@@ -1109,7 +1133,7 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
   AddModuleHeaderBlock(scroll, g, moduleKey)
   AddSpacer(scroll, 4)
 
-  if HasWidget("ETBC_PreviewPanel") then
+  if HasWidget("ETBC_PreviewPanel") and HasConfigPreviewPane(moduleKey) then
     local previewContainer = scroll
     local previewCollapsed = GetPreviewCollapsed(moduleKey)
     local usePreviewCard = HasWidget("ETBC_SectionCard")

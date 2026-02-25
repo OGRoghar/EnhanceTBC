@@ -174,6 +174,26 @@ local function GetTintedPanelColor(alpha)
   return r, g, b, alpha or 0.96
 end
 
+local function HidePanelIfShown(frame)
+  if not (frame and frame.IsShown and frame:IsShown()) then return end
+
+  local hideUIPanel = _G and _G.HideUIPanel or nil
+  if type(hideUIPanel) == "function" then
+    local ok = pcall(hideUIPanel, frame)
+    if ok then return end
+  end
+
+  if frame.Hide then
+    pcall(frame.Hide, frame)
+  end
+end
+
+local function HideUnderlyingOptionsPanels()
+  if not _G then return end
+  HidePanelIfShown(_G.InterfaceOptionsFrame)
+  HidePanelIfShown(_G.SettingsPanel)
+end
+
 local function UpdateHeaderMoverButton(win)
   if not (win and win.frame and win.frame._etbcHeaderMoverBtn) then return end
 
@@ -371,7 +391,8 @@ local function ApplyWindowStyle(win)
   if win.content then
     win.content:ClearAllPoints()
     win.content:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 12, -116)
-    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 12)
+    -- Reserve AceGUI footer space (status bar + close button).
+    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 46)
   end
 
   -- Styled inner background aligned with content
@@ -952,6 +973,7 @@ end
 function ConfigWindow:Open()
   local _ = self
   if state.win and state.win.frame then
+    HideUnderlyingOptionsPanels()
     state.win.frame:Show()
     return
   end
@@ -959,6 +981,7 @@ function ConfigWindow:Open()
   BuildWindow()
 
   if state.win and state.win.frame then
+    HideUnderlyingOptionsPanels()
     state.win.frame:Show()
   end
 end
@@ -968,6 +991,7 @@ function ConfigWindow:Toggle()
     if state.win.frame:IsShown() then
       self:Close()
     else
+      HideUnderlyingOptionsPanels()
       state.win.frame:Show()
     end
     return
