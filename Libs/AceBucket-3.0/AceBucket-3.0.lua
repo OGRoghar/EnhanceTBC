@@ -120,49 +120,53 @@ end
 -- callback(func or string) - function pointer, or method name of the object, that gets called when the bucket is cleared
 -- isMessage(boolean) - register AceEvent Messages instead of game events
 local function RegisterBucket(self, event, interval, callback, isMessage)
-	-- try to fetch the librarys
-	if not AceEvent or not AceTimer then
-		AceEvent = LibStub:GetLibrary("AceEvent-3.0", true)
-		AceTimer = LibStub:GetLibrary("AceTimer-3.0", true)
-		if not AceEvent or not AceTimer then
-			error(MAJOR .. " requires AceEvent-3.0 and AceTimer-3.0", 3)
-		end
-	end
+    -- try to fetch the librarys
+    if not AceEvent or not AceTimer then
+        AceEvent = LibStub:GetLibrary("AceEvent-3.0", true)
+        AceTimer = LibStub:GetLibrary("AceTimer-3.0", true)
+        if not AceEvent or not AceTimer then
+            error(MAJOR .. " requires AceEvent-3.0 and AceTimer-3.0", 3)
+        end
+    end
 
-	if type(event) ~= "string" and type(event) ~= "table" then error("Usage: RegisterBucket(event, interval, callback): 'event' - string or table expected.", 3) end
-	if not callback then
-		if type(event) == "string" then
-			callback = event
-		else
-			error("Usage: RegisterBucket(event, interval, callback): cannot omit callback when event is not a string.", 3)
-		end
-	end
-	if not tonumber(interval) then error("Usage: RegisterBucket(event, interval, callback): 'interval' - number expected.", 3) end
-	if type(callback) ~= "string" and type(callback) ~= "function" then error("Usage: RegisterBucket(event, interval, callback): 'callback' - string or function or nil expected.", 3) end
-	if type(callback) == "string" and type(self[callback]) ~= "function" then error("Usage: RegisterBucket(event, interval, callback): 'callback' - method not found on target object.", 3) end
+    if type(event) ~= "string" and type(event) ~= "table" then error(
+        "Usage: RegisterBucket(event, interval, callback): 'event' - string or table expected.", 3) end
+    if not callback then
+        if type(event) == "string" then
+            callback = event
+        else
+            error("Usage: RegisterBucket(event, interval, callback): cannot omit callback when event is not a string.", 3)
+        end
+    end
+    if not tonumber(interval) then error(
+        "Usage: RegisterBucket(event, interval, callback): 'interval' - number expected.", 3) end
+    if type(callback) ~= "string" and type(callback) ~= "function" then error(
+        "Usage: RegisterBucket(event, interval, callback): 'callback' - string or function or nil expected.", 3) end
+    if type(callback) == "string" and type(self[callback]) ~= "function" then error(
+        "Usage: RegisterBucket(event, interval, callback): 'callback' - method not found on target object.", 3) end
 
-	local bucket = next(bucketCache)
-	if bucket then
-		bucketCache[bucket] = nil
-	else
-		bucket = { handler = BucketHandler, received = {} }
-	end
-	bucket.object, bucket.callback, bucket.interval = self, callback, tonumber(interval)
+    local bucket = next(bucketCache)
+    if bucket then
+        bucketCache[bucket] = nil
+    else
+        bucket = { handler = BucketHandler, received = {} }
+    end
+    bucket.object, bucket.callback, bucket.interval = self, callback, tonumber(interval)
 
-	local regFunc = isMessage and AceEvent.RegisterMessage or AceEvent.RegisterEvent
+    local regFunc = isMessage and AceEvent.RegisterMessage or AceEvent.RegisterEvent
 
-	if type(event) == "table" then
-		for _,e in pairs(event) do
-			regFunc(bucket, e, "handler")
-		end
-	else
-		regFunc(bucket, event, "handler")
-	end
+    if type(event) == "table" then
+        for _, e in pairs(event) do
+            regFunc(bucket, e, "handler")
+        end
+    else
+        regFunc(bucket, event, "handler")
+    end
 
-	local handle = tostring(bucket)
-	AceBucket.buckets[handle] = bucket
+    local handle = tostring(bucket)
+    AceBucket.buckets[handle] = bucket
 
-	return handle
+    return handle
 end
 
 --- Register a Bucket for an event (or a set of events)
