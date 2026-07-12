@@ -8,12 +8,13 @@ From `C:\EnhanceTBC` in PowerShell 7:
 
 ```powershell
 pwsh -NoProfile -File .\Documents\Test-Lua51.ps1 `
-  -Path .\EnhanceTBC-main -Exclude 'Libs/*'
+  -Path .\EnhanceTBC -Exclude 'Libs/**'
 
 pwsh -NoProfile -File .\Documents\Test-TbcAnniversaryApi.ps1 `
-  -Path .\EnhanceTBC-main -Exclude 'Libs/*' -ExpectedBuild 68575
+  -Path .\EnhanceTBC -Exclude 'Libs/**' -ExpectedBuild 68575
 
-pwsh -NoProfile -File .\Documents\Test-AddonPackage.ps1
+pwsh -NoProfile -File .\Documents\Test-AddonPackage.ps1 `
+  -Path .\EnhanceTBC -ExpectedInterface 20506
 ```
 
 Expected result: exit code `0` from all scripts, with zero Lua/API findings and a passing package preflight.
