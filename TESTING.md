@@ -4,6 +4,18 @@ This guide covers development checks and in-game smoke testing for TBC Anniversa
 
 ## Static Development Checks
 
+Run the self-contained mocked WoW regression suite:
+
+```powershell
+pwsh -NoProfile -File .\EnhanceTBC\test\run.ps1
+pwsh -NoProfile -File .\EnhanceTBC\test\check-tbc-api.ps1
+pwsh -NoProfile -File .\EnhanceTBC\test\check-manifest.ps1 -SelfTest
+pwsh -NoProfile -File .\EnhanceTBC\test\check-string-contracts.ps1 -SelfTest
+```
+
+The suite loads first-party Lua files in TOC order under Lua 5.1 and exercises
+high-risk compatibility, profile, UI-state, and delayed-automation paths.
+
 From `C:\EnhanceTBC` in PowerShell 7:
 
 ```powershell

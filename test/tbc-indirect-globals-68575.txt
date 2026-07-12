@@ -1,0 +1,7 @@
+GetCoinTextureString
+GetItemInfo
+GetItemInfoInstant
+UIParentRightManagedFrameContainer
+UnitAura
+UnitBuff
+UnitDebuff

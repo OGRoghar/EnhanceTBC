@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  first-party:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1
+        run: sudo apt-get update && sudo apt-get install -y lua5.1
+      - name: Parse all first-party Lua
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem Core,Modules,Options,Settings,UI,Visibility,locales,test -Recurse -File -Filter *.lua
+          foreach ($file in $files) { & luac5.1 -p $file.FullName; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+      - name: Run mocked WoW regression suite
+        shell: pwsh
+        run: ./test/run.ps1 -Lua (Get-Command lua5.1).Source
+      - name: Audit TBC Anniversary API contract
+        shell: pwsh
+        run: ./test/check-tbc-api.ps1
+      - name: Validate TOC and recursive XML load graph
+        shell: pwsh
+        run: ./test/check-manifest.ps1 -SelfTest
+      - name: Audit events, CVars, indirect globals, and resources
+        shell: pwsh
+        run: ./test/check-string-contracts.ps1 -SelfTest
+      - name: Stage release package
+        shell: pwsh
+        run: ./test/stage-package.ps1 -Destination "$env:RUNNER_TEMP/EnhanceTBC"
+      - name: Package preflight
+        shell: pwsh
+        run: |
+          $root = "$env:RUNNER_TEMP/EnhanceTBC"
+          if ((Get-Content "$root/EnhanceTBC.toc" -Raw) -notmatch '(?m)^## Interface: 20506$') { throw 'Unexpected interface version' }
+          $entries = Get-Content "$root/EnhanceTBC.toc" | Where-Object { $_ -and -not $_.StartsWith('#') }
+          foreach ($entry in $entries) { if (-not (Test-Path (Join-Path $root $entry))) { throw "Missing TOC entry: $entry" } }
+          foreach ($artifact in @('.git','.github','.vscode','test')) { if (Test-Path (Join-Path $root $artifact)) { throw "Development artifact packaged: $artifact" } }

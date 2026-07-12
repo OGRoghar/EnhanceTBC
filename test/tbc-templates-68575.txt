@@ -1,0 +1,7 @@
+BackdropTemplate
+CooldownFrameTemplate
+InputBoxTemplate
+UIDropDownMenuTemplate
+UIPanelButtonTemplate
+UIPanelCloseButton
+UIPanelScrollFrameTemplate

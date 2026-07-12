@@ -1,0 +1,15 @@
+autoLootDefault
+cameraDistanceMaxZoomFactor
+showTimestamps
+Sound_AmbienceVolume
+Sound_EnableAmbience
+Sound_EnableAllSound
+Sound_EnableMusic
+Sound_MasterVolume
+Sound_MusicVolume
+Sound_SFXVolume
+statusText
+statusTextDisplay
+statusTextMana
+statusTextPercentage
+VoiceChatMode
