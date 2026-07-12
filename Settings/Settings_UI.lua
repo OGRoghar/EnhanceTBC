@@ -16,57 +16,12 @@ local function GetDB()
   return db
 end
 
-local function GetConfigWindowThemeHelpers()
-  local ui = ETBC and ETBC.UI
-  local cw = ui and ui.ConfigWindow
-  local internal = cw and cw.Internal
-  return internal and internal.Theme or nil, internal and internal.Window or nil
-end
-
 local function GetConfigWindowDB()
-  local themeHelpers = select(1, GetConfigWindowThemeHelpers())
-  local dataHelpers = ETBC and ETBC.UI and ETBC.UI.ConfigWindow and ETBC.UI.ConfigWindow.Internal
-    and ETBC.UI.ConfigWindow.Internal.Data or nil
-
-  if dataHelpers and type(dataHelpers.GetUIDB) == "function" then
-    return dataHelpers.GetUIDB()
-  end
-
   if not (ETBC and ETBC.db and ETBC.db.profile) then return nil end
   ETBC.db.profile.ui = ETBC.db.profile.ui or {}
   ETBC.db.profile.ui.config = ETBC.db.profile.ui.config or {}
   local cfg = ETBC.db.profile.ui.config
-  if cfg.theme == nil then
-    cfg.theme = (themeHelpers and themeHelpers.DEFAULT_THEME_KEY) or "EnhanceGreen"
-  end
   return cfg
-end
-
-local function GetConfigThemeChoices()
-  local themeHelpers = select(1, GetConfigWindowThemeHelpers())
-  if themeHelpers and type(themeHelpers.GetConfigThemeChoices) == "function" then
-    return themeHelpers.GetConfigThemeChoices()
-  end
-  return {
-    EnhanceGreen = "Enhance Green",
-    WoWBasic = "WoW Basic",
-  }
-end
-
-local function SetConfigWindowTheme(themeKey)
-  local cfg = GetConfigWindowDB()
-  if not cfg then return end
-
-  local themeHelpers, windowHelpers = GetConfigWindowThemeHelpers()
-  cfg.theme = tostring(themeKey or "")
-
-  if themeHelpers and type(themeHelpers.ApplyConfigTheme) == "function" then
-    cfg.theme = themeHelpers.ApplyConfigTheme(cfg.theme)
-  end
-
-  if windowHelpers and type(windowHelpers.RefreshTheme) == "function" then
-    pcall(windowHelpers.RefreshTheme)
-  end
 end
 
 local function EnsureDefaults()
@@ -142,23 +97,35 @@ ETBC.SettingsRegistry:RegisterGroup("ui", {
 
       configWindowHeader = { type = "header", name = "Config Window", order = 60 },
 
-      configWindowTheme = {
-        type = "select",
-        name = "Config window theme",
-        desc = "Applies only to the custom /etbc config window and updates live when it is open.",
+      configTextScale = {
+        type = "range",
+        name = "Control Center text scale",
+        desc = "Adjusts text inside the modern configuration window.",
         order = 61,
-        width = "full",
+        min = 0.9, max = 1.25, step = 0.05,
         disabled = function() return not db.enabled end,
-        values = function()
-          return GetConfigThemeChoices()
-        end,
         get = function()
           local cfg = GetConfigWindowDB()
-          return (cfg and cfg.theme) or "EnhanceGreen"
+          return (cfg and cfg.textScale) or 1
         end,
         set = function(_, v)
-          SetConfigWindowTheme(v)
+          local cfg = GetConfigWindowDB(); if cfg then cfg.textScale = tonumber(v) or 1 end
+          if ETBC.UI and ETBC.UI.ControlCenter then ETBC.UI.ControlCenter:RefreshAccessibility() end
         end,
+      },
+
+      configHighContrast = {
+        type = "toggle", name = "High contrast", order = 62,
+        desc = "Strengthens borders and secondary text without changing the visual identity.",
+        get = function() local cfg=GetConfigWindowDB(); return cfg and cfg.highContrast or false end,
+        set = function(_,v) local cfg=GetConfigWindowDB(); if cfg then cfg.highContrast=v and true or false end; if ETBC.UI and ETBC.UI.ControlCenter then ETBC.UI.ControlCenter:RefreshAccessibility() end end,
+      },
+
+      configReducedMotion = {
+        type = "toggle", name = "Reduced motion", order = 63,
+        desc = "Disables nonessential interface fades and transitions.",
+        get = function() local cfg=GetConfigWindowDB(); return cfg and cfg.reducedMotion or false end,
+        set = function(_,v) local cfg=GetConfigWindowDB(); if cfg then cfg.reducedMotion=v and true or false end end,
       },
 
       resetHeader = { type = "header", name = "Tools", order = 90 },

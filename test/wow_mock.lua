@@ -109,6 +109,7 @@ function M.new(root)
     messages = {},
     globalsWritten = {},
     namedFrames = {},
+    loadedAddons = {},
   }
   local env = {}
   setmetatable(env, { __index = _G, __newindex = function(t, k, v)
@@ -189,7 +190,11 @@ function M.new(root)
     GetNamePlateForUnit = function(unit) if unit == nil then error("nil unit") end return nil end,
     SetNamePlateSize = function() end,
   }
-  env.C_AddOns = { GetAddOnMetadata = function(_, field) if field == "Version" then return "test" end end, IsAddOnLoaded = function() return false end }
+  env.C_AddOns = {
+    GetAddOnMetadata = function(_, field) if field == "Version" then return "test" end end,
+    IsAddOnLoaded = function(name) return state.loadedAddons[name] and true or false end,
+  }
+  env.LoadAddOn = function(name) state.loadedAddons[name] = true; return true end
   env.Enum = {
     AddOnProfilerMetric = {
       SessionAverageTime = 0, RecentAverageTime = 1, LastTime = 3, PeakTime = 4,

@@ -66,32 +66,30 @@ Core\Presets.lua
 Core\Print.lua
 Core\Compat.lua
 Core\Theme.lua
-Core\AceGUISkin.lua
 Core\ApplyBus.lua
 Core\SettingsRegistry.lua
 Core\Mover.lua
 Core\Init.lua
 Options\Options.lua
 Core\EnhanceTBC.lua
+Core\SuiteWidgets.lua
+Core\FeatureSuite.lua
 Core\PublicAPI.lua
 Core\MinimapButton.lua
 
 # ==========================================================
 # UI
 # ==========================================================
-UI\Widgets\PreviewPanel.lua
-UI\Widgets\SectionCard.lua
-UI\Widgets\SearchHeader.lua
-UI\ConfigWindow_Theme.lua
-UI\ConfigWindow_Data.lua
-UI\ConfigWindow_Render.lua
-UI\ConfigWindow_Window.lua
 UI\ConfigWindow.lua
+UI\ControlCenter_Model.lua
+UI\ControlCenter_History.lua
+UI\ControlCenter.lua
 
 # ==========================================================
 # Settings
 # ==========================================================
 Settings\Settings_General.lua
+Settings\Settings_Suite.lua
 Settings\Settings_UI.lua
 Settings\Settings_MinimapPlus.lua
 Settings\Settings_Castbar.lua

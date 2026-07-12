@@ -438,6 +438,9 @@ function ETBC:GetDiagnostics()
   if self.GetPerformanceSnapshot then
     diagnostics.performance = self.GetPerformanceSnapshot()
   end
+  if self.FeatureSuite and self.FeatureSuite.GetDiagnostics then
+    diagnostics.suite = self.FeatureSuite:GetDiagnostics()
+  end
   return diagnostics
 end
 
@@ -524,6 +527,9 @@ local function PrintHelp(self)
   self:Print("/etbc addgossip <pattern>")
   self:Print("/etbc diagnose - Print client/addon diagnostics")
   self:Print("/etbc selftest - Check required client capabilities")
+  self:Print("/etbc suite - Open the optional feature setup")
+  self:Print("/etbc edit - Enter visual layout mode")
+  self:Print("/etbc lock - Exit visual layout mode")
 end
 
 local function RegisterBlizzardOptions(self)
@@ -715,16 +721,19 @@ function ETBC:RefreshAll(_reason)
 end
 
 function ETBC:OnProfileChanged()
+  if self.UI and self.UI.ControlCenter and self.UI.ControlCenter.InvalidateProfile then self.UI.ControlCenter:InvalidateProfile() end
   if self.PublicAPIInternal then self.PublicAPIInternal.OnProfileChanged("profile-changed") end
   self:RefreshAll("profile-changed")
 end
 
 function ETBC:OnProfileCopied()
+  if self.UI and self.UI.ControlCenter and self.UI.ControlCenter.InvalidateProfile then self.UI.ControlCenter:InvalidateProfile() end
   if self.PublicAPIInternal then self.PublicAPIInternal.OnProfileChanged("profile-copied") end
   self:RefreshAll("profile-copied")
 end
 
 function ETBC:OnProfileReset()
+  if self.UI and self.UI.ControlCenter and self.UI.ControlCenter.InvalidateProfile then self.UI.ControlCenter:InvalidateProfile() end
   if self.PublicAPIInternal then self.PublicAPIInternal.OnProfileChanged("profile-reset") end
   self:RefreshAll("profile-reset")
 end
@@ -800,6 +809,19 @@ function ETBC:SlashCommand(input)
   end
   if input == "selftest" or input == "test" then
     self:RunSelfTest()
+    return
+  end
+
+  if input == "edit" then
+    if self.FeatureSuite then self.FeatureSuite:SetEditMode(true, "all") end
+    return
+  end
+  if input == "lock" or input == "edit off" then
+    if self.FeatureSuite then self.FeatureSuite:SetEditMode(false, "all") end
+    return
+  end
+  if input == "suite" or input == "setup" then
+    if self.OpenSuiteSetup then self:OpenSuiteSetup() end
     return
   end
 
@@ -1012,6 +1034,7 @@ function ETBC:OnInitialize()
 end
 
 function ETBC:OnEnable()
+  if self.FeatureSuite then self.FeatureSuite:LoadEnabled() end
   self:RefreshAll("enable")
 end
 

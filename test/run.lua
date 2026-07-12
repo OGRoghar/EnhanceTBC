@@ -119,16 +119,6 @@ test("frame mock rejects boolean SetAllPoints arguments", function()
   equal(pcall(texture.SetAllPoints, texture, true), false)
 end)
 
-test("search header disables and re-enables clear button", function()
-  local state = Mock.new(root)
-  load_addon_file(state, "UI/Widgets/SearchHeader.lua")
-  local widget = state.env.LibStub("AceGUI-3.0"):Create("ETBC_SearchHeader")
-  widget:SetDisabled(true)
-  equal(widget.clear:IsEnabled(), false, "clear button remained enabled")
-  widget:SetDisabled(false)
-  equal(widget.clear:IsEnabled(), true, "clear button did not re-enable")
-end)
-
 test("camera restore honors false force", function()
   local state = Mock.new(root)
   state.addon.ApplyBus = { Register = function() end }
@@ -383,6 +373,76 @@ test("profiler facade handles availability, enums, restrictions, and warnings", 
   state.env.C_AddOnProfiler = nil
   snapshot = api.GetPerformanceSnapshot()
   equal(snapshot.available, false)
+end)
+
+test("feature suite loads optional addons and protects provider ownership", function()
+  local state = Mock.new(root)
+  for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
+  state.addon:OnInitialize()
+  local api = state.env.EnhanceTBC_API
+  local feature = assert(api.GetFeatureState("hud"))
+  equal(feature.enabled, false)
+  truthy(api.SetFeatureEnabled("hud", true))
+  equal(state.loadedAddons.EnhanceTBC_HUD, true)
+  equal(assert(api.GetFeatureState("hud")).enabled, true)
+
+  local owner = {}
+  truthy(api.RegisterDataProvider(owner, "example.ready", { GetValue = function() return { ready = true } end }))
+  truthy(not api.UnregisterDataProvider({}, "example.ready"))
+  local value = assert(state.addon.FeatureSuite:GetProviderValue("example.ready"))
+  equal(value.ready, true)
+  truthy(api.UnregisterDataProvider(owner, "example.ready"))
+  truthy(api.EnterEditMode("hud"))
+  equal(state.addon.FeatureSuite:IsEditMode(), true)
+end)
+
+test("modern control center builds pages, searches, migrates, and reopens safely", function()
+  local state = Mock.new(root)
+  for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
+  state.addon:OnInitialize()
+  local center = assert(state.addon.UI.ControlCenter)
+  local model = state.addon.UI.ControlCenterModel:Build()
+  truthy(#model.pages > 10, "settings pages were not normalized")
+  truthy(model.byKey.general, "general page missing")
+  truthy(#state.addon.UI.ControlCenterModel:Search(model, "camera zoom") > 0, "global search found no camera setting")
+  state.addon.UI.ConfigWindow:Open()
+  truthy(center.frame and center.frame:IsShown(), "control center did not open")
+  equal(state.addon.db.profile.ui.config.layoutVersion, 2)
+  state.addon:OpenConfig()
+  truthy(center.frame:IsShown(), "repeated open hid the control center")
+  state.addon.UI.ConfigWindow:Close()
+  equal(center.frame:IsShown(), false)
+end)
+
+test("control center change history undoes copied values", function()
+  local state = Mock.new(root)
+  for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
+  local history = state.addon.UI.ChangeHistory
+  local restored
+  history:Clear()
+  history:Record("example", "Example", { enabled = false }, { enabled = true }, function(value) restored = value end)
+  local ok = history:UndoLatest()
+  truthy(ok)
+  equal(restored.enabled, false)
+  restored.enabled = true
+  local recent = history:GetRecent(5)
+  equal(#recent, 0)
+end)
+
+test("combat child aggregates bounded local snapshots", function()
+  local state = Mock.new(root)
+  for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
+  state.addon:OnInitialize()
+  state.addon.db.profile.suite.combat.enabled = true
+  state.addon.db.profile.combat.enabled = true
+  load_addon_file(state, "Children/EnhanceTBC_Combat/Combat.lua")
+  local combat = state.addon.CombatSuite
+  combat:ProcessEvent(1, "SPELL_DAMAGE", false, "Player-1", "Tester", 0, 0, "Target-1", "Target", 0, 0, 123, "Spell", 1, 250)
+  combat:ProcessEvent(2, "SPELL_INTERRUPT", false, "Player-1", "Tester", 0, 0, "Target-1", "Target", 0, 0, 123, "Spell", 1)
+  local snapshot = assert(combat:GetSnapshot("current", "damage"))
+  equal(snapshot.total, 250)
+  equal(snapshot.actors[1].name, "Tester")
+  equal(snapshot.actors[1].value, 250)
 end)
 
 print(("RESULT %d passed, %d failed"):format(passed, failed))

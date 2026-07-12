@@ -127,6 +127,32 @@ version.
 
 See [TESTING.md](TESTING.md) for information about running tests locally and contributing test coverage.
 
+# Modern Control Center
+
+`/etbc` opens a purpose-built configuration workspace with an adaptive sidebar, global setting search, status dashboard, progressive module sections, favorites, recent changes, accessibility controls, and live per-change undo. Existing profiles and SettingsRegistry definitions remain compatible.
+
+# Optional Next-Generation Suite
+
+EnhanceTBC ships three opt-in, load-on-demand companion addons. **HUD Studio** provides custom player/target frames and safe no-code trackers, **Inventory Intelligence** exposes equipment and durability audits, and **Combat Suite** records bounded local damage, healing, interrupt, dispel, and death segments. Existing modules remain active unless you choose otherwise.
+
+Use `/etbc suite` to start setup and `/etbc edit` to arrange registered frames. The companions share the core profile and never require separate SavedVariables.
+
+## Public API additions
+
+The stable `EnhanceTBC_API` v1 facade now also provides `GetFeatureState`, `SetFeatureEnabled`, `OpenConfiguration`, `EnterEditMode`, `GetEquipmentAudit`, `GetCombatSnapshot`, `RegisterDataProvider`, and `UnregisterDataProvider`. New callbacks are `FEATURE_STATE_CHANGED`, `EDIT_MODE_CHANGED`, `EQUIPMENT_AUDIT_UPDATED`, `COMBAT_SEGMENT_STARTED`, and `COMBAT_SEGMENT_ENDED`.
+
+```lua
+local api = EnhanceTBC_API
+if api and api.IsReady() then
+  api.SetFeatureEnabled("hud", true)
+  api.RegisterDataProvider(MyAddon, "myaddon.ready", {
+    GetValue = function(_, context)
+      return context.unit == "player" and true or false
+    end,
+  })
+end
+```
+
 ## License
 
 MIT

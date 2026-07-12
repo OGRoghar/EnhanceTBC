@@ -18,6 +18,11 @@ local VALID_CALLBACKS = {
   MODULE_STATE_CHANGED = true,
   PROFILE_CHANGED = true,
   SETTINGS_APPLIED = true,
+  FEATURE_STATE_CHANGED = true,
+  EDIT_MODE_CHANGED = true,
+  EQUIPMENT_AUDIT_UPDATED = true,
+  COMBAT_SEGMENT_STARTED = true,
+  COMBAT_SEGMENT_ENDED = true,
 }
 
 local function Copy(value, seen)
@@ -237,6 +242,66 @@ function API.GetDiagnostics()
   return Copy(ETBC:GetDiagnostics())
 end
 
+function API.GetFeatureState(key)
+  if type(key) ~= "string" or key == "" then return nil, "invalid feature key" end
+  if not ready then return nil, "addon not ready" end
+  if not (ETBC.FeatureSuite and ETBC.FeatureSuite.GetState) then return nil, "feature service unavailable" end
+  local state, reason = ETBC.FeatureSuite:GetState(NormalizeKey(key))
+  return state and Copy(state) or nil, reason
+end
+
+function API.SetFeatureEnabled(key, enabled)
+  if type(key) ~= "string" or key == "" then return false, "invalid feature key" end
+  if type(enabled) ~= "boolean" then return false, "enabled must be boolean" end
+  if not ready then return false, "addon not ready" end
+  if not (ETBC.FeatureSuite and ETBC.FeatureSuite.SetEnabled) then return false, "feature service unavailable" end
+  return ETBC.FeatureSuite:SetEnabled(NormalizeKey(key), enabled)
+end
+
+function API.OpenConfiguration(section)
+  if section ~= nil and type(section) ~= "string" then return false, "section must be a string" end
+  if not ready then return false, "addon not ready" end
+  ETBC._requestedConfigSection = section
+  if ETBC.OpenConfig then ETBC:OpenConfig(); return true end
+  return false, "configuration unavailable"
+end
+
+function API.EnterEditMode(scope)
+  if scope ~= nil and type(scope) ~= "string" then return false, "scope must be a string" end
+  if not ready then return false, "addon not ready" end
+  if not (ETBC.FeatureSuite and ETBC.FeatureSuite.SetEditMode) then return false, "edit mode unavailable" end
+  return ETBC.FeatureSuite:SetEditMode(true, scope)
+end
+
+function API.RegisterDataProvider(owner, key, provider)
+  if not ready then return false, "addon not ready" end
+  if not ETBC.FeatureSuite then return false, "provider service unavailable" end
+  return ETBC.FeatureSuite:RegisterProvider(owner, key, provider)
+end
+
+function API.UnregisterDataProvider(owner, key)
+  if not ready then return false, "addon not ready" end
+  if not ETBC.FeatureSuite then return false, "provider service unavailable" end
+  return ETBC.FeatureSuite:UnregisterProvider(owner, key)
+end
+
+function API.GetEquipmentAudit(unit)
+  if unit ~= nil and type(unit) ~= "string" then return nil, "unit must be a string" end
+  if not ready then return nil, "addon not ready" end
+  if not (ETBC.InventorySuite and ETBC.InventorySuite.GetAudit) then return nil, "inventory feature unavailable" end
+  local result, reason = ETBC.InventorySuite:GetAudit(unit or "player")
+  return result and Copy(result) or nil, reason
+end
+
+function API.GetCombatSnapshot(segment, category)
+  if segment ~= nil and type(segment) ~= "string" and type(segment) ~= "number" then return nil, "invalid segment" end
+  if category ~= nil and type(category) ~= "string" then return nil, "invalid category" end
+  if not ready then return nil, "addon not ready" end
+  if not (ETBC.CombatSuite and ETBC.CombatSuite.GetSnapshot) then return nil, "combat feature unavailable" end
+  local result, reason = ETBC.CombatSuite:GetSnapshot(segment or "current", category or "damage")
+  return result and Copy(result) or nil, reason
+end
+
 ETBC.GetPerformanceSnapshot = API.GetPerformanceSnapshot
 ETBC.PublicAPIInternal = {
   MarkReady = function()
@@ -261,6 +326,11 @@ ETBC.PublicAPIInternal = {
     end
     Fire("SETTINGS_APPLIED", key)
   end,
+  OnFeatureStateChanged = function(key, enabled) Fire("FEATURE_STATE_CHANGED", key, enabled and true or false) end,
+  OnEditModeChanged = function(enabled, scope) Fire("EDIT_MODE_CHANGED", enabled and true or false, scope) end,
+  OnEquipmentAuditUpdated = function(unit) Fire("EQUIPMENT_AUDIT_UPDATED", unit) end,
+  OnCombatSegmentStarted = function(id) Fire("COMBAT_SEGMENT_STARTED", id) end,
+  OnCombatSegmentEnded = function(id) Fire("COMBAT_SEGMENT_ENDED", id) end,
 }
 
 ETBC.PublicAPI = API

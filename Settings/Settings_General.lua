@@ -177,10 +177,9 @@ ETBC.SettingsRegistry:RegisterGroup("general", {
               ETBC.db.profile.ui.config = ETBC.db.profile.ui.config or {}
               ETBC.db.profile.ui.config.scale = v
               ETBC.ApplyBus:Notify("general")
-              local window = ETBC.UI and ETBC.UI.ConfigWindow and ETBC.UI.ConfigWindow.Internal
-                and ETBC.UI.ConfigWindow.Internal.Window
-              if window and window.SetWindowScale then
-                window.SetWindowScale(v)
+              local center = ETBC.UI and ETBC.UI.ControlCenter
+              if center and center.frame then
+                center.frame:SetScale(v)
               end
             end,
           },

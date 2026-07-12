@@ -11,7 +11,7 @@ Get-Content (Join-Path $PSScriptRoot 'tbc-api-68575.txt') | ForEach-Object {
 }
 
 $findings = [Collections.Generic.List[string]]::new()
-$directories = @('Core','Modules','Options','Settings','UI','Visibility')
+$directories = @('Core','Modules','Options','Settings','UI','Visibility','Children')
 $files = foreach ($directory in $directories) {
     Get-ChildItem (Join-Path $root $directory) -Recurse -File -Filter '*.lua'
 }

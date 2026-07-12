@@ -1,6 +1,11 @@
 curseforge:
   project-id: 1466265
 
+move-folders:
+  EnhanceTBC/Children/EnhanceTBC_HUD: EnhanceTBC_HUD
+  EnhanceTBC/Children/EnhanceTBC_Inventory: EnhanceTBC_Inventory
+  EnhanceTBC/Children/EnhanceTBC_Combat: EnhanceTBC_Combat
+
 ignore:
   # Exclude everything outside the addon runtime/package allowlist:
   # Core, Libs, locales, Media, Modules, Options, Settings, UI, Visibility,

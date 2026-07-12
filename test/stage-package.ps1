@@ -19,4 +19,11 @@ foreach ($directory in $runtime) {
 foreach ($file in @('EnhanceTBC.toc','LICENSE','README.md','CHANGELOG.md','TESTING.md','.pkgmeta')) {
     Copy-Item -LiteralPath (Join-Path $root $file) -Destination $destinationPath
 }
+$packageParent = Split-Path -Parent $destinationPath
+foreach ($child in @('EnhanceTBC_HUD','EnhanceTBC_Inventory','EnhanceTBC_Combat')) {
+    $source = Join-Path $root (Join-Path 'Children' $child)
+    $target = Join-Path $packageParent $child
+    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    Copy-Item -LiteralPath $source -Destination $target -Recurse
+}
 Write-Output "Staged package: $destinationPath"

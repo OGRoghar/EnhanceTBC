@@ -22,6 +22,7 @@ local LEAF_TYPES = {
 
 local MODULE_INTRO_TEXT = {
   general = "Configure addon-wide behavior, defaults, and profile-related options.",
+  suite = "Enable and configure the optional HUD, inventory, and combat feature addons.",
   ui = "Configure global interface polish, visuals, and convenience UI behavior.",
   minimapplus = "Configure minimap styling, tracking widgets, addon icon sink behavior, and minimap utility features.",
   visibility = "Configure context-aware visibility rules and fade timing for supported modules.",
