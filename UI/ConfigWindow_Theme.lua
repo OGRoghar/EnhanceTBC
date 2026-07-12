@@ -20,28 +20,28 @@ local AceGUI = LibStub("AceGUI-3.0")
 H.LOGO_PATH = "Interface\\AddOns\\EnhanceTBC\\Media\\Images\\logo.tga"
 
 H.THEME = {
-  bg      = { 0.05, 0.07, 0.05, 0.98 },
-  panel   = { 0.07, 0.09, 0.07, 0.95 },
-  panel2  = { 0.06, 0.08, 0.06, 0.95 },
-  panel3  = { 0.04, 0.06, 0.04, 0.96 },
-  border  = { 0.12, 0.20, 0.12, 0.95 },
-  accent  = { 0.20, 1.00, 0.20, 1.00 },
-  text    = { 0.90, 0.96, 0.90, 1.00 },
-  muted   = { 0.70, 0.78, 0.70, 1.00 },
+  bg      = { 0.025, 0.035, 0.045, 0.985 },
+  panel   = { 0.045, 0.060, 0.070, 0.97 },
+  panel2  = { 0.060, 0.078, 0.088, 0.98 },
+  panel3  = { 0.030, 0.047, 0.055, 0.99 },
+  border  = { 0.24, 0.28, 0.25, 0.95 },
+  accent  = { 0.86, 0.68, 0.26, 1.00 },
+  text    = { 0.94, 0.92, 0.84, 1.00 },
+  muted   = { 0.61, 0.65, 0.61, 1.00 },
 }
 
 H.DEFAULT_THEME_KEY = "EnhanceGreen"
 
 H.CONFIG_THEMES = {
   EnhanceGreen = {
-    bg      = { 0.05, 0.07, 0.05, 0.98 },
-    panel   = { 0.07, 0.09, 0.07, 0.95 },
-    panel2  = { 0.06, 0.08, 0.06, 0.95 },
-    panel3  = { 0.04, 0.06, 0.04, 0.96 },
-    border  = { 0.12, 0.20, 0.12, 0.95 },
-    accent  = { 0.20, 1.00, 0.20, 1.00 },
-    text    = { 0.90, 0.96, 0.90, 1.00 },
-    muted   = { 0.70, 0.78, 0.70, 1.00 },
+    bg      = { 0.025, 0.035, 0.045, 0.985 },
+    panel   = { 0.045, 0.060, 0.070, 0.97 },
+    panel2  = { 0.060, 0.078, 0.088, 0.98 },
+    panel3  = { 0.030, 0.047, 0.055, 0.99 },
+    border  = { 0.24, 0.28, 0.25, 0.95 },
+    accent  = { 0.86, 0.68, 0.26, 1.00 },
+    text    = { 0.94, 0.92, 0.84, 1.00 },
+    muted   = { 0.61, 0.65, 0.61, 1.00 },
   },
   WoWBasic = {
     bg      = { 0.09, 0.07, 0.05, 0.98 },
@@ -56,7 +56,7 @@ H.CONFIG_THEMES = {
 }
 
 local CONFIG_THEME_CHOICES = {
-  EnhanceGreen = "Enhance Green",
+  EnhanceGreen = "Modern TBC",
   WoWBasic = "WoW Basic",
 }
 
@@ -191,6 +191,30 @@ function H.StyleButtonWidget(w)
   local THEME = H.THEME
   H.SetBackdrop(w.frame, THEME.panel2, THEME.border, 1)
 
+  -- Anniversary requires a valid asset argument for button texture setters.
+  -- Replace stock artwork with transparent valid textures rather than nil.
+  local blank = "Interface\\Buttons\\WHITE8x8"
+  if w.frame.SetNormalTexture then
+    w.frame:SetNormalTexture(blank)
+    local texture = w.frame:GetNormalTexture()
+    if texture then texture:SetAlpha(0) end
+  end
+  if w.frame.SetPushedTexture then
+    w.frame:SetPushedTexture(blank)
+    local texture = w.frame:GetPushedTexture()
+    if texture then texture:SetAlpha(0) end
+  end
+  if w.frame.SetDisabledTexture then
+    w.frame:SetDisabledTexture(blank)
+    local texture = w.frame:GetDisabledTexture()
+    if texture then texture:SetAlpha(0) end
+  end
+  if w.frame.SetHighlightTexture then
+    w.frame:SetHighlightTexture(blank)
+    local texture = w.frame:GetHighlightTexture()
+    if texture then texture:SetAlpha(0) end
+  end
+
   if w.text then
     H.SetTextColor(w.text, THEME.text)
     H.TrySetFont(w.text, 12, "OUTLINE")
@@ -199,7 +223,10 @@ function H.StyleButtonWidget(w)
   if not w.frame._etbcHoverHooked and w.frame.HookScript then
     w.frame._etbcHoverHooked = true
     w.frame:HookScript("OnEnter", function(self)
-      H.SetBackdrop(self, THEME.panel2, THEME.accent, 1)
+      local r = (THEME.panel2[1] * 0.82) + (THEME.accent[1] * 0.18)
+      local g = (THEME.panel2[2] * 0.82) + (THEME.accent[2] * 0.18)
+      local b = (THEME.panel2[3] * 0.82) + (THEME.accent[3] * 0.18)
+      H.SetBackdrop(self, { r, g, b, 1 }, THEME.accent, 1)
     end)
     w.frame:HookScript("OnLeave", function(self)
       H.SetBackdrop(self, THEME.panel2, THEME.border, 1)

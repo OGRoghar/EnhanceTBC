@@ -1,5 +1,5 @@
 -- Modules/Tooltip.lua
--- EnhanceTBC - Tooltip enhancements (safe on TBC Anniversary client 20505)
+-- EnhanceTBC - Tooltip enhancements (safe on TBC Anniversary client 20506)
 -- Fix: avoid Texture:SetGradientAlpha (not available on this client). Use solid tint fallback.
 
 local _, ETBC = ...
@@ -65,6 +65,33 @@ local function GetDB()
   if db.useTooltipDataProcessor == nil then db.useTooltipDataProcessor = true end
   if db.showTooltipDataMeta == nil then db.showTooltipDataMeta = false end
   return db
+end
+
+local function IsEnabled(db)
+  local general = ETBC.db and ETBC.db.profile and ETBC.db.profile.general
+  return db ~= nil and db.enabled and general ~= nil and general.enabled
+end
+
+local function ResetManagedTooltipVisuals()
+  local tips = {
+    GameTooltip, ItemRefTooltip, ShoppingTooltip1,
+    ShoppingTooltip2, FriendsTooltip, PartyMemberBuffTooltip,
+  }
+  for _, tip in pairs(tips) do
+    if tip then
+      if tip.SetScale and tip._etbcScale ~= nil then
+        tip:SetScale(tip._etbcOriginalScale or 1)
+        tip._etbcScale = nil
+        tip._etbcOriginalScale = nil
+      end
+      if tip._etbcAccentLine then tip._etbcAccentLine:Hide() end
+      tip._etbcAnchorSig = nil
+    end
+  end
+  if GameTooltipStatusBar and GameTooltipStatusBar._etbcText then
+    GameTooltipStatusBar._etbcText:SetText("")
+    GameTooltipStatusBar._etbcText:Hide()
+  end
 end
 
 local legacyGetItemInfo = _G["GetItemInfo"]
@@ -159,7 +186,7 @@ end
 
 local function ApplyStyleToTooltip(tip)
   local db = GetDB()
-  if not db or not db.enabled then return end
+  if not IsEnabled(db) then return end
   if not tip or not tip.GetName then return end
 
   -- Backdrop (using db.skin.enabled and db.skin.bg/border)
@@ -196,6 +223,9 @@ local function ApplyStyleToTooltip(tip)
   -- Scale
   if db.scale and type(db.scale) == "number" then
     if tip._etbcScale ~= db.scale then
+      if tip._etbcOriginalScale == nil and tip.GetScale then
+        tip._etbcOriginalScale = tip:GetScale()
+      end
       tip:SetScale(db.scale)
       tip._etbcScale = db.scale
     end
@@ -283,7 +313,7 @@ local function HookTooltipDataProcessor()
 
   TooltipDataProcessor.AddTooltipPostCall(TooltipDataProcessor.AllTypes, function(tooltip, tooltipData)
     local db = GetDB()
-    if not db or not db.enabled or not db.useTooltipDataProcessor then return end
+    if not IsEnabled(db) or not db.useTooltipDataProcessor then return end
     if not tooltip or type(tooltipData) ~= "table" then return end
 
     ApplyStyleToTooltip(tooltip)
@@ -304,7 +334,7 @@ end
 
 local function AddGuildLine(tooltip, unit)
   local db = GetDB()
-  if not db or not db.enabled or not db.showGuild then return end
+  if not IsEnabled(db) or not db.showGuild then return end
   if not unit or not UnitExists(unit) or not UnitIsPlayer(unit) then return end
 
   local guild_name = GetGuildInfo(unit)
@@ -315,7 +345,7 @@ end
 
 local function AddTargetLine(tooltip, unit)
   local db = GetDB()
-  if not db or not db.enabled or not db.showTarget then return end
+  if not IsEnabled(db) or not db.showTarget then return end
   if not unit or not UnitExists(unit) then return end
 
   local target = unit .. "target"
@@ -336,7 +366,7 @@ end
 
 local function ApplyTooltipBackdrop(tip)
   local db = GetDB()
-  if not db or not db.enabled then return end
+  if not IsEnabled(db) then return end
   if not tip or not tip.SetBackdrop then return end
 
   SafeSetBackdrop(tip, "Interface\\ChatFrame\\ChatFrameBackground", "Interface\\Buttons\\WHITE8x8", 1)
@@ -346,7 +376,7 @@ end
 
 local function ApplyTooltipBorder(tip)
   local db = GetDB()
-  if not db or not db.enabled then return end
+  if not IsEnabled(db) then return end
   if not tip or not tip.SetBackdropBorderColor then return end
 
   local br = (db.skin and db.skin.border) or { r = 0.04, g = 0.04, b = 0.04, a = 0.85 }
@@ -355,7 +385,7 @@ end
 
 local function ApplyTooltipAnchor(tip)
   local db = GetDB()
-  if not db or not db.enabled then return end
+  if not IsEnabled(db) then return end
   if not tip or tip ~= GameTooltip then return end
   if not tip.IsOwned or not tip:IsOwned(UIParent) then return end
 
@@ -487,7 +517,7 @@ end
 
 local function AddItemLevelLine(tooltip, itemLink)
   local db = GetDB()
-  if not db or not db.enabled or not db.showItemLevel then return end
+  if not IsEnabled(db) or not db.showItemLevel then return end
   if not itemLink then return end
 
   local item_level = select(4, GetItemInfoCompat(itemLink))
@@ -498,7 +528,7 @@ end
 
 local function AddVendorPriceLine(tooltip, itemLink)
   local db = GetDB()
-  if not db or not db.enabled or not db.showVendorPrice then return end
+  if not IsEnabled(db) or not db.showVendorPrice then return end
   if not itemLink then return end
   if db.useTooltipDataProcessor and tooltip and tooltip._etbcHasStructuredSellLine then
     return
@@ -515,7 +545,7 @@ end
 
 local function AddStatSummaryLine(tooltip, itemLink)
   local db = GetDB()
-  if not db or not db.enabled or not db.showStatSummary then return end
+  if not IsEnabled(db) or not db.showStatSummary then return end
   if not itemLink or not GetItemStats then return end
 
   local stats = GetItemStats(itemLink)
@@ -576,7 +606,7 @@ end
 
 local function SetStatusBarStyle(statusbar, unit)
   local db = GetDB()
-  if not db or not db.enabled or not statusbar or not statusbar.SetStatusBarColor then return end
+  if not IsEnabled(db) or not statusbar or not statusbar.SetStatusBarColor then return end
   if not db.healthBar or not db.healthBar.enabled then return end
 
   local texture = "Interface\\TargetingFrame\\UI-StatusBar"
@@ -625,7 +655,7 @@ end
 local function UpdateStatusBarText(statusbar, unit)
   local db = GetDB()
   if not statusbar or not statusbar.unit_health_text then return end
-  if not db or not db.enabled or not db.showUnitHealthText then
+  if not IsEnabled(db) or not db.showUnitHealthText then
     statusbar.unit_health_text:SetText("")
     return
   end
@@ -660,7 +690,7 @@ end
 
 local function AddReactionLine(tooltip, unit)
   local db = GetDB()
-  if not db or not db.enabled or not db.showReactionText then return end
+  if not IsEnabled(db) or not db.showReactionText then return end
   if not unit or not UnitExists(unit) then return end
 
   local unit_reaction = UnitReaction(unit, "player")
@@ -677,7 +707,7 @@ end
 
 local function ApplyClassColorName(tooltip, unit)
   local db = GetDB()
-  if not db or not db.enabled or not db.classColorNames then return end
+  if not IsEnabled(db) or not db.classColorNames then return end
   if not unit or not UnitExists(unit) then return end
   if not UnitIsPlayer(unit) then return end
 
@@ -696,7 +726,7 @@ end
 -- Hook handler for item tooltips
 local function OnTooltipSetItem(tooltip)
   local db = GetDB()
-  if not db or not db.enabled then return end
+  if not IsEnabled(db) then return end
 
   ApplyStyleToTooltip(tooltip)
 
@@ -714,7 +744,7 @@ end
 -- Hook handler for spell tooltips
 local function OnTooltipSetSpell(tooltip)
   local db = GetDB()
-  if not db or not db.enabled or not db.showSpellId then return end
+  if not IsEnabled(db) or not db.showSpellId then return end
 
   ApplyStyleToTooltip(tooltip)
 
@@ -727,7 +757,7 @@ end
 -- Hook handler for unit tooltips
 local function OnTooltipSetUnit(tooltip)
   local db = GetDB()
-  if not db or not db.enabled then return end
+  if not IsEnabled(db) then return end
 
   ApplyStyleToTooltip(tooltip)
 
@@ -760,7 +790,7 @@ end
 
 local function OnTooltipSetUnitAura(tooltip, unit, index, filter)
   local db = GetDB()
-  if not db or not db.enabled or not db.showSpellId then return end
+  if not IsEnabled(db) or not db.showSpellId then return end
   if not unit or not index or not filter then return end
 
   local spell_id = GetUnitAuraSpellID(unit, index, filter)
@@ -775,6 +805,10 @@ end
 function mod.Apply(_)
   local db = GetDB()
   if not db then return end
+  if not IsEnabled(db) then
+    ResetManagedTooltipVisuals()
+    return
+  end
 
   if GameTooltipStatusBar then
     GameTooltipStatusBar:SetHeight(10)
@@ -841,7 +875,7 @@ function mod.Apply(_)
     mod._menuHooked = true
     hooksecurefunc(MenuMixin, "SetMenuDescription", function(self)
       local db2 = GetDB()
-      if not db2 or not db2.enabled or not db2.skin or not db2.skin.enabled then return end
+      if not IsEnabled(db2) or not db2.skin or not db2.skin.enabled then return end
       if not self.frames or not self.frames.Enumerate then return end
 
       for _, frame in self.frames:Enumerate() do
@@ -875,15 +909,21 @@ function mod.Apply(_)
       -- Hook OnTooltipSetUnit for NPC IDs
       GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit)
 
-      hooksecurefunc(GameTooltip, "SetUnitAura", function(self, unit, index, filter)
-        OnTooltipSetUnitAura(self, unit, index, filter)
-      end)
-      hooksecurefunc(GameTooltip, "SetUnitBuff", function(self, unit, index)
-        OnTooltipSetUnitAura(self, unit, index, "HELPFUL")
-      end)
-      hooksecurefunc(GameTooltip, "SetUnitDebuff", function(self, unit, index)
-        OnTooltipSetUnitAura(self, unit, index, "HARMFUL")
-      end)
+      if type(GameTooltip.SetUnitAura) == "function" then
+        hooksecurefunc(GameTooltip, "SetUnitAura", function(self, unit, index, filter)
+          OnTooltipSetUnitAura(self, unit, index, filter)
+        end)
+      end
+      if type(GameTooltip.SetUnitBuff) == "function" then
+        hooksecurefunc(GameTooltip, "SetUnitBuff", function(self, unit, index)
+          OnTooltipSetUnitAura(self, unit, index, "HELPFUL")
+        end)
+      end
+      if type(GameTooltip.SetUnitDebuff) == "function" then
+        hooksecurefunc(GameTooltip, "SetUnitDebuff", function(self, unit, index)
+          OnTooltipSetUnitAura(self, unit, index, "HARMFUL")
+        end)
+      end
     end
 
     -- Also hook ItemRefTooltip (for chat links)
@@ -931,23 +971,28 @@ function mod.SetEnabled(_, v)
   mod:Apply()
 end
 
-hooksecurefunc("HealthBar_OnValueChanged", function(self)
-  if self == GameTooltipStatusBar and self:IsShown() then
-    local unit = select(2, GameTooltip:GetUnit()) or (UnitExists("mouseover") and "mouseover")
-    if not unit then
-      return
-    end
+if type(_G.HealthBar_OnValueChanged) == "function" then
+  hooksecurefunc("HealthBar_OnValueChanged", function(self)
+    if self == GameTooltipStatusBar and self:IsShown() then
+      local unit = select(2, GameTooltip:GetUnit()) or (UnitExists("mouseover") and "mouseover")
+      if not unit then
+        return
+      end
 
-    SetStatusBarStyle(self, unit)
-    UpdateStatusBarText(self, unit)
-  end
-end)
+      SetStatusBarStyle(self, unit)
+      UpdateStatusBarText(self, unit)
+    end
+  end)
+end
 
 -- ---------------------------------------------------------
 -- Register with ApplyBus
 -- ---------------------------------------------------------
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then
   ETBC.ApplyBus:Register("tooltip", function()
+    mod:Apply()
+  end)
+  ETBC.ApplyBus:Register("general", function()
     mod:Apply()
   end)
 end

@@ -92,8 +92,21 @@ end
 local function SafeSet(opt, info, ...)
   if type(opt.set) == "function" then
     local ok = pcall(opt.set, info, ...)
-    if ok then return end
-    pcall(opt.set, opt, ...)
+    if not ok then
+      ok = pcall(opt.set, opt, ...)
+    end
+    if ok then
+      local uiDB = type(GetUIDB) == "function" and GetUIDB() or nil
+      local moduleKey = type(info) == "table" and info[1] or nil
+      if type(uiDB) == "table" and type(moduleKey) == "string" then
+        uiDB.recentModules = uiDB.recentModules or {}
+        for i = #uiDB.recentModules, 1, -1 do
+          if uiDB.recentModules[i] == moduleKey then table.remove(uiDB.recentModules, i) end
+        end
+        table.insert(uiDB.recentModules, 1, moduleKey)
+        while #uiDB.recentModules > 8 do table.remove(uiDB.recentModules) end
+      end
+    end
   end
 end
 
@@ -132,6 +145,18 @@ local function ResolveText(value, info, optFallback)
   end
   if value == nil then return "" end
   return tostring(value)
+end
+
+local function ResolveOptionLabel(opt, info)
+  local label = ResolveText(opt.name, info, opt)
+  if label == "" then label = tostring(opt._id or "") end
+  local query = tostring(opt._etbcSearchQuery or "")
+  if query == "" then return label end
+  local startAt, endAt = label:lower():find(query:lower(), 1, true)
+  if not startAt then return label end
+  return label:sub(1, startAt - 1)
+    .. "|cffffcc33" .. label:sub(startAt, endAt) .. "|r"
+    .. label:sub(endAt + 1)
 end
 
 -- ---------------------------------------------------------
@@ -196,9 +221,56 @@ local function SetWidgetDescription(container, widget, text)
   end
 end
 
+local function ResolveOptionDefault(info)
+  if type(info) ~= "table" or #info < 2 then return nil end
+  local value = ETBC.defaults and ETBC.defaults.profile and ETBC.defaults.profile[info[1]]
+  for i = 2, #info do
+    if type(value) ~= "table" then return nil end
+    value = value[info[i]]
+  end
+  return value
+end
+
+local function AddOptionReset(container, widget, opt, info, kind)
+  local default = ResolveOptionDefault(info)
+  if default == nil then return end
+
+  local currentA, currentB, currentC, currentD = SafeGet(opt, info)
+  local modified
+  if kind == "color" and type(default) == "table" then
+    local dr, dg, db, da = default.r or default[1], default.g or default[2], default.b or default[3], default.a or default[4]
+    modified = currentA ~= dr or currentB ~= dg or currentC ~= db
+      or (opt.hasAlpha and currentD ~= (da or 1))
+  else
+    modified = currentA ~= default
+  end
+  if not modified then return end
+
+  local reset = AceGUI:Create("Button")
+  reset:SetText("Reset Option")
+  reset:SetWidth(105)
+  StyleButtonWidget(reset)
+  reset:SetCallback("OnClick", function()
+    if kind == "color" and type(default) == "table" then
+      local r, g, b, a = default.r or default[1], default.g or default[2], default.b or default[3], default.a or default[4]
+      if opt.hasAlpha then SafeSet(opt, info, r, g, b, a or 1) else SafeSet(opt, info, r, g, b) end
+      if widget and widget.SetColor then widget:SetColor(r, g, b, a or 1) end
+    else
+      SafeSet(opt, info, default)
+      if widget and widget.SetValue then
+        widget:SetValue(default)
+      elseif widget and widget.SetText then
+        widget:SetText(tostring(default or ""))
+      end
+    end
+    if reset.frame then reset.frame:Hide() end
+  end)
+  container:AddChild(reset)
+end
+
 local function AddToggle(container, opt, info)
   local w = AceGUI:Create("CheckBox")
-  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
+  w:SetLabel(ResolveOptionLabel(opt, info))
   w:SetFullWidth(opt.width == "full")
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -213,11 +285,12 @@ local function AddToggle(container, opt, info)
   end)
 
   container:AddChild(w)
+  AddOptionReset(container, w, opt, info, "value")
 end
 
 local function AddRange(container, opt, info)
   local w = AceGUI:Create("Slider")
-  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
+  w:SetLabel(ResolveOptionLabel(opt, info))
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -238,11 +311,12 @@ local function AddRange(container, opt, info)
   end)
 
   container:AddChild(w)
+  AddOptionReset(container, w, opt, info, "value")
 end
 
 local function AddSelect(container, opt, info)
   local w = AceGUI:Create("Dropdown")
-  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
+  w:SetLabel(ResolveOptionLabel(opt, info))
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -261,11 +335,12 @@ local function AddSelect(container, opt, info)
   end)
 
   container:AddChild(w)
+  AddOptionReset(container, w, opt, info, "value")
 end
 
 local function AddColor(container, opt, info)
   local w = AceGUI:Create("ColorPicker")
-  w:SetLabel(ResolveText(opt.name, info, opt) ~= "" and ResolveText(opt.name, info, opt) or tostring(opt._id or ""))
+  w:SetLabel(ResolveOptionLabel(opt, info))
   w:SetFullWidth(true)
   w:SetDisabled(IsDisabled(opt, info))
 
@@ -287,6 +362,7 @@ local function AddColor(container, opt, info)
   end)
 
   container:AddChild(w)
+  AddOptionReset(container, w, opt, info, "color")
 end
 
 local function StyleMultiLineInputWidget(w)
@@ -347,8 +423,7 @@ local function AddInput(container, opt, info)
   local widgetType = useMultiline and "MultiLineEditBox" or "EditBox"
   local w = AceGUI:Create(widgetType)
 
-  local label = ResolveText(opt.name, info, opt)
-  if label == "" then label = tostring(opt._id or "") end
+  local label = ResolveOptionLabel(opt, info)
   if w.SetLabel then
     w:SetLabel(label)
   end
@@ -408,6 +483,7 @@ local function AddInput(container, opt, info)
   end
 
   container:AddChild(w)
+  AddOptionReset(container, w, opt, info, "value")
 end
 
 local function AddExecute(container, opt, info)
@@ -416,7 +492,7 @@ local function AddExecute(container, opt, info)
   end
 
   local w = AceGUI:Create("Button")
-  local btnText = ResolveText(opt.name, info, opt)
+  local btnText = ResolveOptionLabel(opt, info)
   if btnText == "" then btnText = tostring(opt._id or "Run") end
   w:SetText(btnText)
   w:SetFullWidth(opt.width == "full")
@@ -659,6 +735,14 @@ local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache
               end
             end
 
+            if useSectionCard and renderCtx and renderCtx.sectionCards then
+              renderCtx.sectionCards[#renderCtx.sectionCards + 1] = {
+                widget = grp,
+                path = sectionPathKey,
+                moduleKey = moduleKey,
+              }
+            end
+
             container:AddChild(grp)
 
             if (not useSectionCard) and opt.desc and opt.desc ~= "" then
@@ -684,6 +768,7 @@ local function RenderArgsRecursive(container, args, q, pathStack, normalizeCache
         end
       else
         if OptionMatchesSearch(opt, q) then
+          opt._etbcSearchQuery = q
           if opt.type == "header" then
             AddHeading(container, opt.name or "")
             AddSpacer(container, 4)
@@ -737,7 +822,53 @@ local MODULE_SUMMARY = {
   nameplates = "Unit nameplate sizing, castbars, debuff displays, and color behavior.",
 }
 
+local COMBAT_RESTRICTED_MODULES = {
+  actionbars = true,
+  castbar = true,
+  mover = true,
+  nameplates = true,
+  unitframes = true,
+}
+
+local function ValuesEqual(a, b, seen)
+  if type(a) ~= type(b) then return false end
+  if type(a) ~= "table" then return a == b end
+  seen = seen or {}
+  if seen[a] == b then return true end
+  seen[a] = b
+  for k, v in pairs(a) do
+    if not ValuesEqual(v, b[k], seen) then return false end
+  end
+  for k, v in pairs(b) do
+    if not ValuesEqual(a[k], v, seen) then return false end
+  end
+  return true
+end
+
 local MODULE_PREVIEW_OVERRIDES = {
+  nameplates = {
+    text = "Enemy Nameplate | 68% | Missing-health background, execute color, and text layout preview.",
+    useBar = true,
+    barValue = 68,
+  },
+  unitframes = {
+    text = "Player 8.4K / 10K | Mana 4.2K | Unit-frame font and status presentation preview.",
+    useBar = true,
+    barValue = 84,
+  },
+  tooltip = {
+    text = "Ironspine Petrifier | Level 62 | Target: Player | Tooltip metadata and styling preview.",
+    useBar = true,
+    barValue = 62,
+  },
+  actionbars = {
+    text = "1  Fireball   2  Frostbolt   3  Counterspell | Hotkeys, spacing, and range-state preview.",
+    useBar = false,
+  },
+  chatim = {
+    text = "[08:32] [2. Trade] [Player]: Chat timestamps, shortened channels, and link readability preview.",
+    useBar = false,
+  },
   castbar = {
     text = "Fireball - 1.7s cast | Interrupts, width, and text styling preview.",
     useBar = true,
@@ -1034,7 +1165,7 @@ local function ToggleModulePreview(moduleKey)
   end
 end
 
-local function AddModuleHeaderBlock(container, group, moduleKey)
+local function AddModuleHeaderBlock(container, group, moduleKey, renderCtx)
   local title = (group and group.name) or tostring(moduleKey or "Module")
   local desc = MODULE_SUMMARY[moduleKey] or "Configure this module's behavior and visuals."
 
@@ -1053,12 +1184,26 @@ local function AddModuleHeaderBlock(container, group, moduleKey)
   end
   container:AddChild(card)
 
+  local moduleDB = ETBC.db and ETBC.db.profile and ETBC.db.profile[moduleKey]
+  local defaults = ETBC.defaults and ETBC.defaults.profile and ETBC.defaults.profile[moduleKey]
+  local status = {}
+  if type(moduleDB) == "table" and moduleDB.enabled ~= nil then
+    status[#status + 1] = moduleDB.enabled and "|cff66ff66Enabled|r" or "|cffff6666Disabled|r"
+  end
+  if defaults ~= nil and not ValuesEqual(moduleDB, defaults) then
+    status[#status + 1] = "|cffffcc33Modified|r"
+  end
+  status[#status + 1] = "Live updates"
+  if COMBAT_RESTRICTED_MODULES[moduleKey] then
+    status[#status + 1] = "Protected layout changes may wait for combat to end"
+  end
+  AddDesc(card, table.concat(status, "  •  "), GameFontHighlightSmall)
+
   local actions = AceGUI:Create("SimpleGroup")
   actions:SetFullWidth(true)
   actions:SetLayout("Flow")
   card:AddChild(actions)
 
-  local moduleDB = ETBC.db and ETBC.db.profile and ETBC.db.profile[moduleKey]
   if type(moduleDB) == "table" and moduleDB.enabled ~= nil then
     local enabled = AceGUI:Create("CheckBox")
     enabled:SetLabel("Enabled")
@@ -1075,7 +1220,7 @@ local function AddModuleHeaderBlock(container, group, moduleKey)
 
   local resetBtn = AceGUI:Create("Button")
   resetBtn:SetText("Reset Module")
-  resetBtn:SetWidth(130)
+    resetBtn:SetWidth(116)
   StyleButtonWidget(resetBtn)
   resetBtn:SetCallback("OnClick", function()
     if ETBC and ETBC.ResetModuleProfile then
@@ -1083,6 +1228,46 @@ local function AddModuleHeaderBlock(container, group, moduleKey)
     end
   end)
   actions:AddChild(resetBtn)
+
+  local uiDB = type(GetUIDB) == "function" and GetUIDB() or nil
+  if type(uiDB) == "table" then
+    uiDB.moduleFavorites = uiDB.moduleFavorites or {}
+    local favoriteBtn = AceGUI:Create("Button")
+    favoriteBtn:SetText(uiDB.moduleFavorites[moduleKey] and "★ Favorited" or "☆ Favorite")
+    favoriteBtn:SetWidth(112)
+    StyleButtonWidget(favoriteBtn)
+    favoriteBtn:SetCallback("OnClick", function()
+      uiDB.moduleFavorites[moduleKey] = not uiDB.moduleFavorites[moduleKey] or nil
+      favoriteBtn:SetText(uiDB.moduleFavorites[moduleKey] and "★ Favorited" or "☆ Favorite")
+    end)
+    actions:AddChild(favoriteBtn)
+  end
+
+  if HasWidget("ETBC_SectionCard") and renderCtx then
+    local function SetAllSections(collapsed)
+      for _, entry in ipairs(renderCtx.sectionCards or {}) do
+        if entry.widget and entry.widget.SetCollapsed then
+          entry.widget:SetCollapsed(collapsed)
+          SetSectionCollapsed(entry.moduleKey, entry.path, collapsed)
+          RelayoutParents(entry.widget)
+        end
+      end
+    end
+
+    local expandBtn = AceGUI:Create("Button")
+    expandBtn:SetText("Expand All")
+    expandBtn:SetWidth(96)
+    StyleButtonWidget(expandBtn)
+    expandBtn:SetCallback("OnClick", function() SetAllSections(false) end)
+    actions:AddChild(expandBtn)
+
+    local collapseBtn = AceGUI:Create("Button")
+    collapseBtn:SetText("Collapse All")
+    collapseBtn:SetWidth(96)
+    StyleButtonWidget(collapseBtn)
+    collapseBtn:SetCallback("OnClick", function() SetAllSections(true) end)
+    actions:AddChild(collapseBtn)
+  end
 
   if GetPreviewApplyKey(moduleKey) then
     local previewBtn = AceGUI:Create("Button")
@@ -1129,8 +1314,9 @@ local function RenderOptions(scroll, groups, moduleKey, searchText, searchWidget
     hideRootEnabled = type(moduleDB) == "table" and moduleDB.enabled ~= nil and true or false,
     hideRootPreview = previewApplyKey ~= nil,
     moduleKey = moduleKey,
+    sectionCards = {},
   }
-  AddModuleHeaderBlock(scroll, g, moduleKey)
+  AddModuleHeaderBlock(scroll, g, moduleKey, renderCtx)
   AddSpacer(scroll, 4)
 
   if HasWidget("ETBC_PreviewPanel") and HasConfigPreviewPane(moduleKey) then
@@ -1239,4 +1425,3 @@ H.ToggleModulePreview = ToggleModulePreview
 H.AddModuleHeaderBlock = AddModuleHeaderBlock
 H.RenderOptions = RenderOptions
 H.RefreshPreviewWidget = RefreshPreviewWidget
-

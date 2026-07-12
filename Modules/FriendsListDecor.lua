@@ -726,13 +726,13 @@ end
 function mod:Refresh()
   if not hooked then self:EnsureHook() end
 
-  if not AreWoWFriendCountsReady() then
-    ScheduleRefreshRetry()
+  -- Don't update if FriendsFrame isn't loaded or shown
+  if not FriendsFrame or not FriendsFrame.IsShown or not FriendsFrame:IsShown() then
     return
   end
 
-  -- Don't update if FriendsFrame isn't loaded or shown
-  if not FriendsFrame or not FriendsFrame.IsShown or not FriendsFrame:IsShown() then
+  if not AreWoWFriendCountsReady() then
+    ScheduleRefreshRetry()
     return
   end
 

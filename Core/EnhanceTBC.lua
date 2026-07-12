@@ -23,11 +23,34 @@ _G.ETBC = ETBC
 
 local PROFILE_COMM_PREFIX = "ETBCP1"
 local PROFILE_EXPORT_VERSION = 1
+local PROFILE_SCHEMA_VERSION = 2
+local CURRENT_INTERFACE = 20506
+local COMPATIBLE_PROFILE_INTERFACES = {
+  [20505] = true,
+  [CURRENT_INTERFACE] = true,
+}
 local blizPanel
 local REMOVED_PROFILE_KEYS = {
   gcdbar = true,
   player_nameplates = true,
 }
+
+local function MigrateProfileSchema(profile)
+  if type(profile) ~= "table" then return end
+  profile.general = profile.general or {}
+  local current = tonumber(profile.general.profileSchemaVersion) or 0
+
+  if current < 2 then
+    local legacyScale = profile.general.ui and profile.general.ui.scale
+    if legacyScale ~= nil then
+      profile.ui = profile.ui or {}
+      profile.ui.config = profile.ui.config or {}
+      if profile.ui.config.scale == nil then profile.ui.config.scale = legacyScale end
+    end
+  end
+
+  profile.general.profileSchemaVersion = PROFILE_SCHEMA_VERSION
+end
 
 local function NotifyAllSettings()
   if ETBC.ApplyBus and ETBC.ApplyBus.NotifyAllNow then
@@ -58,6 +81,43 @@ local function ReplaceTable(dst, src)
   end
 end
 
+local function DeepEqual(a, b, seen)
+  if type(a) ~= type(b) then return false end
+  if type(a) ~= "table" then return a == b end
+  if a == b then return true end
+  seen = seen or {}
+  if seen[a] == b then return true end
+  seen[a] = b
+  for k, v in pairs(a) do
+    if not DeepEqual(v, b[k], seen) then return false end
+  end
+  for k in pairs(b) do
+    if a[k] == nil then return false end
+  end
+  return true
+end
+
+local function BuildImportPreview(self, payload, sender)
+  local changed = {}
+  local current = self and self.db and self.db.profile or {}
+  local incoming = payload and payload.profile or {}
+  for key, value in pairs(incoming) do
+    if not DeepEqual(value, current[key]) then changed[#changed + 1] = tostring(key) end
+  end
+  for key in pairs(current) do
+    if incoming[key] == nil then changed[#changed + 1] = tostring(key) end
+  end
+  table.sort(changed)
+  local changeText = #changed > 0 and table.concat(changed, ", ") or "none"
+  if #changeText > 220 then changeText = changeText:sub(1, 217) .. "..." end
+  return ("Source: %s\nClient: %s\nInterface: %s\nChanged groups: %s"):format(
+    tostring(sender or "local import"),
+    tostring(payload and payload.client or "unknown"),
+    tostring(payload and payload.interface or "unknown"),
+    changeText
+  )
+end
+
 local function SanitizeVisibilityProfile(v)
   if type(v) ~= "table" then return end
   if type(v.modulePresets) == "table" then
@@ -86,7 +146,7 @@ local function BuildProfilePayload(self)
   return {
     version = PROFILE_EXPORT_VERSION,
     addon = ADDON_NAME,
-    interface = 20505,
+    interface = CURRENT_INTERFACE,
     client = "TBC Anniversary",
     profile = profileCopy,
     at = time and time() or 0,
@@ -144,14 +204,32 @@ local function ApplyImportedProfile(self, payload)
   end
   if payload.interface ~= nil then
     local iface = tonumber(payload.interface)
-    if iface and iface ~= 20505 then
+    if not iface or not COMPATIBLE_PROFILE_INTERFACES[iface] then
       return false, ("unsupported interface: %s"):format(tostring(payload.interface))
     end
   end
 
   local sanitizedProfile = DeepCopy(payload.profile)
   SanitizeProfileTable(sanitizedProfile)
+  MigrateProfileSchema(sanitizedProfile)
+  self.db.global = self.db.global or {}
+  self.db.global.lastImportBackup = {
+    profile = DeepCopy(self.db.profile),
+    importedAt = time and time() or 0,
+    sourceInterface = payload.interface,
+  }
   ReplaceTable(self.db.profile, sanitizedProfile)
+  NotifyAllSettings()
+  return true
+end
+
+function ETBC:UndoLastProfileImport()
+  local backup = self.db and self.db.global and self.db.global.lastImportBackup
+  if not backup or type(backup.profile) ~= "table" then
+    return false, "no import backup available"
+  end
+  ReplaceTable(self.db.profile, DeepCopy(backup.profile))
+  self.db.global.lastImportBackup = nil
   NotifyAllSettings()
   return true
 end
@@ -289,8 +367,14 @@ function ETBC:ResetModuleProfile(moduleKey)
   end
 
   local defaults = ETBC.defaults.profile[profileKey]
+  -- Some modules own their defaults in GetDB() so they can migrate legacy
+  -- values while initializing. Clearing those profiles and refreshing lets the
+  -- owning module rebuild its canonical defaults instead of making the reset
+  -- command fail merely because Core/Defaults.lua has no static entry.
   if defaults == nil then
-    return false, "no defaults for module"
+    self.db.profile[profileKey] = {}
+    self:RefreshAll("module-reset:" .. tostring(moduleKey))
+    return true
   end
 
   if type(defaults) == "table" then
@@ -304,6 +388,105 @@ function ETBC:ResetModuleProfile(moduleKey)
   return true
 end
 
+function ETBC:GetDiagnostics()
+  local version, build, buildDate, interface = GetBuildInfo()
+  local addonVersion
+  if C_AddOns and C_AddOns.GetAddOnMetadata then
+    addonVersion = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
+  end
+
+  local enabledModules, knownModules = 0, 0
+  local profile = self.db and self.db.profile or {}
+  local global = self.db and self.db.global or {}
+  for key, value in pairs(profile) do
+    if key ~= "general" and type(value) == "table" and value.enabled ~= nil then
+      knownModules = knownModules + 1
+      if value.enabled then enabledModules = enabledModules + 1 end
+    end
+  end
+
+  local platerLoaded = false
+  if C_AddOns and C_AddOns.IsAddOnLoaded then
+    platerLoaded = C_AddOns.IsAddOnLoaded("Plater") and true or false
+  elseif IsAddOnLoaded then
+    platerLoaded = IsAddOnLoaded("Plater") and true or false
+  end
+
+  return {
+    addonVersion = addonVersion or "unknown",
+    clientVersion = version or "unknown",
+    clientBuild = build or "unknown",
+    buildDate = buildDate or "unknown",
+    interface = interface or CURRENT_INTERFACE,
+    expectedInterface = CURRENT_INTERFACE,
+    profileSchema = profile.general and profile.general.profileSchemaVersion or 0,
+    expectedProfileSchema = PROFILE_SCHEMA_VERSION,
+    enabledModules = enabledModules,
+    knownModules = knownModules,
+    masterEnabled = profile.general and profile.general.enabled ~= false,
+    inCombat = InCombatLockdown and InCombatLockdown() and true or false,
+    platerLoaded = platerLoaded,
+    luaMemoryKB = collectgarbage and math.floor(collectgarbage("count") + 0.5) or nil,
+    lastPreset = profile.general and profile.general.lastPreset or "none",
+    canUndoPreset = global.lastPresetBackup and true or false,
+    canUndoImport = global.lastImportBackup and true or false,
+  }
+end
+
+function ETBC:PrintDiagnostics()
+  local d = self:GetDiagnostics()
+  self:Print(("EnhanceTBC %s diagnostics"):format(tostring(d.addonVersion)))
+  self:Print(("Client %s, build %s, interface %s (expected %s)"):format(
+    tostring(d.clientVersion), tostring(d.clientBuild), tostring(d.interface), tostring(d.expectedInterface)
+  ))
+  self:Print(("Master: %s; modules: %d/%d enabled; combat lockdown: %s"):format(
+    d.masterEnabled and "enabled" or "disabled",
+    d.enabledModules, d.knownModules,
+    d.inCombat and "yes" or "no"
+  ))
+  self:Print(("Plater: %s; Lua memory: %s KB"):format(
+    d.platerLoaded and "loaded" or "not loaded",
+    d.luaMemoryKB and tostring(d.luaMemoryKB) or "unavailable"
+  ))
+  self:Print(("Last preset: %s; undo preset: %s; undo import: %s"):format(
+    tostring(d.lastPreset),
+    d.canUndoPreset and "available" or "none",
+    d.canUndoImport and "available" or "none"
+  ))
+  self:Print(("Profile schema: %s (expected %s)"):format(
+    tostring(d.profileSchema), tostring(d.expectedProfileSchema)
+  ))
+end
+
+function ETBC:RunSelfTest()
+  local checks = {
+    { "Database", self.db and self.db.profile ~= nil },
+    { "Apply bus", ETBC.ApplyBus and type(ETBC.ApplyBus.Notify) == "function" },
+    { "Settings registry", ETBC.SettingsRegistry and type(ETBC.SettingsRegistry.GetGroups) == "function" },
+    { "C_NamePlate.GetNamePlates", C_NamePlate and type(C_NamePlate.GetNamePlates) == "function" },
+    { "C_NamePlate.SetNamePlateSize", C_NamePlate and type(C_NamePlate.SetNamePlateSize) == "function" },
+    { "C_AddOns.GetAddOnMetadata", C_AddOns and type(C_AddOns.GetAddOnMetadata) == "function" },
+    { "C_Item.GetItemInfo", C_Item and type(C_Item.GetItemInfo) == "function" },
+    { "C_UnitAuras.GetAuraDataByIndex", C_UnitAuras and type(C_UnitAuras.GetAuraDataByIndex) == "function" },
+    { "Native chat timestamp CVar", type(GetCVar) == "function" and GetCVar("showTimestamps") ~= nil },
+    { "Tooltip module", ETBC.Modules and ETBC.Modules.Tooltip ~= nil },
+    { "Nameplate module", ETBC.Modules and ETBC.Modules.Nameplates ~= nil },
+  }
+
+  local passed = 0
+  self:Print("EnhanceTBC build-68575 self-test:")
+  for _, check in ipairs(checks) do
+    if check[2] then
+      passed = passed + 1
+      self:Print("|cff66ff66PASS|r " .. check[1])
+    else
+      self:Print("|cffff6666FAIL|r " .. check[1])
+    end
+  end
+  self:Print(("Self-test result: %d/%d checks passed."):format(passed, #checks))
+  return passed == #checks, passed, #checks
+end
+
 local function PrintHelp(self)
   self:Print("Commands:")
   self:Print("/etbc, /etbc config - Open config")
@@ -313,9 +496,12 @@ local function PrintHelp(self)
   self:Print("/etbc moveall [on|off|toggle] - Toggle mover mode")
   self:Print("/etbc profile export")
   self:Print("/etbc profile import <data>")
+  self:Print("/etbc profile undoimport")
   self:Print("/etbc profile share <player>")
   self:Print("/etbc listgossip")
   self:Print("/etbc addgossip <pattern>")
+  self:Print("/etbc diagnose - Print client/addon diagnostics")
+  self:Print("/etbc selftest - Check required client capabilities")
 end
 
 local function RegisterBlizzardOptions(self)
@@ -361,7 +547,7 @@ end
 
 if not StaticPopupDialogs.ETBC_PROFILE_IMPORT_CONFIRM then
   StaticPopupDialogs.ETBC_PROFILE_IMPORT_CONFIRM = {
-    text = "Import shared EnhanceTBC profile from %s?",
+    text = "Import EnhanceTBC profile?\n\n%s",
     button1 = YES,
     button2 = NO,
     OnAccept = function(_, data)
@@ -380,19 +566,57 @@ if not StaticPopupDialogs.ETBC_PROFILE_IMPORT_CONFIRM then
   }
 end
 
+local function ConfirmProfileImport(owner, payload, sender)
+  StaticPopup_Show("ETBC_PROFILE_IMPORT_CONFIRM", BuildImportPreview(owner, payload, sender), nil, {
+    owner = owner,
+    payload = payload,
+    sender = sender or "local import",
+  })
+end
+
+if not StaticPopupDialogs.ETBC_FIRST_RUN_SETUP then
+  StaticPopupDialogs.ETBC_FIRST_RUN_SETUP = {
+    text = "Welcome to EnhanceTBC. Choose a starting layout. Every option remains editable in /etbc.",
+    button1 = "Enhanced",
+    button2 = "Classic",
+    button3 = "Configure Later",
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 0,
+    preferredIndex = 3,
+    OnAccept = function(_, data)
+      if data and data.owner and data.owner.Presets then
+        data.owner.Presets:Apply("ENHANCED")
+      end
+    end,
+    OnCancel = function(_, data)
+      if data and data.owner and data.owner.Presets then
+        data.owner.Presets:Apply("CLASSIC")
+      end
+    end,
+    OnAlt = function(_, data)
+      local general = data and data.owner and data.owner.db and data.owner.db.profile.general
+      if general then general.setupCompleted = true end
+    end,
+  }
+end
+
 -- ---------------------------------------------------------
 -- Config opening (single source of truth)
 -- ---------------------------------------------------------
 function ETBC:OpenConfig()
+  local customWindowError
   -- Prefer our custom window if present
   if self.UI and self.UI.ConfigWindow then
     if self.UI.ConfigWindow.Open then
-      local ok = pcall(self.UI.ConfigWindow.Open, self.UI.ConfigWindow)
+      local ok, err = pcall(self.UI.ConfigWindow.Open, self.UI.ConfigWindow)
       if ok then return end
+      customWindowError = err
     end
     if self.UI.ConfigWindow.Toggle then
-      local ok = pcall(self.UI.ConfigWindow.Toggle, self.UI.ConfigWindow)
+      local ok, err = pcall(self.UI.ConfigWindow.Toggle, self.UI.ConfigWindow)
       if ok then return end
+      customWindowError = customWindowError or err
     end
   end
 
@@ -400,6 +624,12 @@ function ETBC:OpenConfig()
   if AceConfigDialog and AceConfigDialog.Open then
     local ok = pcall(AceConfigDialog.Open, AceConfigDialog, ADDON_NAME)
     if ok then return end
+  end
+
+  if customWindowError and DEFAULT_CHAT_FRAME then
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cffff6666EnhanceTBC config error:|r " .. tostring(customWindowError)
+    )
   end
 
   if InterfaceOptionsFrame_OpenToCategory and self._blizOptionsPanel then
@@ -507,12 +737,7 @@ function ETBC:SlashCommand(input)
       self:Print("Import failed: " .. tostring(err))
       return
     end
-    local ok, applyErr = ApplyImportedProfile(self, payload)
-    if ok then
-      self:Print("Profile imported.")
-    else
-      self:Print("Import failed: " .. tostring(applyErr))
-    end
+    ConfirmProfileImport(self, payload, "local import")
   end
 
   local function DoShareProfile(target)
@@ -541,6 +766,15 @@ function ETBC:SlashCommand(input)
 
   if input == "help" or input == "?" then
     PrintHelp(self)
+    return
+  end
+
+  if input == "diagnose" or input == "diagnostics" then
+    self:PrintDiagnostics()
+    return
+  end
+  if input == "selftest" or input == "test" then
+    self:RunSelfTest()
     return
   end
 
@@ -585,6 +819,7 @@ function ETBC:SlashCommand(input)
       self:Print("Profile commands:")
       self:Print("/etbc profile export")
       self:Print("/etbc profile import <data>")
+      self:Print("/etbc profile undoimport")
       self:Print("/etbc profile share <player>")
       return
     end
@@ -597,13 +832,19 @@ function ETBC:SlashCommand(input)
       DoImportProfile(rest)
       return
     end
+    if action == "undoimport" or action == "undo" then
+      local ok, undoErr = self:UndoLastProfileImport()
+      if ok then self:Print("Restored the profile from before the last import.")
+      else self:Print("Undo import failed: " .. tostring(undoErr)) end
+      return
+    end
     if action == "share" then
       local target = rest:match("^(%S+)")
       DoShareProfile(target)
       return
     end
 
-    self:Print("Unknown profile action. Use: export, import, share")
+    self:Print("Unknown profile action. Use: export, import, undoimport, share")
     return
   end
 
@@ -687,6 +928,11 @@ end
 -- ---------------------------------------------------------
 function ETBC:OnInitialize()
   self.db = AceDB:New("EnhanceTBCDB", ETBC.defaults, true)
+  MigrateProfileSchema(self.db.profile)
+
+  if self.db.profile.general and self.db.profile.general.setupCompleted == nil then
+    StaticPopup_Show("ETBC_FIRST_RUN_SETUP", nil, nil, { owner = self })
+  end
 
   if self.RegisterComm then
     self:RegisterComm(PROFILE_COMM_PREFIX, "OnProfileCommReceived")
@@ -752,10 +998,5 @@ function ETBC:OnProfileCommReceived(prefix, message, distribution, sender)
   end
 
   local shortSender = tostring(sender):match("^[^-]+") or tostring(sender)
-  StaticPopup_Show("ETBC_PROFILE_IMPORT_CONFIRM", shortSender, nil, {
-    owner = self,
-    payload = payload,
-    sender = shortSender,
-    distribution = distribution,
-  })
+  ConfirmProfileImport(self, payload, shortSender)
 end

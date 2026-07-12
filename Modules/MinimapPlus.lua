@@ -23,7 +23,7 @@ local ZONE_TEXT_POINT_FLAG = "etbc_zone_text_button"
 local CLOCK_POINT_FLAG = "etbc_clock_button"
 local TRACKING_NONE_TEXTURE = "Interface\\Minimap\\Tracking\\None"
 
-local SINK_ICON_SIZE = 18
+local SINK_ICON_SIZE = 28
 local SINK_ICON_SPACING = 4
 local SINK_PADDING = 6
 local SINK_MIN_WIDTH = 104
@@ -154,6 +154,7 @@ local function GetDB()
     end
   end
   db.scanInterval = db.sink_scan_interval
+  if db.sink_icon_size == nil then db.sink_icon_size = SINK_ICON_SIZE end
 
   db.sink_anchor = db.sink_anchor or {}
   if db.sink_anchor.point == nil and db.sinkPoint ~= nil then db.sink_anchor.point = db.sinkPoint end

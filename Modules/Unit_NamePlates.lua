@@ -29,6 +29,7 @@ local function GetDB()
 
   if db.enemy_nameplate_width == nil then db.enemy_nameplate_width = 109 end
   if db.enemy_nameplate_height == nil then db.enemy_nameplate_height = 12.5 end
+  if db.nameplate_texture == nil then db.nameplate_texture = "Blizzard" end
   if db.enemy_nameplate_castbar_width == nil then db.enemy_nameplate_castbar_width = 109 end
   if db.enemy_nameplate_castbar_height == nil then db.enemy_nameplate_castbar_height = 12.5 end
 
@@ -38,6 +39,17 @@ local function GetDB()
   if db.friendly_nameplate_castbar_height == nil then db.friendly_nameplate_castbar_height = 12.5 end
 
   if db.enemy_nameplate_health_text == nil then db.enemy_nameplate_health_text = true end
+  if db.enemy_nameplate_health_text_mode == nil then db.enemy_nameplate_health_text_mode = "BOTH" end
+  if db.enemy_nameplate_name_font_size == nil then db.enemy_nameplate_name_font_size = 10 end
+  if db.enemy_nameplate_health_font_size == nil then db.enemy_nameplate_health_font_size = 9.5 end
+  db.enemy_nameplate_health_text_color = db.enemy_nameplate_health_text_color or { r = 1.0, g = 0.82, b = 0.0 }
+  db.enemy_nameplate_background_color = db.enemy_nameplate_background_color or { r = 0.02, g = 0.02, b = 0.02 }
+  if db.enemy_nameplate_background_alpha == nil then db.enemy_nameplate_background_alpha = 0.85 end
+  db.enemy_nameplate_border_color = db.enemy_nameplate_border_color or { r = 0.04, g = 0.04, b = 0.04 }
+  if db.enemy_nameplate_border_size == nil then db.enemy_nameplate_border_size = 1 end
+  if db.enemy_nameplate_execute_enabled == nil then db.enemy_nameplate_execute_enabled = false end
+  if db.enemy_nameplate_execute_threshold == nil then db.enemy_nameplate_execute_threshold = 20 end
+  db.enemy_nameplate_execute_color = db.enemy_nameplate_execute_color or { r = 1.0, g = 0.35, b = 0.05 }
   if db.enemy_nameplate_debuff == nil then db.enemy_nameplate_debuff = true end
   if db.enemy_nameplate_debuff_scale == nil then db.enemy_nameplate_debuff_scale = 1.0 end
 
@@ -51,6 +63,7 @@ local function GetDB()
   if db.class_colored_nameplates == nil then db.class_colored_nameplates = true end
   if db.friendly_nameplate_default_color == nil then db.friendly_nameplate_default_color = false end
   if db.nameplate_unit_target_color == nil then db.nameplate_unit_target_color = true end
+  db.nameplate_unit_target_color_value = db.nameplate_unit_target_color_value or { r = 0.1, g = 0.55, b = 1.0 }
   if db.totem_nameplate_colors == nil then db.totem_nameplate_colors = true end
   if db.useAuraDeltaUpdates == nil then db.useAuraDeltaUpdates = true end
   if db.useSpellIDAuraLookup == nil then db.useSpellIDAuraLookup = true end
@@ -135,6 +148,11 @@ local function ApplyBackdropAlt(frame)
 end
 
 local function GetStatusbarTexture()
+  local textureKey = GetDB().nameplate_texture or "Blizzard"
+  if ETBC.LSM and ETBC.LSM.Fetch then
+    local ok, tex = pcall(ETBC.LSM.Fetch, ETBC.LSM, "statusbar", textureKey)
+    if ok and tex then return tex end
+  end
   if ETBC.Theme and ETBC.Theme.FetchStatusbar then
     return ETBC.Theme:FetchStatusbar()
   end
@@ -143,6 +161,40 @@ local function GetStatusbarTexture()
     if ok and tex then return tex end
   end
   return "Interface\\TargetingFrame\\UI-StatusBar"
+end
+
+local function UpdateHealthBorder(statusbar, db)
+  if not statusbar then return end
+  if not statusbar.etbc_border then
+    statusbar.etbc_border = {}
+    for i = 1, 4 do
+      local texture = statusbar:CreateTexture(nil, "OVERLAY")
+      texture:SetTexture("Interface\\Buttons\\WHITE8x8")
+      statusbar.etbc_border[i] = texture
+    end
+  end
+
+  local size = math.max(0, tonumber(db.enemy_nameplate_border_size) or 1)
+  local color = db.enemy_nameplate_border_color or { r = 0.04, g = 0.04, b = 0.04 }
+  local top, bottom, left, right = unpack(statusbar.etbc_border)
+  for _, texture in ipairs(statusbar.etbc_border) do
+    texture:SetVertexColor(color.r or 0.04, color.g or 0.04, color.b or 0.04, 1)
+    texture:SetShown(size > 0)
+    texture:ClearAllPoints()
+  end
+  if size <= 0 then return end
+  top:SetPoint("TOPLEFT", statusbar, "TOPLEFT", 0, 0)
+  top:SetPoint("TOPRIGHT", statusbar, "TOPRIGHT", 0, 0)
+  top:SetHeight(size)
+  bottom:SetPoint("BOTTOMLEFT", statusbar, "BOTTOMLEFT", 0, 0)
+  bottom:SetPoint("BOTTOMRIGHT", statusbar, "BOTTOMRIGHT", 0, 0)
+  bottom:SetHeight(size)
+  left:SetPoint("TOPLEFT", statusbar, "TOPLEFT", 0, 0)
+  left:SetPoint("BOTTOMLEFT", statusbar, "BOTTOMLEFT", 0, 0)
+  left:SetWidth(size)
+  right:SetPoint("TOPRIGHT", statusbar, "TOPRIGHT", 0, 0)
+  right:SetPoint("BOTTOMRIGHT", statusbar, "BOTTOMRIGHT", 0, 0)
+  right:SetWidth(size)
 end
 
 local function Trim(str)
@@ -328,6 +380,14 @@ local function SetNameplateUnitDebuff(nameplate, unit)
     return H.SetNameplateUnitDebuff(nameplate, unit)
   end
 end
+
+local function GetNameplateUnit(unitFrame)
+  if not unitFrame then return nil end
+  local parent = unitFrame.GetParent and unitFrame:GetParent() or nil
+  return unitFrame.displayedUnit or unitFrame.unit or unitFrame.unitToken
+    or (parent and parent.unitToken) or nil
+end
+
 function mod.StyleUnitNameplate(_, unit)
   if not unit then return end
   if IsPlaterLoaded() then return end
@@ -359,13 +419,14 @@ function mod.StyleUnitNameplate(_, unit)
   local unit_nameplate_health_bar = unit_nameplate.UnitFrame.healthBar
   local unit_nameplate_container = unit_nameplate.UnitFrame.HealthBarsContainer
   local unit_nameplate_cast_bar = unit_nameplate.UnitFrame.castBar
+  local unit_nameplate_name = unit_nameplate.UnitFrame.name
+    or (unit_nameplate_health_bar and unit_nameplate_health_bar.unitNameFontString)
+  if not unit_nameplate_health_bar or not unit_nameplate_name then return end
 
   if not unit_nameplate.modified then
-    local unit_nameplate_name = unit_nameplate.UnitFrame.name
-
     unit_nameplate_name:SetWidth((GetDB().enemy_nameplate_width or 109) - 20)
     unit_nameplate_name:SetPoint("BOTTOMLEFT", unit_nameplate_health_bar, "TOPLEFT", -1, 5)
-    ApplyFont(unit_nameplate_name, 10)
+    ApplyFont(unit_nameplate_name, GetDB().enemy_nameplate_name_font_size or 10)
     unit_nameplate_name:SetJustifyH("LEFT")
 
     hooksecurefunc(unit_nameplate_name, "Show", function(self)
@@ -376,28 +437,55 @@ function mod.StyleUnitNameplate(_, unit)
       self:Show()
     end)
 
-    local unit_nameplate_level = unit_nameplate.UnitFrame.LevelFrame
+    local unit_nameplate_level = unit_nameplate.UnitFrame.LevelFrame or unit_nameplate.UnitFrame.levelFrame
+    local level_text = unit_nameplate_level
+      and (unit_nameplate_level.LevelText or unit_nameplate_level.levelText)
+    local high_level_texture = unit_nameplate_level
+      and (unit_nameplate_level.HighLevelTexture or unit_nameplate_level.highLevelTexture)
 
-    unit_nameplate_level:SetPoint("BOTTOMRIGHT", unit_nameplate_health_bar, "TOPRIGHT", 1, 2.5)
+    if unit_nameplate_level then
+      unit_nameplate_level:SetPoint("BOTTOMRIGHT", unit_nameplate_health_bar, "TOPRIGHT", 1, 2.5)
+    end
+    if level_text then
+      level_text:SetHeight(unit_nameplate_name:GetHeight())
+      ApplyFont(level_text, 9)
+      level_text:SetJustifyH("RIGHT")
+    end
+    if high_level_texture then
+      high_level_texture:SetPoint("TOPLEFT", 1.25, -1.25)
+      high_level_texture:SetPoint("BOTTOMRIGHT", -1.25, 1.25)
+    end
 
-    unit_nameplate_level.levelText:SetHeight(unit_nameplate_name:GetHeight())
-    ApplyFont(unit_nameplate_level.levelText, 9)
-    unit_nameplate_level.levelText:SetJustifyH("RIGHT")
+    local raid_target = unit_nameplate.UnitFrame.RaidTargetFrame or unit_nameplate.UnitFrame.raidTargetFrame
+    if raid_target then
+      raid_target:ClearAllPoints()
+      raid_target:SetPoint("RIGHT", unit_nameplate_name, "LEFT", -3, 0)
+    end
 
-    unit_nameplate_level.highLevelTexture:SetPoint("TOPLEFT", 1.25, -1.25)
-    unit_nameplate_level.highLevelTexture:SetPoint("BOTTOMRIGHT", -1.25, 1.25)
-
-    unit_nameplate.UnitFrame.RaidTargetFrame:ClearAllPoints()
-    unit_nameplate.UnitFrame.RaidTargetFrame:SetPoint("RIGHT", unit_nameplate_name, "LEFT", -3, 0)
-
-    unit_nameplate_container.border:Hide()
-    unit_nameplate_health_bar.background:Hide()
+    local container_border = unit_nameplate_container
+      and (unit_nameplate_container.border or unit_nameplate_container.Border)
+    if container_border then container_border:Hide() end
+    local health_background = unit_nameplate_health_bar.background
+      or unit_nameplate_health_bar.bgTexture
+      or unit_nameplate_health_bar.Background
+    if health_background then health_background:Hide() end
 
     unit_nameplate.UnitFrame.healthBarWrapper = CreateFrame("Frame", nil, unit_nameplate.UnitFrame)
     unit_nameplate.UnitFrame.healthBarWrapper:SetPoint("BOTTOM", 0, 4)
 
     unit_nameplate_health_bar.backdrop = CreateFrame("Frame", nil, unit_nameplate_health_bar, "BackdropTemplate")
     ApplyBackdropAlt(unit_nameplate_health_bar.backdrop)
+
+    -- The Blizzard background is hidden above, so provide a texture-backed
+    -- replacement on the status bar's BACKGROUND layer. A child backdrop frame
+    -- has no size until explicitly anchored and can also sit above the status
+    -- fill depending on frame level; this texture reliably fills only the
+    -- missing-health portion behind the bar.
+    unit_nameplate_health_bar.etbc_background =
+      unit_nameplate_health_bar:CreateTexture(nil, "BACKGROUND")
+    unit_nameplate_health_bar.etbc_background:SetAllPoints(unit_nameplate_health_bar)
+    unit_nameplate_health_bar.etbc_background:SetTexture("Interface\\Buttons\\WHITE8x8")
+    unit_nameplate_health_bar.etbc_background:SetVertexColor(0.02, 0.02, 0.02, 0.85)
 
     unit_nameplate_health_bar.focus_texture = CreateFrame("Frame", nil, unit_nameplate_health_bar)
     unit_nameplate_health_bar.focus_texture:SetAllPoints(true)
@@ -430,15 +518,17 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetBlendMode("ADD")
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetVertexColor(0, 1, 0.6)
 
-    hooksecurefunc(unit_nameplate_container.border, "SetVertexColor", function(_, r, g, b)
-      if r == 1 and g == 1 and b == 1 then
-        unit_nameplate_health_bar.focus_texture:Show()
-        unit_nameplate_health_bar.backdrop:SetBackdropBorderColor(1, 1, 1)
-      else
-        unit_nameplate_health_bar.focus_texture:Hide()
-        unit_nameplate_health_bar.backdrop:SetBackdropBorderColor(0.04, 0.04, 0.04)
-      end
-    end)
+    if container_border and type(container_border.SetVertexColor) == "function" then
+      hooksecurefunc(container_border, "SetVertexColor", function(_, r, g, b)
+        if r == 1 and g == 1 and b == 1 then
+          unit_nameplate_health_bar.focus_texture:Show()
+          unit_nameplate_health_bar.backdrop:SetBackdropBorderColor(1, 1, 1)
+        else
+          unit_nameplate_health_bar.focus_texture:Hide()
+          unit_nameplate_health_bar.backdrop:SetBackdropBorderColor(0.04, 0.04, 0.04)
+        end
+      end)
+    end
 
     unit_nameplate_health_bar.unit_health_text = CreateFrame("Frame", nil, unit_nameplate_health_bar)
     unit_nameplate_health_bar.unit_health_text:Hide()
@@ -454,7 +544,7 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate_health_bar.unit_health_text.text_left:SetJustifyH("LEFT")
     unit_nameplate_health_bar.unit_health_text.text_left:SetJustifyV("MIDDLE")
     unit_nameplate_health_bar.unit_health_text.text_left:SetTextColor(1, 0.82, 0)
-    ApplyFont(unit_nameplate_health_bar.unit_health_text.text_left, 9.5)
+    ApplyFont(unit_nameplate_health_bar.unit_health_text.text_left, GetDB().enemy_nameplate_health_font_size or 9.5)
 
     unit_nameplate_health_bar.unit_health_text.text_right =
       unit_nameplate_health_bar.unit_health_text:CreateFontString(nil, "OVERLAY")
@@ -467,7 +557,7 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate_health_bar.unit_health_text.text_right:SetJustifyH("RIGHT")
     unit_nameplate_health_bar.unit_health_text.text_right:SetJustifyV("MIDDLE")
     unit_nameplate_health_bar.unit_health_text.text_right:SetTextColor(1, 0.82, 0)
-    ApplyFont(unit_nameplate_health_bar.unit_health_text.text_right, 9.5)
+    ApplyFont(unit_nameplate_health_bar.unit_health_text.text_right, GetDB().enemy_nameplate_health_font_size or 9.5)
 
     unit_nameplate_health_bar.absorb = CreateFrame("Frame", nil, unit_nameplate_health_bar)
     unit_nameplate_health_bar.absorb:SetSize(16, unit_nameplate_health_bar:GetHeight())
@@ -487,6 +577,7 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate_health_bar.absorb.over_absorb_texture:SetTexture(798066)
     unit_nameplate_health_bar.absorb.over_absorb_texture:SetBlendMode("ADD")
 
+    if unit_nameplate_cast_bar then
     unit_nameplate.UnitFrame.castBarWrapper = CreateFrame("Frame", nil, unit_nameplate.UnitFrame)
     unit_nameplate.UnitFrame.castBarWrapper:SetPoint(
       "TOP", unit_nameplate.UnitFrame.healthBarWrapper, "BOTTOM", 0, -3
@@ -497,6 +588,12 @@ function mod.StyleUnitNameplate(_, unit)
     )
     ApplyBackdropAlt(unit_nameplate_cast_bar.backdrop)
 
+    unit_nameplate_cast_bar.etbc_background =
+      unit_nameplate_cast_bar:CreateTexture(nil, "BACKGROUND")
+    unit_nameplate_cast_bar.etbc_background:SetAllPoints(unit_nameplate_cast_bar)
+    unit_nameplate_cast_bar.etbc_background:SetTexture("Interface\\Buttons\\WHITE8x8")
+    unit_nameplate_cast_bar.etbc_background:SetVertexColor(0.02, 0.02, 0.02, 0.85)
+
     unit_nameplate_cast_bar.icon_backdrop = CreateFrame(
       "Frame", nil, unit_nameplate_cast_bar, "BackdropTemplate"
     )
@@ -506,13 +603,15 @@ function mod.StyleUnitNameplate(_, unit)
       SetNameplateCastBar(unit_nameplate, unit_nameplate_cast_bar)
     end)
 
-    hooksecurefunc(unit_nameplate_cast_bar.BorderShield, "Show", function()
-      unit_nameplate_cast_bar:SetStatusBarColor(0.85, 0.85, 0.85, 1, "nameplate_cast_bar")
-    end)
+    if unit_nameplate_cast_bar.BorderShield then
+      hooksecurefunc(unit_nameplate_cast_bar.BorderShield, "Show", function()
+        unit_nameplate_cast_bar:SetStatusBarColor(0.85, 0.85, 0.85, 1, "nameplate_cast_bar")
+      end)
 
-    hooksecurefunc(unit_nameplate_cast_bar.BorderShield, "Hide", function()
-      unit_nameplate_cast_bar:SetStatusBarColor(0.9, 0.7, 0, 1, "nameplate_cast_bar")
-    end)
+      hooksecurefunc(unit_nameplate_cast_bar.BorderShield, "Hide", function()
+        unit_nameplate_cast_bar:SetStatusBarColor(0.9, 0.7, 0, 1, "nameplate_cast_bar")
+      end)
+    end
 
     hooksecurefunc(unit_nameplate_cast_bar, "SetStatusBarColor", function(_, _r, g, _b, _, flag)
       if unit_nameplate_cast_bar.notInterruptible and flag ~= "nameplate_cast_bar" then
@@ -524,22 +623,28 @@ function mod.StyleUnitNameplate(_, unit)
 
     unit_nameplate_cast_bar:HookScript("OnEvent", function(self, event)
       if event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
-        self.Text:Show()
+        if self.Text then self.Text:Show() end
       end
     end)
 
-    unit_nameplate_cast_bar.Icon:SetTexCoord(0.07, 0.94, 0.07, 0.94)
+    if unit_nameplate_cast_bar.Icon then
+      unit_nameplate_cast_bar.Icon:SetTexCoord(0.07, 0.94, 0.07, 0.94)
+    end
 
-    unit_nameplate_cast_bar.Spark.offsetY = 0
-    unit_nameplate_cast_bar.Flash:SetTexture(nil)
+    if unit_nameplate_cast_bar.Spark then unit_nameplate_cast_bar.Spark.offsetY = 0 end
+    if unit_nameplate_cast_bar.Flash then
+      unit_nameplate_cast_bar.Flash:SetTexture(nil)
+      hooksecurefunc(unit_nameplate_cast_bar.Flash, "Show", function()
+        unit_nameplate_cast_bar.Flash:Hide()
+      end)
+    end
 
-    hooksecurefunc(unit_nameplate_cast_bar.Flash, "Show", function()
-      unit_nameplate_cast_bar.Flash:Hide()
-    end)
+    if unit_nameplate_cast_bar.Text then ApplyFont(unit_nameplate_cast_bar.Text, 10) end
 
-    ApplyFont(unit_nameplate_cast_bar.Text, 10)
-
-    unit_nameplate_cast_bar.BorderShield:SetTexture(nil)
+    if unit_nameplate_cast_bar.BorderShield then
+      unit_nameplate_cast_bar.BorderShield:SetTexture(nil)
+    end
+    end
 
     unit_nameplate_health_bar.unit_debuff = CreateFrame("Frame", nil, unit_nameplate_health_bar)
     unit_nameplate_health_bar.unit_debuff:Hide()
@@ -648,12 +753,17 @@ function mod.StyleUnitNameplate(_, unit)
         if not ShouldRefreshAurasFromUpdateInfo(updateInfo, db) then
           return
         end
-        SetNameplateUnitDebuff(unit_nameplate, unit_nameplate.UnitFrame.unit)
-        SetNameplatePlayerDebuffs(unit_nameplate, unit_nameplate.UnitFrame.unit)
-        SetNameplateAbsorb(unit_nameplate, unit_nameplate.UnitFrame.unit)
+        local activeUnit = GetNameplateUnit(unit_nameplate.UnitFrame)
+        SetNameplateUnitDebuff(unit_nameplate, activeUnit)
+        SetNameplatePlayerDebuffs(unit_nameplate, activeUnit)
+        SetNameplateAbsorb(unit_nameplate, activeUnit)
       elseif event == "UNIT_THREAT_LIST_UPDATE" and unit_nameplate.UnitFrame
         and GetDB().nameplate_unit_target_color then
-        SetNameplateHealthBarColor(unit_nameplate, unit_nameplate.UnitFrame.healthBar, unit_nameplate.UnitFrame.unit)
+        SetNameplateHealthBarColor(
+          unit_nameplate,
+          unit_nameplate.UnitFrame.healthBar,
+          GetNameplateUnit(unit_nameplate.UnitFrame)
+        )
       end
     end)
 
@@ -662,15 +772,41 @@ function mod.StyleUnitNameplate(_, unit)
 
   local texture = GetStatusbarTexture()
   unit_nameplate_health_bar:SetStatusBarTexture(texture)
-  unit_nameplate_cast_bar:SetStatusBarTexture(texture)
+  if unit_nameplate_cast_bar then unit_nameplate_cast_bar:SetStatusBarTexture(texture) end
 
-  if not GetDB().enemy_nameplate_health_text then
+  ApplyFont(unit_nameplate_name, GetDB().enemy_nameplate_name_font_size or 10)
+  local healthText = unit_nameplate_health_bar.unit_health_text
+  if healthText then
+    local fontSize = GetDB().enemy_nameplate_health_font_size or 9.5
+    local textColor = GetDB().enemy_nameplate_health_text_color or { r = 1.0, g = 0.82, b = 0.0 }
+    ApplyFont(healthText.text_left, fontSize)
+    ApplyFont(healthText.text_right, fontSize)
+    healthText.text_left:SetTextColor(textColor.r or 1, textColor.g or 0.82, textColor.b or 0)
+    healthText.text_right:SetTextColor(textColor.r or 1, textColor.g or 0.82, textColor.b or 0)
+  end
+
+  local bg = GetDB().enemy_nameplate_background_color or { r = 0.02, g = 0.02, b = 0.02 }
+  if unit_nameplate_health_bar.etbc_background then
+    unit_nameplate_health_bar.etbc_background:SetVertexColor(
+      bg.r or 0.02, bg.g or 0.02, bg.b or 0.02,
+      GetDB().enemy_nameplate_background_alpha or 0.85
+    )
+  end
+  UpdateHealthBorder(unit_nameplate_health_bar, GetDB())
+
+  if not GetDB().enemy_nameplate_health_text and unit_nameplate_health_bar.unit_health_text then
     unit_nameplate_health_bar.unit_health_text:Hide()
   end
 
-  unit_nameplate_health_bar.unit_debuff:SetScale(GetDB().enemy_nameplate_debuff_scale or 1)
-  unit_nameplate_health_bar.player_debuffs:SetScale(GetDB().enemy_nameplate_player_debuffs_scale or 1)
-  unit_nameplate_health_bar.unit_stance:SetScale(GetDB().enemy_nameplate_stance_scale or 1)
+  if unit_nameplate_health_bar.unit_debuff then
+    unit_nameplate_health_bar.unit_debuff:SetScale(GetDB().enemy_nameplate_debuff_scale or 1)
+  end
+  if unit_nameplate_health_bar.player_debuffs then
+    unit_nameplate_health_bar.player_debuffs:SetScale(GetDB().enemy_nameplate_player_debuffs_scale or 1)
+  end
+  if unit_nameplate_health_bar.unit_stance then
+    unit_nameplate_health_bar.unit_stance:SetScale(GetDB().enemy_nameplate_stance_scale or 1)
+  end
 
   local hover_texture = select(3, unit_nameplate_health_bar:GetRegions())
   if hover_texture and hover_texture.GetTexture and hover_texture:GetTexture() then
@@ -701,7 +837,7 @@ function mod.UpdateExistingNameplatesSize(_)
 
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
-      local unit = unit_nameplate.displayedUnit
+      local unit = GetNameplateUnit(unit_nameplate)
       local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
       if nameplate and nameplate.UnitFrame and nameplate.UnitFrame == unit_nameplate
         and UnitExists(unit) and not SafeUnitIsUnit("player", unit)
@@ -715,7 +851,7 @@ end
 function mod.UpdateExistingNameplatesColor(_)
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
-      local unit = unit_nameplate.displayedUnit
+      local unit = GetNameplateUnit(unit_nameplate)
       local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
       if nameplate and nameplate.UnitFrame and nameplate.UnitFrame == unit_nameplate
         and UnitExists(unit) and not SafeUnitIsUnit("player", unit)
@@ -729,7 +865,7 @@ end
 function mod.UpdateExistingNameplatesDebuff(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
-    if unit_nameplate.healthBarWrapper then
+    if unit_nameplate.healthBarWrapper and unit_nameplate.healthBar and unit_nameplate.healthBar.unit_debuff then
       if db.enemy_nameplate_debuff then
         unit_nameplate.healthBar.unit_debuff:SetScale(db.enemy_nameplate_debuff_scale or 1)
         unit_nameplate.healthBar.unit_debuff:SetAlpha(1)
@@ -743,7 +879,7 @@ end
 function mod.UpdateExistingNameplatesPlayerDebuffs(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
-    if unit_nameplate.healthBarWrapper then
+    if unit_nameplate.healthBarWrapper and unit_nameplate.healthBar and unit_nameplate.healthBar.player_debuffs then
       if db.enemy_nameplate_player_debuffs then
         unit_nameplate.healthBar.player_debuffs:SetScale(db.enemy_nameplate_player_debuffs_scale or 1)
 
@@ -767,7 +903,7 @@ end
 function mod.UpdateExistingNameplatesStance(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
-    if unit_nameplate.healthBarWrapper then
+    if unit_nameplate.healthBarWrapper and unit_nameplate.healthBar and unit_nameplate.healthBar.unit_stance then
       if db.enemy_nameplate_stance then
         unit_nameplate.healthBar.unit_stance:SetScale(db.enemy_nameplate_stance_scale or 1)
       else
@@ -780,11 +916,11 @@ end
 function mod.UpdateExistingNameplatesText(_)
   local db = GetDB()
   for _, unit_nameplate in pairs(unit_nameplates) do
-    if unit_nameplate.healthBarWrapper then
+    if unit_nameplate.healthBarWrapper and unit_nameplate.healthBar and unit_nameplate.healthBar.unit_health_text then
       if not db.enemy_nameplate_health_text then
         unit_nameplate.healthBar.unit_health_text:Hide()
       else
-        local unit = unit_nameplate.displayedUnit
+        local unit = GetNameplateUnit(unit_nameplate)
         if UnitExists(unit) and not SafeUnitIsUnit("player", unit) then
           if not IsFriendlyNameplate(unit_nameplate, unit) then
             unit_nameplate.healthBar.unit_health_text:Show()
@@ -799,8 +935,11 @@ function mod.UpdateExistingNameplatesTextures(_)
   if not GetDB().enabled then return end
   local texture = GetStatusbarTexture()
   for _, unit_nameplate in pairs(unit_nameplates) do
-    if unit_nameplate.healthBarWrapper then
+    if unit_nameplate.healthBarWrapper and unit_nameplate.healthBar then
       unit_nameplate.healthBar:SetStatusBarTexture(texture)
+      if unit_nameplate.castBar then
+        unit_nameplate.castBar:SetStatusBarTexture(texture)
+      end
 
       local hover_texture = select(3, unit_nameplate.healthBar:GetRegions())
       if hover_texture and hover_texture.GetTexture and hover_texture:GetTexture() then
@@ -839,6 +978,7 @@ local function ResetNameplates()
 end
 
 mod.Internal.Shared.GetDB = GetDB
+mod.Internal.Shared.GetNameplateUnit = GetNameplateUnit
 mod.Internal.Shared.InInstance = InInstance
 mod.Internal.Shared.IsPlaterLoaded = IsPlaterLoaded
 mod.Internal.Shared.IsSecureUpdateBlocked = IsSecureUpdateBlocked
@@ -880,8 +1020,20 @@ function mod.Apply(_)
 
   BuildData()
   HookEvents()
+  if IsSecureUpdateBlocked() then
+    runtime.pendingApply = true
+    return
+  end
+  runtime.pendingApply = false
   SetNameplatePadding()
   ApplyExistingNameplates()
+  mod:UpdateExistingNameplatesSize()
+  mod:UpdateExistingNameplatesColor()
+  mod:UpdateExistingNameplatesDebuff()
+  mod:UpdateExistingNameplatesPlayerDebuffs()
+  mod:UpdateExistingNameplatesStance()
+  mod:UpdateExistingNameplatesText()
+  mod:UpdateExistingNameplatesTextures()
 end
 
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then
@@ -901,16 +1053,23 @@ if ETBC.ApplyBus and ETBC.ApplyBus.Register then
 end
 
 -- Safety hooks for health updates
-hooksecurefunc("CompactUnitFrame_UpdateHealth", function(self)
-  if self.healthBar and self.healthBarWrapper and self.unit and self:GetParent()
-    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
-    SetNameplateHealthBarText(self.healthBar, self.unit)
-  end
-end)
+if type(_G.CompactUnitFrame_UpdateHealth) == "function" then
+  hooksecurefunc("CompactUnitFrame_UpdateHealth", function(self)
+    local unit = GetNameplateUnit(self)
+    if self.healthBar and self.healthBarWrapper and unit and self:GetParent()
+      and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
+      SetNameplateHealthBarText(self.healthBar, unit)
+      SetNameplateHealthBarColor(self:GetParent(), self.healthBar, unit)
+    end
+  end)
+end
 
-hooksecurefunc("CompactUnitFrame_UpdateHealthColor", function(self)
-  if self.healthBar and self.healthBarWrapper and self.healthBar.unit_health_text and self.unit and self:GetParent()
-    and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
-    SetNameplateHealthBarColor(self:GetParent(), self.healthBar, self.unit)
-  end
-end)
+if type(_G.CompactUnitFrame_UpdateHealthColor) == "function" then
+  hooksecurefunc("CompactUnitFrame_UpdateHealthColor", function(self)
+    local unit = GetNameplateUnit(self)
+    if self.healthBar and self.healthBarWrapper and self.healthBar.unit_health_text and unit and self:GetParent()
+      and self:GetParent().isNamePlate and self:GetParent().nameplate_events then
+      SetNameplateHealthBarColor(self:GetParent(), self.healthBar, unit)
+    end
+  end)
+end

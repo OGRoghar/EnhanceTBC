@@ -33,8 +33,14 @@ function H.GetUIDB()
   if db.lastModule == nil then db.lastModule = "auras" end
   if db.search == nil then db.search = "" end
   if db.theme == nil then db.theme = "EnhanceGreen" end
+  if db.scale == nil then
+    local generalUI = ETBC.db.profile.general and ETBC.db.profile.general.ui
+    db.scale = (generalUI and generalUI.scale) or 1.0
+  end
   db.sectionCollapsed = db.sectionCollapsed or {}
   db.previewCollapsed = db.previewCollapsed or {}
+  db.moduleFavorites = db.moduleFavorites or {}
+  db.recentModules = db.recentModules or {}
 
   -- Don't overwrite tree status table every time (keeps expand/collapse state).
   db.treeStatus = db.treeStatus or {}
@@ -115,6 +121,7 @@ for i = 1, #CATEGORY_ORDER do
 end
 
 function H.BuildTree(groups)
+  local uiDB = H.GetUIDB()
   local buckets = {}
   for _, c in ipairs(CATEGORY_ORDER) do buckets[c] = {} end
 
@@ -128,6 +135,33 @@ function H.BuildTree(groups)
   end
 
   local tree = {}
+  local favoriteNode = { value = "Favorites", text = "Favorites", children = {} }
+  for _, g in ipairs(groups) do
+    if uiDB and uiDB.moduleFavorites and uiDB.moduleFavorites[g.key] then
+      favoriteNode.children[#favoriteNode.children + 1] = {
+        value = g.key,
+        text = g.name,
+        icon = g.icon,
+      }
+    end
+  end
+  if #favoriteNode.children > 0 then tree[#tree + 1] = favoriteNode end
+
+  local recentNode = { value = "Recent", text = "Recently Changed", children = {} }
+  if uiDB and type(uiDB.recentModules) == "table" then
+    for _, key in ipairs(uiDB.recentModules) do
+      local group = H.FindGroup(groups, key)
+      if group then
+        recentNode.children[#recentNode.children + 1] = {
+          value = group.key,
+          text = group.name,
+          icon = group.icon,
+        }
+      end
+    end
+  end
+  if #recentNode.children > 0 then tree[#tree + 1] = recentNode end
+
   local orderedCats = {}
   for _, cat in ipairs(CATEGORY_ORDER) do
     orderedCats[#orderedCats + 1] = cat

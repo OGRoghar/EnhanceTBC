@@ -41,7 +41,14 @@ local function GetDB()
   if db.shadow == nil then db.shadow = true end
   if db.textColor == nil then db.textColor = { 1, 1, 1 } end
 
-  if db.onlyShowTextWhenNotFull == nil then db.onlyShowTextWhenNotFull = true end
+  if db.healthTextVisibilityV2 == nil then
+    -- Migrate the old hide-at-full default so enabled health text is visible
+    -- immediately, even when the unit is at 100% health.
+    db.onlyShowTextWhenNotFull = false
+    db.healthTextVisibilityV2 = true
+  elseif db.onlyShowTextWhenNotFull == nil then
+    db.onlyShowTextWhenNotFull = false
+  end
 
   if db.healthTextMode == nil then
     db.healthTextMode = db.healthPercentText and "PERCENT" or "NONE"

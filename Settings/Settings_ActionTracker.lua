@@ -75,6 +75,7 @@ ETBC.SettingsRegistry:RegisterGroup("actiontracker", {
             name = "Track Items (later)",
             desc = "Reserved for item-use tracking. Currently off by default.",
             order = 2,
+            hidden = true,
             get = function() return db.trackItems end,
             set = function(_, v) db.trackItems = v and true or false; ETBC.ApplyBus:Notify("actiontracker") end,
           },

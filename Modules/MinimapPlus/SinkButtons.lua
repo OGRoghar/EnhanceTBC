@@ -44,8 +44,9 @@ end
 
 local function GetSinkConstants()
   local shared = GetShared() or {}
+  local db = CallGetDB()
   return {
-    iconSize = tonumber(shared.SINK_ICON_SIZE) or 18,
+    iconSize = tonumber(db and db.sink_icon_size) or tonumber(shared.SINK_ICON_SIZE) or 28,
     iconSpacing = tonumber(shared.SINK_ICON_SPACING) or 4,
     padding = tonumber(shared.SINK_PADDING) or 6,
     minWidth = tonumber(shared.SINK_MIN_WIDTH) or 104,
@@ -178,7 +179,7 @@ local function CaptureSinkButton(_self, btn)
   local baseH = tonumber(info.height) or 20
   local base = math.max(baseW, baseH, 1)
   local targetScale = C.iconSize / base
-  if targetScale > 1 then targetScale = 1 end
+  if targetScale > 2 then targetScale = 2 end
   if targetScale < 0.55 then targetScale = 0.55 end
   if btn.SetScale then btn:SetScale(targetScale) end
   if btn.SetSize then btn:SetSize(baseW, baseH) end
@@ -274,6 +275,16 @@ local function LayoutSinkButtons()
   local startY = trackingRowHeight + math.floor((availableHeight - contentHeight) / 2 + 0.5)
   for i = 1, count do
     local btn = buttons[i]
+    local info = state.sinkManaged[btn]
+    if info and btn.SetScale then
+      local baseW = tonumber(info.width) or 20
+      local baseH = tonumber(info.height) or 20
+      local base = math.max(baseW, baseH, 1)
+      local targetScale = C.iconSize / base
+      if targetScale > 2 then targetScale = 2 end
+      if targetScale < 0.55 then targetScale = 0.55 end
+      btn:SetScale(targetScale)
+    end
     local row = math.floor((i - 1) / cols)
     local indexInRow = (i - 1) % cols
     local rowCount = math.min(cols, count - (row * cols))

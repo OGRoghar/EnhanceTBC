@@ -6,7 +6,7 @@ local AceGUI = LibStub("AceGUI-3.0", true)
 if not AceGUI then return end
 
 local Type = "ETBC_SearchHeader"
-local Version = 1
+local Version = 2
 
 local function GetTheme()
   local skin = ETBC and ETBC.UI and ETBC.UI.ConfigWindow
@@ -40,7 +40,7 @@ end
 
 local function Constructor()
   local frame = CreateFrame("Frame", nil, UIParent)
-  frame:SetHeight(52)
+  frame:SetHeight(46)
   frame:SetWidth(320)
 
   local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -55,9 +55,9 @@ local function Constructor()
   results:SetText("")
 
   local editbox = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
-  editbox:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -4)
-  editbox:SetPoint("RIGHT", frame, "RIGHT", -86, 0)
-  editbox:SetHeight(24)
+  editbox:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -5)
+  editbox:SetPoint("RIGHT", frame, "RIGHT", -78, 0)
+  editbox:SetHeight(26)
   editbox:SetAutoFocus(false)
   editbox:SetTextInsets(8, 8, 0, 0)
   editbox:SetText("")
@@ -68,17 +68,17 @@ local function Constructor()
   placeholder:SetJustifyH("LEFT")
   placeholder:SetText("Search modules / options...")
 
-  local clear = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  local clear = CreateFrame("Button", nil, frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
   clear:SetPoint("LEFT", editbox, "RIGHT", 6, 0)
-  clear:SetWidth(24)
-  clear:SetHeight(24)
-  clear:SetText("x")
+  clear:SetWidth(26)
+  clear:SetHeight(26)
+  clear:SetText("×")
 
   local hint = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   hint:SetPoint("LEFT", clear, "RIGHT", 6, 0)
   hint:SetPoint("RIGHT", frame, "RIGHT", -2, 0)
   hint:SetJustifyH("LEFT")
-  hint:SetText("Esc clears")
+  hint:SetText("ESC")
 
   local widget = {
     type = Type,
@@ -105,6 +105,11 @@ local function Constructor()
     hint:SetTextColor(theme.muted[1], theme.muted[2], theme.muted[3], 0.9)
     placeholder:SetTextColor(theme.muted[1], theme.muted[2], theme.muted[3], 0.75)
     SetBackdrop(editbox, theme.bg, theme.border)
+    SetBackdrop(clear, theme.bg, theme.border)
+    local clearText = clear.GetFontString and clear:GetFontString() or nil
+    if clearText and clearText.SetTextColor then
+      clearText:SetTextColor(theme.muted[1], theme.muted[2], theme.muted[3], 1)
+    end
     if editbox.SetTextColor then
       editbox:SetTextColor(theme.text[1], theme.text[2], theme.text[3], theme.text[4] or 1)
     end
@@ -218,6 +223,15 @@ local function Constructor()
     widget.editbox:SetFocus()
     widget:Fire("OnTextChanged", "", true)
     widget:Fire("OnClearClicked")
+  end)
+
+  clear:SetScript("OnEnter", function(self)
+    local theme = GetTheme()
+    SetBackdrop(self, theme.bg, theme.accent)
+  end)
+  clear:SetScript("OnLeave", function(self)
+    local theme = GetTheme()
+    SetBackdrop(self, theme.bg, theme.border)
   end)
 
   return AceGUI:RegisterAsWidget(widget)

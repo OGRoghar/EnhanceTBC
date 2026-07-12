@@ -13,6 +13,7 @@ local Compat = ETBC.Compat or {}
 
 local driver
 local hooked = false
+local pendingApply = false
 
 local CASTBAR_DEFAULTS = {
   enabled = true,
@@ -475,6 +476,11 @@ local RefreshPreviewIfShown
 
 local function Apply()
   EnsureDriver()
+  if InCombat() then
+    pendingApply = true
+    return
+  end
+  pendingApply = false
 
   local generalEnabled = ETBC.db and ETBC.db.profile and ETBC.db.profile.general and ETBC.db.profile.general.enabled
   local db = GetDB()
@@ -714,6 +720,9 @@ local function EnsureHooks()
         local active = generalEnabledNow and eventDB.enabled and IsBarEnabledBySettings(eventDB, bar)
         bar._etbcManaged = active and true or false
         ApplyAlpha(bar, active)
+      end
+      if event == "PLAYER_REGEN_ENABLED" and pendingApply then
+        Apply()
       end
       return
     end

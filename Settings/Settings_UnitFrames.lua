@@ -32,7 +32,14 @@ local function GetDB()
   if db.textColor == nil then db.textColor = { 1, 1, 1 } end
 
   -- Misc
-  if db.onlyShowTextWhenNotFull == nil then db.onlyShowTextWhenNotFull = true end
+  if db.healthTextVisibilityV2 == nil then
+    -- Earlier profiles inherited a hide-at-full default, which made an
+    -- enabled health-text mode look inactive at 100% health.
+    db.onlyShowTextWhenNotFull = false
+    db.healthTextVisibilityV2 = true
+  elseif db.onlyShowTextWhenNotFull == nil then
+    db.onlyShowTextWhenNotFull = false
+  end
 
   if db.healthTextMode == nil then
     db.healthTextMode = db.healthPercentText and "PERCENT" or "NONE"
@@ -142,7 +149,14 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
           return { NONE = "None", PERCENT = "Percent", VALUE = "Value", BOTH = "Value + Percent" }
         end,
         get = function() return db.healthTextMode or "PERCENT" end,
-        set = function(_, v) db.healthTextMode = v; ETBC.ApplyBus:Notify("unitframes") end,
+        set = function(_, v)
+          db.healthTextMode = v
+          -- Selecting a visible mode should produce visible text immediately,
+          -- including while the unit is at full health. The dedicated option
+          -- below can still be enabled afterward for conditional display.
+          if v ~= "NONE" then db.onlyShowTextWhenNotFull = false end
+          ETBC.ApplyBus:Notify("unitframes")
+        end,
       },
 
       powerValueText = {
@@ -169,7 +183,8 @@ ETBC.SettingsRegistry:RegisterGroup("unitframes", {
 
       onlyShowTextWhenNotFull = {
         type = "toggle",
-        name = "Only show health % when not full",
+        name = "Hide health text at full health",
+        desc = "When enabled, custom health text is hidden while the unit is at 100% health.",
         order = 25, width = "full",
         disabled = function() return not (db.enabled and db.healthTextMode and db.healthTextMode ~= "NONE") end,
         get = function() return db.onlyShowTextWhenNotFull end,

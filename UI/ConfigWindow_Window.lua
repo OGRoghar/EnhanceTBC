@@ -257,14 +257,31 @@ end
 
 local function ApplyWindowStyle(win)
   if not win or not win.frame then return end
-  local headerMoverWidth = 116
+  local headerMoverWidth = 112
   local headerRightInset = headerMoverWidth + 24
 
   SetBackdrop(win.frame, THEME.bg, THEME.border, 1)
 
+  -- Hide the known center title texture directly. Avoid inspecting arbitrary
+  -- frame children/regions here: third-party UI hooks may add objects with
+  -- incompatible method behavior while the config window is being built.
+  if win.titlebg and win.titlebg.Hide then
+    win.titlebg:Hide()
+  end
+  if not win.frame._etbcTitlePlaqueHidden and win.frame.GetRegions then
+    win.frame._etbcTitlePlaqueHidden = true
+    local regionCount = select("#", win.frame:GetRegions())
+    for i = 1, regionCount do
+      local region = select(i, win.frame:GetRegions())
+      if region and region.GetTexture and region.Hide and region:GetTexture() == 131080 then
+        region:Hide()
+      end
+    end
+  end
+
   if win.titletext then
     win.titletext:SetTextColor(THEME.text[1], THEME.text[2], THEME.text[3])
-    TrySetFont(win.titletext, 14, "OUTLINE")
+    TrySetFont(win.titletext, 18, "OUTLINE")
   end
   if win.statustext then
     win.statustext:SetText("")
@@ -273,38 +290,41 @@ local function ApplyWindowStyle(win)
   -- Header strip for logo/title composition.
   if not win.frame._etbcHeaderStrip then
     local strip = CreateFrame("Frame", nil, win.frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
-    strip:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 12, -28)
-    strip:SetPoint("TOPRIGHT", win.frame, "TOPRIGHT", -12, -28)
-    strip:SetHeight(66)
+    strip:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 12, -24)
+    strip:SetPoint("TOPRIGHT", win.frame, "TOPRIGHT", -12, -24)
+    strip:SetHeight(62)
     SetBackdrop(strip, THEME.panel3, THEME.border, 1)
 
     local line = strip:CreateTexture(nil, "BORDER")
     line:SetTexture("Interface\\Buttons\\WHITE8x8")
     line:SetPoint("BOTTOMLEFT", strip, "BOTTOMLEFT", 1, 1)
     line:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT", -1, 1)
-    line:SetHeight(2)
-    line:SetVertexColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.55)
+    line:SetHeight(1)
+    line:SetVertexColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.85)
 
     local status = strip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    status:SetPoint("LEFT", strip, "LEFT", 100, -14)
+    status:SetPoint("LEFT", strip, "LEFT", 78, -13)
     status:SetPoint("RIGHT", strip, "RIGHT", -headerRightInset, -14)
     status:SetJustifyH("LEFT")
     status:SetTextColor(THEME.muted[1], THEME.muted[2], THEME.muted[3], 1)
-    status:SetText("TBC Anniversary UI | Live settings | /etbc")
+    local _, clientBuild = GetBuildInfo()
+    status:SetText(("TBC Anniversary UI | EnhanceTBC %s | Build %s | /etbc"):format(
+      tostring(ETBC.version or "unknown"), tostring(clientBuild or "unknown")
+    ))
     TrySetFont(status, 11, nil)
 
     win.frame._etbcHeaderStrip = strip
     win.frame._etbcHeaderStatus = status
   end
 
-  -- Logo (DO NOT CHANGE SIZE)
+  -- Compact brand mark keeps the header readable without dominating content.
   if not win.frame._etbcLogo then
     local parent = win.frame._etbcHeaderStrip or win.frame
     local logo = parent:CreateTexture(nil, "OVERLAY", nil, 7)
     logo:SetTexture(LOGO_PATH)
-    logo:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 14, -6)
-    logo:SetSize(90, 90)
-    logo:SetAlpha(0.9)
+    logo:SetPoint("LEFT", parent, "LEFT", 8, 0)
+    logo:SetSize(62, 62)
+    logo:SetAlpha(0.96)
     logo:SetDrawLayer("OVERLAY", 7)
     win.frame._etbcLogo = logo
   end
@@ -380,7 +400,7 @@ local function ApplyWindowStyle(win)
 
   if win.titletext and win.frame._etbcHeaderStrip then
     win.titletext:ClearAllPoints()
-    win.titletext:SetPoint("LEFT", win.frame._etbcHeaderStrip, "LEFT", 100, 14)
+    win.titletext:SetPoint("LEFT", win.frame._etbcHeaderStrip, "LEFT", 78, 13)
     win.titletext:SetPoint("RIGHT", win.frame._etbcHeaderStrip, "RIGHT", -headerRightInset, 14)
     win.titletext:SetJustifyH("LEFT")
   end
@@ -390,9 +410,9 @@ local function ApplyWindowStyle(win)
   -- Move AceGUI content below header strip and keep generous bottom area.
   if win.content then
     win.content:ClearAllPoints()
-    win.content:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 12, -116)
-    -- Reserve AceGUI footer space (status bar + close button).
-    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 46)
+    win.content:SetPoint("TOPLEFT", win.frame, "TOPLEFT", 12, -104)
+    -- Reserve a compact footer for the close action.
+    win.content:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -12, 42)
   end
 
   -- Styled inner background aligned with content
@@ -408,8 +428,8 @@ local function ApplyWindowStyle(win)
     topLine:SetTexture("Interface\\Buttons\\WHITE8x8")
     topLine:SetPoint("TOPLEFT", inner, "TOPLEFT", 1, -1)
     topLine:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -1, -1)
-    topLine:SetHeight(2)
-    topLine:SetVertexColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.55)
+    topLine:SetHeight(1)
+    topLine:SetVertexColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.75)
 
     local subHeader = inner:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     subHeader:SetPoint("TOPLEFT", inner, "TOPLEFT", 10, -8)
@@ -514,6 +534,7 @@ local function RestoreWindow()
 
   state.win:SetWidth(db.w or 980)
   state.win:SetHeight(db.h or 720)
+  state.win.frame:SetScale(tonumber(db.scale) or 1.0)
 
   state.win.frame:ClearAllPoints()
   state.win.frame:SetPoint(
@@ -529,6 +550,15 @@ local function RestoreWindow()
 
   if state.search then
     state.search:SetText(db.search or "")
+  end
+end
+
+local function SetWindowScale(scale)
+  local db = GetUIDB()
+  scale = math.max(0.85, math.min(1.25, tonumber(scale) or 1.0))
+  if db then db.scale = scale end
+  if state and state.win and state.win.frame then
+    state.win.frame:SetScale(scale)
   end
 end
 
@@ -809,7 +839,7 @@ local function BuildWindow()
   topPad:SetText(" ")
   topPad:SetFullWidth(true)
   if topPad.SetHeight then
-    topPad:SetHeight(18)
+    topPad:SetHeight(14)
   end
   root:AddChild(topPad)
 
@@ -1003,6 +1033,7 @@ end
 H.state = state
 H.BuildWindow = BuildWindow
 H.RefreshTheme = RefreshTheme
+H.SetWindowScale = SetWindowScale
 
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then
   local function RefreshCurrentPreviewFor(moduleKey)
@@ -1030,4 +1061,3 @@ if ETBC.ApplyBus and ETBC.ApplyBus.Register then
     end)
   end
 end
-

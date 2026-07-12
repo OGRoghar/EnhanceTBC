@@ -10,6 +10,7 @@ ETBC.Modules.AutoGossip = mod
 
 local driver
 local pendingGossip = false
+local gossipRequestSerial = 0
 
 local function Print(msg)
   if ETBC.Print then
@@ -181,12 +182,17 @@ local function AutoSelectGossip()
   if not option then return end
 
   pendingGossip = true
+  gossipRequestSerial = gossipRequestSerial + 1
+  local requestSerial = gossipRequestSerial
 
   local db = GetDB()
   local delay = db.delay or 0
 
   if delay > 0 then
     local applySelection = function()
+      if requestSerial ~= gossipRequestSerial or not pendingGossip or not IsEnabled() then
+        return
+      end
       local currentOption, currentText, currentMatchType = FindMatchingOption()
       if currentOption then
         SelectOption(currentOption)
@@ -229,6 +235,7 @@ local function EnsureDriver()
     if event == "GOSSIP_SHOW" then
       AutoSelectGossip()
     elseif event == "GOSSIP_CLOSED" then
+      gossipRequestSerial = gossipRequestSerial + 1
       pendingGossip = false
     end
   end)
@@ -239,6 +246,8 @@ function mod.Apply(_)
     EnsureDriver()
     driver:Show()
   else
+    gossipRequestSerial = gossipRequestSerial + 1
+    pendingGossip = false
     if driver then
       driver:Hide()
     end
@@ -248,6 +257,9 @@ end
 -- Register with ApplyBus
 if ETBC.ApplyBus then
   ETBC.ApplyBus:Register("autogossip", function()
+    mod:Apply()
+  end)
+  ETBC.ApplyBus:Register("general", function()
     mod:Apply()
   end)
 end

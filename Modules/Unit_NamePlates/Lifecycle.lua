@@ -24,12 +24,24 @@ local ShouldIgnoreNameplate = shared.ShouldIgnoreNameplate
 local SetNameplateUnitInterrupt = shared.SetNameplateUnitInterrupt
 local SetNameplateUnitStance = shared.SetNameplateUnitStance
 local SetNameplatePlayerMindControl = shared.SetNameplatePlayerMindControl
+local GetNameplateUnit = shared.GetNameplateUnit
 
 local ApplyExistingNameplates
 
 local function RemoveUnitNameplate(unit)
   if not unit then return end
   local unit_guid = UnitGUID(unit)
+  if not unit_guid then
+    -- Blizzard can invalidate a nameplate token before the removal callback is
+    -- processed. Fall back to the token cached on the styled unit frame so the
+    -- GUID-keyed entry and its event frame do not leak.
+    for cached_guid, cached_frame in pairs(unit_nameplates) do
+      if cached_frame and ((GetNameplateUnit and GetNameplateUnit(cached_frame)) or cached_frame.displayedUnit) == unit then
+        unit_guid = cached_guid
+        break
+      end
+    end
+  end
   if not unit_guid then return end
 
   local unit_nameplate_unit_frame = unit_nameplates[unit_guid]
@@ -37,8 +49,13 @@ local function RemoveUnitNameplate(unit)
     local unit_nameplate = unit_nameplate_unit_frame:GetParent()
     local unit_nameplate_health_bar = unit_nameplate_unit_frame.healthBar
 
-    if unit_nameplate.nameplate_events then
+    if unit_nameplate and unit_nameplate.nameplate_events then
       unit_nameplate.nameplate_events:UnregisterAllEvents()
+    end
+
+    if not unit_nameplate_health_bar then
+      unit_nameplates[unit_guid] = nil
+      return
     end
 
     if unit_nameplate_health_bar.absorb then
@@ -90,27 +107,29 @@ local function SetNameplatePadding()
   local enemy_nameplate_width = (db.enemy_nameplate_width or 109) + padding
   local enemy_nameplate_height = (db.enemy_nameplate_height or 12.5) + name_height + padding
 
-  if C_NamePlate and C_NamePlate.SetNamePlateEnemySize then
-    C_NamePlate.SetNamePlateEnemySize(enemy_nameplate_width, enemy_nameplate_height)
-  end
-
   local is_in_instance, instance_type = false, "none"
   if InInstance then
     is_in_instance, instance_type = InInstance()
   end
 
+  local friendly_nameplate_width
+  local friendly_nameplate_height
   if is_in_instance and instance_type ~= "pvp" and instance_type ~= "arena" then
-    if C_NamePlate and C_NamePlate.SetNamePlateFriendlySize then
-      C_NamePlate.SetNamePlateFriendlySize(128, 32)
-    end
-    return
+    friendly_nameplate_width = 128
+    friendly_nameplate_height = 32
+  else
+    friendly_nameplate_width = (db.friendly_nameplate_width or 42) + padding
+    friendly_nameplate_height = (db.friendly_nameplate_height or 12.5) + name_height + padding
   end
 
-  local friendly_nameplate_width = (db.friendly_nameplate_width or 42) + padding
-  local friendly_nameplate_height = (db.friendly_nameplate_height or 12.5) + name_height + padding
-
-  if C_NamePlate and C_NamePlate.SetNamePlateFriendlySize then
-    C_NamePlate.SetNamePlateFriendlySize(friendly_nameplate_width, friendly_nameplate_height)
+  -- Build 68575 exposes one shared native nameplate size. Visual enemy and
+  -- friendly frames are still sized separately elsewhere, so reserve bounds
+  -- large enough for either layout here.
+  if C_NamePlate and C_NamePlate.SetNamePlateSize then
+    C_NamePlate.SetNamePlateSize(
+      math.max(enemy_nameplate_width, friendly_nameplate_width),
+      math.max(enemy_nameplate_height, friendly_nameplate_height)
+    )
   end
 end
 
@@ -197,7 +216,10 @@ local function HookEvents()
 
     if event == "PLAYER_REGEN_ENABLED" then
       SetNameplatePadding()
-      if ApplyExistingNameplates then
+      if runtime.pendingApply then
+        runtime.pendingApply = false
+        mod:Apply()
+      elseif ApplyExistingNameplates then
         ApplyExistingNameplates()
       end
     end
@@ -213,14 +235,16 @@ end
 
 ApplyExistingNameplates = function()
   if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
-  for _, nameplate in pairs(C_NamePlate.GetNamePlates(false)) do
+  for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
+    local unit = nameplate.UnitFrame and ((GetNameplateUnit and GetNameplateUnit(nameplate.UnitFrame))
+      or nameplate.UnitFrame.displayedUnit)
     if not (ShouldIgnoreNameplate and ShouldIgnoreNameplate(nameplate))
       and nameplate.UnitFrame
-      and nameplate.UnitFrame.displayedUnit
-      and UnitExists(nameplate.UnitFrame.displayedUnit) then
-      local unit_guid = UnitGUID(nameplate.UnitFrame.displayedUnit)
+      and unit
+      and UnitExists(unit) then
+      local unit_guid = UnitGUID(unit)
       if unit_guid and not unit_nameplates[unit_guid] then
-        mod:StyleUnitNameplate(nameplate.UnitFrame.displayedUnit)
+        mod:StyleUnitNameplate(unit)
       end
     end
   end
@@ -228,8 +252,10 @@ end
 
 local function ResetNameplates()
   for _, unit_nameplate in pairs(unit_nameplates) do
-    if unit_nameplate and unit_nameplate.displayedUnit then
-      RemoveUnitNameplate(unit_nameplate.displayedUnit)
+    local unit = unit_nameplate and ((GetNameplateUnit and GetNameplateUnit(unit_nameplate))
+      or unit_nameplate.displayedUnit)
+    if unit then
+      RemoveUnitNameplate(unit)
     end
   end
 end

@@ -3,10 +3,10 @@
 
 local _, ETBC = ...
 local AceGUI = LibStub("AceGUI-3.0", true)
-if not AceGUI or (AceGUI:GetWidgetVersion("ETBC_SectionCard") or 0) >= 1 then return end
+if not AceGUI or (AceGUI:GetWidgetVersion("ETBC_SectionCard") or 0) >= 2 then return end
 
 local Type = "ETBC_SectionCard"
-local Version = 1
+local Version = 2
 
 local function GetTheme()
   local skin = ETBC and ETBC.UI and ETBC.UI.ConfigWindow
@@ -19,6 +19,7 @@ local function GetTheme()
   return {
     panel2 = { 0.06, 0.08, 0.06, 0.95 },
     border = { 0.12, 0.20, 0.12, 0.95 },
+    accent = { 0.86, 0.68, 0.26, 1.00 },
     text = { 0.90, 0.96, 0.90, 1.00 },
     muted = { 0.70, 0.78, 0.70, 1.00 },
   }
@@ -52,7 +53,7 @@ local function UpdateAnchors(self)
   end
 
   self.titletext:ClearAllPoints()
-  self.titletext:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 10, -8)
+  self.titletext:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 14, -11)
   self.titletext:SetPoint("TOPRIGHT", rightAnchor, rightPoint, rightX, rightY)
 
   self.descriptiontext:ClearAllPoints()
@@ -62,15 +63,15 @@ local function UpdateAnchors(self)
   local content = self.content
   content:ClearAllPoints()
   if self.descriptiontext:IsShown() then
-    content:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 10, -46)
+    content:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 14, -52)
   else
-    content:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 10, -30)
+    content:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 14, -36)
   end
-  content:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -10, 10)
+  content:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -14, 12)
 end
 
 local function HeaderPad(self)
-  return self.descriptiontext:IsShown() and 56 or 40
+  return self.descriptiontext:IsShown() and 64 or 46
 end
 
 local function ApplyAutoHeight(self, layoutHeight)
@@ -86,6 +87,9 @@ end
 local function ApplyTheme(self)
   local theme = GetTheme()
   SetBackdrop(self.frame, theme.panel2, theme.border)
+  if self.accentline then
+    self.accentline:SetVertexColor(theme.accent[1], theme.accent[2], theme.accent[3], 0.75)
+  end
 
   if self.titletext then
     self.titletext:SetTextColor(theme.text[1], theme.text[2], theme.text[3], theme.text[4] or 1)
@@ -211,6 +215,13 @@ local function Constructor()
   local theme = GetTheme()
   SetBackdrop(frame, theme.panel2, theme.border)
 
+  local accentline = frame:CreateTexture(nil, "BORDER")
+  accentline:SetTexture("Interface\\Buttons\\WHITE8x8")
+  accentline:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
+  accentline:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1)
+  accentline:SetWidth(2)
+  accentline:SetVertexColor(theme.accent[1], theme.accent[2], theme.accent[3], 0.75)
+
   local titletext = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   titletext:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -8)
   titletext:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -8)
@@ -252,6 +263,7 @@ local function Constructor()
     descriptiontext = descriptiontext,
     togglebutton = togglebutton,
     toggletext = toggletext,
+    accentline = accentline,
   }
 
   togglebutton:SetScript("OnClick", function()

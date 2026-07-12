@@ -5,6 +5,7 @@ local mod = {}
 ETBC.Modules.ChatIM = mod
 
 local driver
+local timestampCVarManaged = false
 local filtersRegistered = false
 local lastWhisperSoundAt = 0
 
@@ -64,6 +65,7 @@ local function GetDB()
 
   if db.timestamps == nil then db.timestamps = false end
   if db.timestampFormat == nil then db.timestampFormat = "%H:%M" end
+  db.timestampColor = db.timestampColor or { r = 0.4, g = 1.0, b = 0.4 }
 
   if db.urlLinks == nil then db.urlLinks = true end
   if db.emailLinks == nil then db.emailLinks = true end
@@ -80,6 +82,8 @@ local function GetDB()
   if db.copyButton == nil then db.copyButton = true end
   if db.copyButtonScale == nil then db.copyButtonScale = 1.0 end
   if db.copyButtonAlpha == nil then db.copyButtonAlpha = 0.95 end
+  if db.copyButtonHover == nil then db.copyButtonHover = true end
+  if db.copyButtonSide == nil then db.copyButtonSide = "AUTO" end
   if db.copyTarget == nil then db.copyTarget = "follow" end
 
   return db
@@ -153,11 +157,26 @@ local function EscapePercents(msg)
   return msg
 end
 
-local function AddTimestamp(db, msg)
-  if not db.timestamps then return msg end
-  local fmt = db.timestampFormat or "%H:%M"
-  local ts = date(fmt)
-  return "|cff66ff66[" .. ts .. "]|r " .. msg
+local function ApplyTimestampCVar(db, enabled)
+  if not GetCVar or not SetCVar then return end
+
+  if enabled and db.timestamps then
+    if db.timestampOriginalFormat == nil then
+      db.timestampOriginalFormat = GetCVar("showTimestamps") or "none"
+    end
+    local fmt = db.timestampFormat or "%H:%M"
+    local color = db.timestampColor or { r = 0.4, g = 1.0, b = 0.4 }
+    local function channel(v)
+      return math.floor(math.max(0, math.min(1, tonumber(v) or 1)) * 255 + 0.5)
+    end
+    local hex = string.format("%02x%02x%02x", channel(color.r), channel(color.g), channel(color.b))
+    SetCVar("showTimestamps", "|cff" .. hex .. "[" .. fmt .. "]|r ")
+    timestampCVarManaged = true
+  elseif timestampCVarManaged or db.timestampOriginalFormat ~= nil then
+    SetCVar("showTimestamps", db.timestampOriginalFormat or "none")
+    db.timestampOriginalFormat = nil
+    timestampCVarManaged = false
+  end
 end
 
 local function ShortenTags(db, msg)
@@ -200,7 +219,6 @@ local function Filter(_, _, msg, author, ...)
 
   msg = EscapePercents(msg)
   msg = MakeLinks(db, msg)
-  msg = AddTimestamp(db, msg)
   msg = ShortenTags(db, msg)
 
   return false, msg, author, ...
@@ -488,6 +506,7 @@ local function EnsureCopyButton()
   )
   copyButton:SetSize(18, 18)
   copyButton:SetFrameStrata("HIGH")
+  copyButton:SetClampedToScreen(true)
   copyButton:EnableMouse(true)
 
   if copyButton.SetBackdrop then
@@ -507,6 +526,7 @@ local function EnsureCopyButton()
   icon:SetTexCoord(0.18, 0.82, 0.18, 0.82)
 
   copyButton:SetScript("OnEnter", function(self)
+    self:SetAlpha(1)
     if not GameTooltip then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText("Copy Chat")
@@ -514,7 +534,8 @@ local function EnsureCopyButton()
     GameTooltip:AddLine("Command: /etbccopy", 0.8, 0.8, 0.8, true)
     GameTooltip:Show()
   end)
-  copyButton:SetScript("OnLeave", function()
+  copyButton:SetScript("OnLeave", function(self)
+    self:SetAlpha(self._etbcRestingAlpha or 0.95)
     if GameTooltip then GameTooltip:Hide() end
   end)
 
@@ -531,9 +552,22 @@ local function PositionCopyButton(db)
     return
   end
   copyButton:ClearAllPoints()
-  copyButton:SetPoint("TOPRIGHT", anchorFrame, "TOPRIGHT", -6, -6)
+  -- Keep the control outside the message inset so long chat lines cannot run
+  -- underneath it.
+  local frameRight = anchorFrame.GetRight and anchorFrame:GetRight() or nil
+  local screenRight = UIParent and UIParent.GetRight and UIParent:GetRight() or nil
+  local side = db.copyButtonSide or "AUTO"
+  local useLeft = side == "LEFT"
+    or (side == "AUTO" and frameRight and screenRight and (frameRight + 24) > screenRight)
+  if useLeft then
+    copyButton:SetPoint("TOPRIGHT", anchorFrame, "TOPLEFT", -4, -2)
+  else
+    copyButton:SetPoint("TOPLEFT", anchorFrame, "TOPRIGHT", 4, -2)
+  end
   copyButton:SetScale(tonumber(db.copyButtonScale) or 1.0)
-  copyButton:SetAlpha(tonumber(db.copyButtonAlpha) or 0.95)
+  local configuredAlpha = tonumber(db.copyButtonAlpha) or 0.95
+  copyButton._etbcRestingAlpha = db.copyButtonHover and math.min(configuredAlpha, 0.20) or configuredAlpha
+  copyButton:SetAlpha(copyButton._etbcRestingAlpha)
   copyButton:Show()
 end
 
@@ -601,6 +635,8 @@ local function Apply()
   EnsureDriver()
   local db = GetDB()
   local enabled = ETBC.db.profile.general.enabled and db.enabled
+
+  ApplyTimestampCVar(db, enabled)
 
   driver:UnregisterAllEvents()
   driver:SetScript("OnEvent", nil)

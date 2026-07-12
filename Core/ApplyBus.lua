@@ -9,16 +9,25 @@ local snapshot = {}
 local flushScheduled = false
 local flushing = false
 local batchDepth = 0
+local lastErrors = {}
 
 local function LogApplyError(key, err)
+  local message = tostring(err)
   if ETBC and ETBC.Debug then
-    ETBC:Debug("ApplyBus error (" .. tostring(key) .. "): " .. tostring(err))
+    ETBC:Debug("ApplyBus error (" .. tostring(key) .. "): " .. message)
+  end
+  if lastErrors[key] ~= message and DEFAULT_CHAT_FRAME then
+    lastErrors[key] = message
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cffff6666EnhanceTBC live-update error (" .. tostring(key) .. "):|r " .. message
+    )
   end
 end
 
 local function DispatchKey(key)
   local list = listeners[key]
   if not list then return end
+  local hadError = false
 
   local n = #list
   for i = 1, n do
@@ -31,10 +40,12 @@ local function DispatchKey(key)
     if type(fn) == "function" then
       local ok, err = pcall(fn, key)
       if not ok then
+        hadError = true
         LogApplyError(key, err)
       end
     end
   end
+  if not hadError then lastErrors[key] = nil end
 end
 
 local function QueueKey(key)

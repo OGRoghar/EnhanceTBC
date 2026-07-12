@@ -284,6 +284,14 @@ local function AutoCollapseCompleted(db)
   end
 end
 
+local function OnFadeUpdate()
+  local frame = FindTracker()
+  if not frame or not frame:IsShown() then return end
+  if not frame._etbcFade or not frame._etbcFade.active then return end
+  if not cachedDB then cachedDB = GetDB() end
+  UpdateFade(frame, cachedDB)
+end
+
 local function HookTracker(frame, kind)
   if hooked then return end
   hooked = true
@@ -291,12 +299,7 @@ local function HookTracker(frame, kind)
   EnsureDriver()
 
   -- Only run OnUpdate when there's an active fade
-  driver:SetScript("OnUpdate", function()
-    if not frame or not frame:IsShown() then return end
-    if not frame._etbcFade or not frame._etbcFade.active then return end
-    if not cachedDB then cachedDB = GetDB() end
-    UpdateFade(frame, cachedDB)
-  end)
+  driver:SetScript("OnUpdate", OnFadeUpdate)
 
   -- Combat visibility
   driver:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -341,6 +344,7 @@ local function Apply()
   if not frame then return end
 
   if not (generalEnabled and db.enabled and allowed) then
+    driver:SetScript("OnUpdate", nil)
     -- Soft reset
     frame:SetAlpha(1)
     frame:Show()
@@ -355,6 +359,7 @@ local function Apply()
   end
 
   HookTracker(frame, kind)
+  driver:SetScript("OnUpdate", OnFadeUpdate)
   ApplyLayout(frame, kind, db)
   ApplyCombatVisibility(frame, db)
 end

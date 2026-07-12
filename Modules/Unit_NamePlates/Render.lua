@@ -28,19 +28,30 @@ local FindPriorityTrackedDebuffAura = shared.FindPriorityTrackedDebuffAura
 local function SetNameplateHealthBarText(statusbar, unit)
   if not statusbar or not statusbar.unit_health_text then return end
 
+  local db = GetDB()
+
   local unit_health = UnitHealth(unit)
   local unit_health_max = UnitHealthMax(unit)
 
   if unit_health and unit_health_max and unit_health_max > 0 then
     if statusbar.unit_health_text:IsShown() then
-      statusbar.unit_health_text.text_left:SetText(math.ceil(unit_health / unit_health_max * 100) .. "%")
+      local mode = db.enemy_nameplate_health_text_mode or "BOTH"
+      if mode == "PERCENT" or mode == "BOTH" then
+        statusbar.unit_health_text.text_left:SetText(math.ceil(unit_health / unit_health_max * 100) .. "%")
+      else
+        statusbar.unit_health_text.text_left:SetText("")
+      end
 
-      if unit_health < 1000 then
-        statusbar.unit_health_text.text_right:SetText(unit_health)
-      elseif unit_health < 1000000 then
-        statusbar.unit_health_text.text_right:SetText(string.format("%.1fK", (unit_health / 1000)))
-      elseif unit_health < 1000000000 then
-        statusbar.unit_health_text.text_right:SetText(string.format("%.1fM", (unit_health / 1000000)))
+      if mode == "VALUE" or mode == "BOTH" then
+        if unit_health < 1000 then
+          statusbar.unit_health_text.text_right:SetText(unit_health)
+        elseif unit_health < 1000000 then
+          statusbar.unit_health_text.text_right:SetText(string.format("%.1fK", (unit_health / 1000)))
+        elseif unit_health < 1000000000 then
+          statusbar.unit_health_text.text_right:SetText(string.format("%.1fM", (unit_health / 1000000)))
+        end
+      else
+        statusbar.unit_health_text.text_right:SetText("")
       end
     else
       statusbar.unit_health_text.text_left:SetText("")
@@ -66,14 +77,19 @@ local function SetNameplateHealthBarColor(nameplate, statusbar, unit)
   local db = GetDB()
   if not UnitExists(unit) or not statusbar or not statusbar.unit_health_text then return end
 
+  if db.enemy_nameplate_execute_enabled then
+    local health, healthMax = UnitHealth(unit), UnitHealthMax(unit)
+    local threshold = tonumber(db.enemy_nameplate_execute_threshold) or 20
+    if healthMax and healthMax > 0 and health and (health / healthMax * 100) <= threshold then
+      local color = db.enemy_nameplate_execute_color or { r = 1.0, g = 0.35, b = 0.05 }
+      statusbar:SetStatusBarColor(color.r or 1, color.g or 0.35, color.b or 0.05)
+      return
+    end
+  end
+
   if UnitIsPlayer(unit) then
     if not UnitIsConnected(unit) then
       statusbar:SetStatusBarColor(0.75, 0.75, 0.75)
-      return
-    end
-
-    if not UnitIsPVP(unit) and not IsFriendlyNameplate(nameplate, unit) then
-      statusbar:SetStatusBarColor(1, 0.9, 0.1)
       return
     end
 
@@ -87,25 +103,40 @@ local function SetNameplateHealthBarColor(nameplate, statusbar, unit)
       if not unit_class then return end
       local unit_class_color = RAID_CLASS_COLORS[unit_class]
       if unit_class_color then
-        statusbar:SetStatusBarColor(unit_class_color:GetRGB())
-      end
-    else
-      local unit_reaction = UnitReaction(unit, "player")
-      if unit_reaction then
-        if unit_reaction >= 1 and unit_reaction <= 3 then
-          statusbar:SetStatusBarColor(0.9, 0, 0.1)
-        elseif unit_reaction == 4 then
-          statusbar:SetStatusBarColor(1, 0.9, 0.1)
+        if type(unit_class_color.GetRGB) == "function" then
+          statusbar:SetStatusBarColor(unit_class_color:GetRGB())
         else
-          statusbar:SetStatusBarColor(0, 0.85, 0.2)
+          statusbar:SetStatusBarColor(
+            unit_class_color.r or 1,
+            unit_class_color.g or 1,
+            unit_class_color.b or 1
+          )
         end
+        return
+      end
+    end
+
+    if not UnitIsPVP(unit) and not IsFriendlyNameplate(nameplate, unit) then
+      statusbar:SetStatusBarColor(1, 0.9, 0.1)
+      return
+    end
+
+    local unit_reaction = UnitReaction(unit, "player")
+    if unit_reaction then
+      if unit_reaction >= 1 and unit_reaction <= 3 then
+        statusbar:SetStatusBarColor(0.9, 0, 0.1)
+      elseif unit_reaction == 4 then
+        statusbar:SetStatusBarColor(1, 0.9, 0.1)
+      else
+        statusbar:SetStatusBarColor(0, 0.85, 0.2)
       end
     end
   else
     if db.nameplate_unit_target_color then
       if not IsFriendlyNameplate(nameplate, unit) then
         if SafeUnitIsUnit(unit .. "target", "player") then
-          statusbar:SetStatusBarColor(0, 0.1, 0.9)
+          local color = db.nameplate_unit_target_color_value or { r = 0.1, g = 0.55, b = 1.0 }
+          statusbar:SetStatusBarColor(color.r or 0.1, color.g or 0.55, color.b or 1.0)
           return
         end
       else
@@ -225,68 +256,90 @@ end
 
 local function SetNameplateCastBar(nameplate, castbar)
   if nameplate and castbar then
-    castbar.Icon:Show()
-    castbar.Text:Show()
-    castbar.Border:Hide()
+    if castbar.Icon then castbar.Icon:Show() end
+    if castbar.Text then castbar.Text:Show() end
+    if castbar.Border then castbar.Border:Hide() end
   end
 end
 
 local function SetNameplateSize(nameplate, statusbar, unit)
   local db = GetDB()
-  if not UnitExists(unit) or not nameplate.modified then return end
+  if not nameplate or not nameplate.UnitFrame or not statusbar
+    or not UnitExists(unit) or not nameplate.modified then return end
+  local level_frame = nameplate.UnitFrame.LevelFrame or nameplate.UnitFrame.levelFrame
+  local level_text = level_frame and (level_frame.LevelText or level_frame.levelText)
+  local high_level_texture = level_frame
+    and (level_frame.HighLevelTexture or level_frame.highLevelTexture)
+  local function SetLevelAlpha(alpha)
+    if level_text then level_text:SetAlpha(alpha) end
+    if high_level_texture then high_level_texture:SetAlpha(alpha) end
+  end
 
   if not SafeUnitIsUnit("player", unit) then
     if not IsFriendlyNameplate(nameplate, unit) then
+      if not nameplate.UnitFrame.healthBarWrapper then return end
       nameplate.UnitFrame.healthBarWrapper:SetSize(
         db.enemy_nameplate_width or 109,
         db.enemy_nameplate_height or 12.5
       )
-      nameplate.UnitFrame.castBarWrapper:SetSize(
-        db.enemy_nameplate_castbar_width or 109,
-        db.enemy_nameplate_castbar_height or 12.5
-      )
+      if nameplate.UnitFrame.castBarWrapper then
+        nameplate.UnitFrame.castBarWrapper:SetSize(
+          db.enemy_nameplate_castbar_width or 109,
+          db.enemy_nameplate_castbar_height or 12.5
+        )
+      end
 
       if statusbar.unit_health_text then
         if db.enemy_nameplate_health_text then statusbar.unit_health_text:Show() end
 
-        nameplate.UnitFrame.name:SetWidth(nameplate.UnitFrame.healthBarWrapper:GetWidth() - 20)
-        nameplate.UnitFrame.LevelFrame.levelText:SetAlpha(1)
-        nameplate.UnitFrame.LevelFrame.highLevelTexture:SetAlpha(1)
+        if nameplate.UnitFrame.name then
+          nameplate.UnitFrame.name:SetWidth(nameplate.UnitFrame.healthBarWrapper:GetWidth() - 20)
+        end
+        SetLevelAlpha(1)
 
         SetNameplateHealthBarText(statusbar, unit)
       end
     else
+      if not nameplate.UnitFrame.healthBarWrapper then return end
       nameplate.UnitFrame.healthBarWrapper:SetSize(
         db.friendly_nameplate_width or 42,
         db.friendly_nameplate_height or 12.5
       )
-      nameplate.UnitFrame.castBarWrapper:SetSize(
-        db.friendly_nameplate_castbar_width or 42,
-        db.friendly_nameplate_castbar_height or 12.5
-      )
+      if nameplate.UnitFrame.castBarWrapper then
+        nameplate.UnitFrame.castBarWrapper:SetSize(
+          db.friendly_nameplate_castbar_width or 42,
+          db.friendly_nameplate_castbar_height or 12.5
+        )
+      end
 
       if statusbar.unit_health_text then
         statusbar.unit_health_text:Hide()
 
         if nameplate.UnitFrame.healthBarWrapper:GetWidth() >= 70 then
-          nameplate.UnitFrame.name:SetWidth(nameplate.UnitFrame.healthBarWrapper:GetWidth() - 20)
-          nameplate.UnitFrame.LevelFrame.levelText:SetAlpha(1)
-          nameplate.UnitFrame.LevelFrame.highLevelTexture:SetAlpha(1)
+          if nameplate.UnitFrame.name then
+            nameplate.UnitFrame.name:SetWidth(nameplate.UnitFrame.healthBarWrapper:GetWidth() - 20)
+          end
+          SetLevelAlpha(1)
         else
-          nameplate.UnitFrame.name:SetWidth(nameplate.UnitFrame.healthBarWrapper:GetWidth())
-          nameplate.UnitFrame.LevelFrame.levelText:SetAlpha(0)
-          nameplate.UnitFrame.LevelFrame.highLevelTexture:SetAlpha(0)
+          if nameplate.UnitFrame.name then
+            nameplate.UnitFrame.name:SetWidth(nameplate.UnitFrame.healthBarWrapper:GetWidth())
+          end
+          SetLevelAlpha(0)
         end
       end
     end
   end
 
-  nameplate.UnitFrame.healthBar:ClearAllPoints()
-  nameplate.UnitFrame.healthBar:SetPoint(
+  local healthBar = nameplate.UnitFrame.healthBar
+  local healthWrapper = nameplate.UnitFrame.healthBarWrapper
+  if not healthBar or not healthWrapper then return end
+  healthBar:ClearAllPoints()
+  healthBar:SetPoint(
     "BOTTOMLEFT", nameplate.UnitFrame.healthBarWrapper, "BOTTOMLEFT", 0, 0
   )
-  nameplate.UnitFrame.healthBar:SetPoint("TOPRIGHT", nameplate.UnitFrame.healthBarWrapper, "TOPRIGHT", 0, 0)
+  healthBar:SetPoint("TOPRIGHT", healthWrapper, "TOPRIGHT", 0, 0)
 
+  if nameplate.UnitFrame.castBar and nameplate.UnitFrame.castBarWrapper then
   nameplate.UnitFrame.castBar:ClearAllPoints()
   nameplate.UnitFrame.castBar:SetPoint(
     "BOTTOMLEFT",
@@ -297,23 +350,33 @@ local function SetNameplateSize(nameplate, statusbar, unit)
   )
   nameplate.UnitFrame.castBar:SetPoint("TOPRIGHT", nameplate.UnitFrame.castBarWrapper, "TOPRIGHT", 0, 0)
 
-  nameplate.UnitFrame.castBar.Icon:ClearAllPoints()
-  nameplate.UnitFrame.castBar.Icon:SetPoint("BOTTOMLEFT", nameplate.UnitFrame.castBarWrapper, "BOTTOMLEFT", 0, 0)
-  nameplate.UnitFrame.castBar.Icon:SetPoint("TOPRIGHT", nameplate.UnitFrame.castBar, "TOPLEFT", -0.5, 0)
+  local castBar = nameplate.UnitFrame.castBar
+  if castBar.Icon then
+  castBar.Icon:ClearAllPoints()
+  castBar.Icon:SetPoint("BOTTOMLEFT", nameplate.UnitFrame.castBarWrapper, "BOTTOMLEFT", 0, 0)
+  castBar.Icon:SetPoint("TOPRIGHT", castBar, "TOPLEFT", -0.5, 0)
+  end
 
-  nameplate.UnitFrame.castBar.icon_backdrop:ClearAllPoints()
-  nameplate.UnitFrame.castBar.icon_backdrop:SetPoint("BOTTOMLEFT", nameplate.UnitFrame.castBar.Icon, -1, -1)
-  nameplate.UnitFrame.castBar.icon_backdrop:SetPoint("TOPRIGHT", nameplate.UnitFrame.castBar.Icon, 1, 1)
+  if castBar.icon_backdrop and castBar.Icon then
+  castBar.icon_backdrop:ClearAllPoints()
+  castBar.icon_backdrop:SetPoint("BOTTOMLEFT", castBar.Icon, -1, -1)
+  castBar.icon_backdrop:SetPoint("TOPRIGHT", castBar.Icon, 1, 1)
+  end
 
-  nameplate.UnitFrame.castBar.Spark:SetSize(15, nameplate.UnitFrame.castBar:GetHeight() * 1.6)
+  if castBar.Spark then castBar.Spark:SetSize(15, castBar:GetHeight() * 1.6) end
+  end
 
-  nameplate.UnitFrame.healthBar.absorb:SetSize(16, nameplate.UnitFrame.healthBar:GetHeight())
-  nameplate.UnitFrame.healthBar.absorb.over_absorb_texture:SetSize(12, nameplate.UnitFrame.healthBar.absorb:GetHeight())
+  if healthBar.absorb then
+    healthBar.absorb:SetSize(16, healthBar:GetHeight())
+    if healthBar.absorb.over_absorb_texture then
+      healthBar.absorb.over_absorb_texture:SetSize(12, healthBar.absorb:GetHeight())
+    end
+  end
 end
 
 local function SetNameplatePlayerDebuffs(nameplate, unit)
   local db = GetDB()
-  if unit and nameplate.UnitFrame then
+  if unit and nameplate and nameplate.UnitFrame and nameplate.UnitFrame.healthBar then
     local nameplate_player_debuffs = nameplate.UnitFrame.healthBar.player_debuffs
     if not nameplate_player_debuffs then return end
     local player_debuff_frames = { nameplate_player_debuffs:GetChildren() }
@@ -484,7 +547,7 @@ end
 
 local function SetNameplateUnitDebuff(nameplate, unit)
   local db = GetDB()
-  if unit and nameplate.UnitFrame then
+  if unit and nameplate and nameplate.UnitFrame and nameplate.UnitFrame.healthBar then
     local nameplate_debuff = nameplate.UnitFrame.healthBar.unit_debuff
     if not nameplate_debuff then return end
 

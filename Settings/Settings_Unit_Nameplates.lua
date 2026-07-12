@@ -11,6 +11,7 @@ local function GetDB()
 
   if db.enemy_nameplate_width == nil then db.enemy_nameplate_width = 109 end
   if db.enemy_nameplate_height == nil then db.enemy_nameplate_height = 12.5 end
+  if db.nameplate_texture == nil then db.nameplate_texture = "Blizzard" end
   if db.enemy_nameplate_castbar_width == nil then db.enemy_nameplate_castbar_width = 109 end
   if db.enemy_nameplate_castbar_height == nil then db.enemy_nameplate_castbar_height = 12.5 end
 
@@ -20,6 +21,17 @@ local function GetDB()
   if db.friendly_nameplate_castbar_height == nil then db.friendly_nameplate_castbar_height = 12.5 end
 
   if db.enemy_nameplate_health_text == nil then db.enemy_nameplate_health_text = true end
+  if db.enemy_nameplate_health_text_mode == nil then db.enemy_nameplate_health_text_mode = "BOTH" end
+  if db.enemy_nameplate_name_font_size == nil then db.enemy_nameplate_name_font_size = 10 end
+  if db.enemy_nameplate_health_font_size == nil then db.enemy_nameplate_health_font_size = 9.5 end
+  db.enemy_nameplate_health_text_color = db.enemy_nameplate_health_text_color or { r = 1.0, g = 0.82, b = 0.0 }
+  db.enemy_nameplate_background_color = db.enemy_nameplate_background_color or { r = 0.02, g = 0.02, b = 0.02 }
+  if db.enemy_nameplate_background_alpha == nil then db.enemy_nameplate_background_alpha = 0.85 end
+  db.enemy_nameplate_border_color = db.enemy_nameplate_border_color or { r = 0.04, g = 0.04, b = 0.04 }
+  if db.enemy_nameplate_border_size == nil then db.enemy_nameplate_border_size = 1 end
+  if db.enemy_nameplate_execute_enabled == nil then db.enemy_nameplate_execute_enabled = false end
+  if db.enemy_nameplate_execute_threshold == nil then db.enemy_nameplate_execute_threshold = 20 end
+  db.enemy_nameplate_execute_color = db.enemy_nameplate_execute_color or { r = 1.0, g = 0.35, b = 0.05 }
   if db.enemy_nameplate_debuff == nil then db.enemy_nameplate_debuff = true end
   if db.enemy_nameplate_debuff_scale == nil then db.enemy_nameplate_debuff_scale = 1.0 end
 
@@ -33,6 +45,7 @@ local function GetDB()
   if db.class_colored_nameplates == nil then db.class_colored_nameplates = true end
   if db.friendly_nameplate_default_color == nil then db.friendly_nameplate_default_color = false end
   if db.nameplate_unit_target_color == nil then db.nameplate_unit_target_color = true end
+  db.nameplate_unit_target_color_value = db.nameplate_unit_target_color_value or { r = 0.1, g = 0.55, b = 1.0 }
   if db.totem_nameplate_colors == nil then db.totem_nameplate_colors = true end
   if db.useAuraDeltaUpdates == nil then db.useAuraDeltaUpdates = true end
   if db.useSpellIDAuraLookup == nil then db.useSpellIDAuraLookup = true end
@@ -43,6 +56,25 @@ end
 local function EnsureDefaults()
   if not ETBC.db or not ETBC.db.profile then return end
   GetDB()
+end
+
+local function LSM_Textures()
+  local textures
+  if ETBC.LSM and ETBC.LSM.HashTable then
+    textures = ETBC.LSM:HashTable("statusbar")
+  else
+    textures = { Blizzard = "Interface\\TargetingFrame\\UI-StatusBar" }
+  end
+
+  local labels = {}
+  for name, path in pairs(textures) do
+    if type(path) == "string" and path ~= "" then
+      labels[name] = "|T" .. path .. ":14:96|t  " .. name
+    else
+      labels[name] = name
+    end
+  end
+  return labels
 end
 
 ETBC.SettingsRegistry:RegisterGroup("nameplates", {
@@ -63,6 +95,21 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       },
 
       enemyHeader = { type = "header", name = "Enemy Nameplates", order = 10 },
+
+      nameplate_texture = {
+        type = "select",
+        name = "Health bar texture",
+        desc = "Selects the LibSharedMedia texture used by enemy and friendly nameplate health bars.",
+        order = 10.5,
+        width = "full",
+        disabled = function() return not db.enabled end,
+        values = LSM_Textures,
+        get = function() return db.nameplate_texture or "Blizzard" end,
+        set = function(_, v)
+          db.nameplate_texture = v
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
+      },
 
       enemy_nameplate_width = {
         type = "range",
@@ -110,6 +157,125 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         get = function() return db.enemy_nameplate_health_text end,
         set = function(_, v)
           db.enemy_nameplate_health_text = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
+      },
+
+      enemy_nameplate_health_text_mode = {
+        type = "select",
+        name = "Health text mode",
+        order = 15.1,
+        values = { PERCENT = "Percentage", VALUE = "Current value", BOTH = "Percentage and value" },
+        disabled = function() return not (db.enabled and db.enemy_nameplate_health_text) end,
+        get = function() return db.enemy_nameplate_health_text_mode end,
+        set = function(_, v) db.enemy_nameplate_health_text_mode = v; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      enemy_nameplate_name_font_size = {
+        type = "range",
+        name = "Name font size",
+        order = 15.11,
+        min = 8, max = 18, step = 0.5,
+        disabled = function() return not db.enabled end,
+        get = function() return db.enemy_nameplate_name_font_size end,
+        set = function(_, v) db.enemy_nameplate_name_font_size = v; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      enemy_nameplate_health_font_size = {
+        type = "range",
+        name = "Health font size",
+        order = 15.12,
+        min = 7, max = 16, step = 0.5,
+        disabled = function() return not (db.enabled and db.enemy_nameplate_health_text) end,
+        get = function() return db.enemy_nameplate_health_font_size end,
+        set = function(_, v) db.enemy_nameplate_health_font_size = v; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      enemy_nameplate_health_text_color = {
+        type = "color",
+        name = "Health text color",
+        order = 15.13,
+        disabled = function() return not (db.enabled and db.enemy_nameplate_health_text) end,
+        get = function()
+          local c = db.enemy_nameplate_health_text_color
+          return c.r, c.g, c.b
+        end,
+        set = function(_, r, g, b)
+          db.enemy_nameplate_health_text_color = { r = r, g = g, b = b }
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
+      },
+      enemy_nameplate_background_color = {
+        type = "color",
+        name = "Missing-health color",
+        order = 15.2,
+        disabled = function() return not db.enabled end,
+        get = function()
+          local c = db.enemy_nameplate_background_color
+          return c.r, c.g, c.b
+        end,
+        set = function(_, r, g, b)
+          db.enemy_nameplate_background_color = { r = r, g = g, b = b }
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
+      },
+      enemy_nameplate_background_alpha = {
+        type = "range",
+        name = "Missing-health opacity",
+        order = 15.3,
+        min = 0, max = 1, step = 0.05,
+        disabled = function() return not db.enabled end,
+        get = function() return db.enemy_nameplate_background_alpha end,
+        set = function(_, v) db.enemy_nameplate_background_alpha = v; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      enemy_nameplate_border_color = {
+        type = "color",
+        name = "Health border color",
+        order = 15.31,
+        disabled = function() return not db.enabled end,
+        get = function()
+          local c = db.enemy_nameplate_border_color
+          return c.r, c.g, c.b
+        end,
+        set = function(_, r, g, b)
+          db.enemy_nameplate_border_color = { r = r, g = g, b = b }
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
+      },
+      enemy_nameplate_border_size = {
+        type = "range",
+        name = "Health border thickness",
+        order = 15.32,
+        min = 0, max = 3, step = 0.5,
+        disabled = function() return not db.enabled end,
+        get = function() return db.enemy_nameplate_border_size end,
+        set = function(_, v) db.enemy_nameplate_border_size = v; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      enemy_nameplate_execute_enabled = {
+        type = "toggle",
+        name = "Execute-range coloring",
+        order = 15.4,
+        disabled = function() return not db.enabled end,
+        get = function() return db.enemy_nameplate_execute_enabled end,
+        set = function(_, v) db.enemy_nameplate_execute_enabled = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      enemy_nameplate_execute_threshold = {
+        type = "range",
+        name = "Execute threshold",
+        order = 15.5,
+        min = 5, max = 40, step = 1,
+        disabled = function() return not (db.enabled and db.enemy_nameplate_execute_enabled) end,
+        get = function() return db.enemy_nameplate_execute_threshold end,
+        set = function(_, v) db.enemy_nameplate_execute_threshold = v; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      enemy_nameplate_execute_color = {
+        type = "color",
+        name = "Execute color",
+        order = 15.6,
+        disabled = function() return not (db.enabled and db.enemy_nameplate_execute_enabled) end,
+        get = function()
+          local c = db.enemy_nameplate_execute_color
+          return c.r, c.g, c.b
+        end,
+        set = function(_, r, g, b)
+          db.enemy_nameplate_execute_color = { r = r, g = g, b = b }
           ETBC.ApplyBus:Notify("nameplates")
         end,
       },
@@ -258,7 +424,7 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       class_colored_nameplates = {
         type = "toggle",
         name = "Class colored nameplates",
-        desc = "Uses class colors on friendly player nameplates when the client provides class info.",
+        desc = "Uses class colors on enemy and friendly player nameplates when the client provides class info.",
         order = 41,
         width = "full",
         disabled = function() return not db.enabled end,
@@ -282,7 +448,7 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
 
       nameplate_unit_target_color = {
         type = "toggle",
-        name = "Highlight enemy targetting you",
+        name = "Highlight enemy targeting you",
         desc = "Highlights enemy nameplates when that unit is currently targeting you.",
         order = 43,
         width = "full",
@@ -290,6 +456,21 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         get = function() return db.nameplate_unit_target_color end,
         set = function(_, v)
           db.nameplate_unit_target_color = v and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
+      },
+
+      nameplate_unit_target_color_value = {
+        type = "color",
+        name = "Targeting-you color",
+        order = 43.5,
+        disabled = function() return not (db.enabled and db.nameplate_unit_target_color) end,
+        get = function()
+          local c = db.nameplate_unit_target_color_value
+          return c.r, c.g, c.b
+        end,
+        set = function(_, r, g, b)
+          db.nameplate_unit_target_color_value = { r = r, g = g, b = b }
           ETBC.ApplyBus:Notify("nameplates")
         end,
       },

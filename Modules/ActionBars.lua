@@ -185,12 +185,14 @@ local function GetBars()
     if _G.MultiBarLeft then bars[#bars + 1] = _G.MultiBarLeft end
   end
 
-  if db.petBar and _G.PetActionBarFrame then
-    bars[#bars + 1] = _G.PetActionBarFrame
+  local petBar = _G.PetActionBar or _G.PetActionBarFrame
+  if db.petBar and petBar then
+    bars[#bars + 1] = petBar
   end
 
-  if db.stanceBar and _G.StanceBarFrame then
-    bars[#bars + 1] = _G.StanceBarFrame
+  local stanceBar = _G.StanceBar or _G.StanceBarFrame
+  if db.stanceBar and stanceBar then
+    bars[#bars + 1] = stanceBar
   end
 
   return bars
@@ -321,6 +323,13 @@ local function UpdateRangeTints()
   end
 end
 
+local function OnRangeUpdate(_, elapsed)
+  rangeAccum = rangeAccum + (elapsed or 0)
+  if rangeAccum < RANGE_UPDATE_INTERVAL then return end
+  rangeAccum = 0
+  UpdateRangeTints()
+end
+
 local function HookEvents()
   if hooked then return end
   hooked = true
@@ -376,16 +385,6 @@ local function HookEvents()
     end
   end)
 
-  driver:SetScript("OnUpdate", function(_, elapsed)
-    local db = GetDB()
-    if not (ETBC.db.profile.general and ETBC.db.profile.general.enabled and db.enabled) then
-      return
-    end
-    rangeAccum = rangeAccum + (elapsed or 0)
-    if rangeAccum < RANGE_UPDATE_INTERVAL then return end
-    rangeAccum = 0
-    UpdateRangeTints()
-  end)
 end
 
 local function Apply()
@@ -395,6 +394,8 @@ local function Apply()
   local db = GetDB()
   local generalEnabled = ETBC.db.profile.general and ETBC.db.profile.general.enabled
   if not (generalEnabled and db.enabled) then
+    driver:SetScript("OnUpdate", nil)
+    rangeAccum = 0
     -- soft disable: restore alpha, show texts
     for _, bar in ipairs(GetBars()) do
       if bar and bar.SetAlpha then bar:SetAlpha(1) end
@@ -411,6 +412,8 @@ local function Apply()
     ClearAllIconTints()
     return
   end
+
+  driver:SetScript("OnUpdate", OnRangeUpdate)
 
   -- Layout + style
   if InCombatLockdown and InCombatLockdown() then

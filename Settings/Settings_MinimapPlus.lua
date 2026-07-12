@@ -43,6 +43,7 @@ local function EnsureDefaults()
     db.sink_scan_interval = type(db.scanInterval) == "number" and db.scanInterval or 5
   end
   db.scanInterval = db.sink_scan_interval
+  if db.sink_icon_size == nil then db.sink_icon_size = 28 end
 
   db.sink_anchor = db.sink_anchor or {}
 end
@@ -215,6 +216,20 @@ ETBC.SettingsRegistry:RegisterGroup("minimapplus", {
         set = function(_, v)
           db.sink_scan_interval = tonumber(v) or 5
           db.scanInterval = db.sink_scan_interval
+          Apply()
+        end,
+      },
+
+      sinkIconSize = {
+        type = "range",
+        name = "Sink Button Size",
+        desc = "Sets the displayed size of addon buttons inside the sink tray.",
+        order = 24,
+        min = 22, max = 40, step = 1,
+        disabled = function() return not db.sink_addons end,
+        get = function() return tonumber(db.sink_icon_size) or 28 end,
+        set = function(_, v)
+          db.sink_icon_size = tonumber(v) or 28
           Apply()
         end,
       },

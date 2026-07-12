@@ -81,10 +81,24 @@ local function LSM_Fonts()
 end
 
 local function LSM_Textures()
+  local textures
   if ETBC.LSM and ETBC.LSM.HashTable then
-    return ETBC.LSM:HashTable("statusbar")
+    textures = ETBC.LSM:HashTable("statusbar")
+  else
+    textures = { Blizzard = "Interface\\TargetingFrame\\UI-StatusBar" }
   end
-  return { Blizzard = "Interface\\TargetingFrame\\UI-StatusBar" }
+
+  -- AceGUI uses the table value as the visible label. Show a wide inline
+  -- sample followed by the media name instead of exposing the file path.
+  local labels = {}
+  for name, path in pairs(textures) do
+    if type(path) == "string" and path ~= "" then
+      labels[name] = "|T" .. path .. ":14:96|t  " .. name
+    else
+      labels[name] = name
+    end
+  end
+  return labels
 end
 
 ETBC.SettingsRegistry:RegisterGroup("castbar", {

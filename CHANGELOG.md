@@ -1,5 +1,55 @@
 # Changelog
 
+## v1.3.0 - 2026-07-12
+- Added:
+	- First-run setup with Classic, Enhanced, Compact, High Visibility, Performance, and colorblind-friendly presets.
+	- Nameplate missing-health color/opacity, health text modes, and execute-range coloring.
+	- Configurable enemy-targeting-you nameplate color with colorblind-preset variants.
+	- Configurable nameplate health-border color and thickness.
+	- Live nameplate name/health font sizing and health-text color controls.
+	- Preview cards for nameplates, unit frames, tooltips, action bars, and ChatIM.
+	- Module status summaries for enabled, modified, live-update, and combat-restriction states.
+	- Persistent Favorites and Recently Changed sections in the configuration tree.
+	- Expand All/Collapse All module-page controls and per-option reset buttons when a static default is known.
+	- Search-term highlighting in matching option labels.
+	- `/etbc diagnose` and a General settings action for build, interface, module-state, Plater, combat, and Lua-memory diagnostics.
+	- Diagnostics preset state and preset/import rollback availability.
+	- Profile schema versioning and migration for config-window scale state.
+	- Non-destructive `/etbc selftest` command and General settings action for required build-68575 capabilities.
+	- Comprehensive `TESTING.md` smoke-test guide and local package-preflight script.
+	- Profile-import preview showing source, client, interface, and changed setting groups.
+	- One-level pre-import profile backup with `/etbc profile undoimport` and a General settings action.
+	- Preset confirmation plus one-level Undo Last Preset rollback.
+	- General settings actions to clear module Favorites and Recently Changed history.
+- Changed:
+	- Added a LibSharedMedia nameplate texture selector with inline texture previews matching Castbar+.
+	- Overhauled the `/etbc` configuration window with a sleek modern-TBC palette, compact branded header, clearer navigation hierarchy, and more consistent spacing.
+	- Reworked cards, previews, search, footer controls, buttons, and selection states into crisp flat surfaces with restrained antique-gold accents.
+	- Chat timestamps now use the native build-68575 formatter and appear at the far left of complete messages.
+	- Chat timestamp color and copy-button side are now configurable.
+	- Chat copy button now sits outside message text and remains subtle until hovered.
+	- Chat copy button chooses the available side of the chat frame and clamps to the screen edge.
+	- Tooltip disable now restores the pre-addon scale and hides managed accent/health text visuals.
+	- Config header now displays the addon version and current client build.
+	- Hid the reserved Action Tracker item-tracking control until runtime support exists.
+	- Release packages now include `TESTING.md`, keeping the README testing link valid.
+	- Expanded README coverage for modules, presets, compatibility, and automation safety.
+- Fixed:
+	- Moved native nameplate padding changes behind the combat guard and surfaced unique ApplyBus listener failures in chat for diagnosable live updates.
+	- Deferred Castbar+ and nameplate protected layout updates changed during combat, then reapplied them automatically when combat ends.
+	- Restored class coloring for enemy-player nameplates before non-PvP/reaction color fallbacks.
+	- Guarded optional Blizzard tooltip globals and unit-aura methods before installing hooks.
+	- Hardened all first-party nameplate construction, lifecycle, refresh, and render paths for optional build-68575 player/friendly frame regions and alternate unit-token fields.
+	- Guarded optional build-68575 nameplate container-border and cast-bar regions before installing secure hooks.
+	- Removed the remaining stock AceGUI title-plaque side artwork above the custom configuration header.
+	- Added build-68575 nameplate level/background region compatibility for capitalized Blizzard frame fields.
+	- Replaced invalid nil button-texture assignments in the modern config skin with transparent valid assets.
+	- Restored minimap-icon opening of the custom configuration window by removing unsafe stock-chrome frame introspection.
+	- Increased Button Sink icons to a readable default size and added live sink button-size control.
+	- General Config Scale now updates the active custom configuration window and persists through reopen/reload.
+	- Restored an opaque missing-health background behind enemy nameplate health fills.
+	- Hardened first-party module lifecycle cleanup, delayed callbacks, profile resets, and build-68575 API compatibility.
+
 ## v1.2.13 - 2026-02-25
 - Fixed:
 	- Prevented `ChatIM` URL-link clicks (`url:` hyperlinks) from triggering `ItemRefTooltip:SetHyperlink(): Unknown link type` errors when other addons (for example Questie/NovaInstanceTracker) hook item-ref clicks.

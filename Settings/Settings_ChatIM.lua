@@ -15,6 +15,7 @@ local function GetDB()
 
   if db.timestamps == nil then db.timestamps = false end
   if db.timestampFormat == nil then db.timestampFormat = "%H:%M" end
+  db.timestampColor = db.timestampColor or { r = 0.4, g = 1.0, b = 0.4 }
 
   if db.urlLinks == nil then db.urlLinks = true end
   if db.emailLinks == nil then db.emailLinks = true end
@@ -31,6 +32,8 @@ local function GetDB()
   if db.copyButton == nil then db.copyButton = true end
   if db.copyButtonScale == nil then db.copyButtonScale = 1.0 end
   if db.copyButtonAlpha == nil then db.copyButtonAlpha = 0.95 end
+  if db.copyButtonHover == nil then db.copyButtonHover = true end
+  if db.copyButtonSide == nil then db.copyButtonSide = "AUTO" end
 
   -- NEW: copy target
   -- "follow" => use current chat frame/tab
@@ -89,6 +92,20 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
             values = tsValues,
             get = function() return db.timestampFormat end,
             set = function(_, v) db.timestampFormat = v; ETBC.ApplyBus:Notify("chatim") end,
+            disabled = function() return not (db.enabled and db.timestamps) end,
+          },
+          color = {
+            type = "color",
+            name = "Timestamp Color",
+            order = 3,
+            get = function()
+              local c = db.timestampColor
+              return c.r, c.g, c.b
+            end,
+            set = function(_, r, g, b)
+              db.timestampColor = { r = r, g = g, b = b }
+              ETBC.ApplyBus:Notify("chatim")
+            end,
             disabled = function() return not (db.enabled and db.timestamps) end,
           },
         },
@@ -231,10 +248,28 @@ ETBC.SettingsRegistry:RegisterGroup("chatim", {
             set = function(_, v) db.copyButtonAlpha = v; ETBC.ApplyBus:Notify("chatim") end,
             disabled = function() return not (db.enabled and db.copyButton) end,
           },
+          copyButtonHover = {
+            type = "toggle",
+            name = "Emphasize on Hover",
+            desc = "Keeps the copy button subtle until the pointer moves over it.",
+            order = 5,
+            get = function() return db.copyButtonHover end,
+            set = function(_, v) db.copyButtonHover = v and true or false; ETBC.ApplyBus:Notify("chatim") end,
+            disabled = function() return not (db.enabled and db.copyButton) end,
+          },
+          copyButtonSide = {
+            type = "select",
+            name = "Button Side",
+            order = 5.5,
+            values = { AUTO = "Automatic", LEFT = "Left", RIGHT = "Right" },
+            get = function() return db.copyButtonSide end,
+            set = function(_, v) db.copyButtonSide = v; ETBC.ApplyBus:Notify("chatim") end,
+            disabled = function() return not (db.enabled and db.copyButton) end,
+          },
           copyTarget = {
             type = "select",
             name = "Copy Source",
-            order = 5,
+            order = 6,
             values = function()
               local values = { follow = "Follow current tab" }
               local n = NUM_CHAT_WINDOWS or 10

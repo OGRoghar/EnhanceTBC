@@ -6,7 +6,7 @@ local AceGUI = LibStub("AceGUI-3.0", true)
 if not AceGUI then return end
 
 local Type = "ETBC_PreviewPanel"
-local Version = 1
+local Version = 2
 
 local function GetTheme()
   local skin = ETBC and ETBC.UI and ETBC.UI.ConfigWindow
@@ -41,12 +41,12 @@ end
 
 local function Constructor()
   local frame = CreateFrame("Frame", nil, UIParent)
-  frame:SetHeight(94)
+  frame:SetHeight(104)
   frame:SetWidth(300)
 
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  title:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -9)
-  title:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -9)
+  title:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -12)
+  title:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -12)
   title:SetJustifyH("LEFT")
 
   local icon = frame:CreateTexture(nil, "ARTWORK")
@@ -56,14 +56,14 @@ local function Constructor()
 
   local preview = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   preview:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
-  preview:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, 0)
+  preview:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, 0)
   preview:SetJustifyH("LEFT")
   preview:SetJustifyV("TOP")
 
   local bar = CreateFrame("StatusBar", nil, frame)
-  bar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 10, 10)
-  bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
-  bar:SetHeight(12)
+  bar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 14, 14)
+  bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 14)
+  bar:SetHeight(14)
   bar:SetMinMaxValues(0, 100)
   bar:SetValue(65)
   bar:Hide()

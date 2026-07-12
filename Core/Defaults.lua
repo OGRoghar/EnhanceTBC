@@ -80,6 +80,7 @@ ETBC.defaults = {
       enemy_nameplate_stance_scale = 1.0,
 
       class_colored_nameplates = true,
+      nameplate_texture = "Blizzard",
       friendly_nameplate_default_color = false,
       nameplate_unit_target_color = true,
       totem_nameplate_colors = true,

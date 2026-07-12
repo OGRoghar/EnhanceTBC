@@ -1,6 +1,6 @@
 -- Modules/CVars.lua
 -- EnhanceTBC - CVar Exposure + Reset Categories + CVar discovery/hide-if-missing
--- Build: TBC Anniversary 20505
+-- Build: TBC Anniversary 20506
 -- Logic lives here; Settings/Settings_CVars.lua registers the options UI.
 
 local _, ETBC = ...
@@ -130,9 +130,9 @@ local function IsPlaterLoaded()
 end
 
 local PLATER_FORCED_FRIENDLY_CVARS = {
-  nameplateShowFriends = true,
-  nameplateShowFriendlyNPCs = true,
-  nameplateShowFriendlyMinions = true,
+  nameplateShowFriendlyPlayers = true,
+  nameplateShowFriendlyNpcs = true,
+  nameplateShowFriendlyPlayerMinions = true,
 }
 
 local function IsPlaterForcedFriendlyCVar(cvar)
@@ -207,14 +207,14 @@ end
 local function EnforcePlaterNameplateCVars()
   if not IsPlaterLoaded() then return end
 
-  if CVarExists("nameplateShowFriends") then
-    CVarBoolSet("nameplateShowFriends", false, true)
+  if CVarExists("nameplateShowFriendlyPlayers") then
+    CVarBoolSet("nameplateShowFriendlyPlayers", false, true)
   end
-  if CVarExists("nameplateShowFriendlyNPCs") then
-    CVarBoolSet("nameplateShowFriendlyNPCs", false, true)
+  if CVarExists("nameplateShowFriendlyNpcs") then
+    CVarBoolSet("nameplateShowFriendlyNpcs", false, true)
   end
-  if CVarExists("nameplateShowFriendlyMinions") then
-    CVarBoolSet("nameplateShowFriendlyMinions", false, true)
+  if CVarExists("nameplateShowFriendlyPlayerMinions") then
+    CVarBoolSet("nameplateShowFriendlyPlayerMinions", false, true)
   end
 
   RefreshNameplates()
@@ -241,11 +241,11 @@ local CATEGORY_DEFAULTS = {
 
   nameplates = {
     { cvar = "nameplateShowEnemies", type = "bool", value = true,  perChar = true },
-    { cvar = "nameplateShowFriends", type = "bool", value = false, perChar = true },
-    { cvar = "nameplateShowFriendlyNPCs", type = "bool", value = false, perChar = true },
-    { cvar = "nameplateShowFriendlyMinions", type = "bool", value = false, perChar = true },
+    { cvar = "nameplateShowFriendlyPlayers", type = "bool", value = false, perChar = true },
+    { cvar = "nameplateShowFriendlyNpcs", type = "bool", value = false, perChar = true },
+    { cvar = "nameplateShowFriendlyPlayerMinions", type = "bool", value = false, perChar = true },
 
-    { cvar = "nameplateMotion", type = "string", value = "0", perChar = true }, -- Stack
+    { cvar = "nameplateStackingTypes", type = "string", value = "1", perChar = true }, -- Enemy stacking
     { cvar = "nameplateMinAlpha", type = "number", value = 0.6, perChar = true },
     { cvar = "nameplateMaxDistance", type = "number", value = 41, perChar = true },
     { cvar = "nameplateSelectedScale", type = "number", value = 1.15, perChar = true },
@@ -254,7 +254,7 @@ local CATEGORY_DEFAULTS = {
   },
 
   castbars = {
-    { cvar = "nameplateShowCastbar", type = "bool", value = true, perChar = true },
+    { cvar = "nameplateShowCastBars", type = "bool", value = true, perChar = true },
   },
 
   worldmap = {
@@ -264,8 +264,8 @@ local CATEGORY_DEFAULTS = {
 
   colors = {
     { cvar = "threatWarning", type = "bool", value = true,  perChar = true },
-    { cvar = "ShowClassColorInNameplate", type = "bool", value = true,  perChar = true },
-    { cvar = "ShowClassColorInFriendlyNameplate", type = "bool", value = false, perChar = true },
+    { cvar = "nameplateShowClassColor", type = "bool", value = true,  perChar = true },
+    { cvar = "nameplateShowFriendlyClassColor", type = "bool", value = false, perChar = true },
   },
 }
 
@@ -429,7 +429,7 @@ function mod.BuildOptions(_)
     name = "CVars",
     order = 60,
     args = {
-      header = { type = "header", name = "Interface CVars (20505)", order = 0 },
+      header = { type = "header", name = "Interface CVars (20506)", order = 0 },
 
       infoBox = {
         type = "description",
@@ -602,46 +602,51 @@ function mod.BuildOptions(_)
       nameplateShowFriends = MakeToggle({
         name = "Show Friendly Nameplates",
         desc = "Toggles friendly nameplates.",
-        cvar = "nameplateShowFriends",
+        cvar = "nameplateShowFriendlyPlayers",
         perChar = true,
         order = 43,
         onChange = RefreshNameplates,
         hideIfMissing = false,
         hidden = function()
-          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriends")
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyPlayers")
         end,
       }),
       nameplateShowFriendlyNPCs = MakeToggle({
         name = "Show Friendly NPC Nameplates",
         desc = "Toggles friendly NPC nameplates (if supported).",
-        cvar = "nameplateShowFriendlyNPCs",
+        cvar = "nameplateShowFriendlyNpcs",
         perChar = true,
         order = 44,
         onChange = RefreshNameplates,
         hideIfMissing = false,
         hidden = function()
-          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyNPCs")
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyNpcs")
         end,
       }),
       nameplateShowFriendlyMinions = MakeToggle({
         name = "Show Friendly Minion Nameplates",
         desc = "Toggles friendly minion nameplates (if supported).",
-        cvar = "nameplateShowFriendlyMinions",
+        cvar = "nameplateShowFriendlyPlayerMinions",
         perChar = true,
         order = 45,
         onChange = RefreshNameplates,
         hideIfMissing = false,
         hidden = function()
-          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyMinions")
+          return IsPlaterLoaded() or ShouldHideOptionForCVar("nameplateShowFriendlyPlayerMinions")
         end,
       }),
 
-      nameplateMotion = MakeSelect({
-        name = "Nameplate Motion",
-        desc = "How nameplates move when units overlap.",
-        cvar = "nameplateMotion",
-        values = { ["0"] = "Stack", ["1"] = "Spread", ["2"] = "Overlap" },
-        default = "0",
+      nameplateStackingTypes = MakeSelect({
+        name = "Nameplate Stacking",
+        desc = "Chooses which nameplate groups avoid overlap by stacking vertically.",
+        cvar = "nameplateStackingTypes",
+        values = {
+          ["0"] = "None",
+          ["1"] = "Enemies",
+          ["2"] = "Friendly Units",
+          ["3"] = "Enemies & Friendly Units",
+        },
+        default = "1",
         perChar = true,
         order = 46,
         onChange = RefreshNameplates,
@@ -726,7 +731,7 @@ function mod.BuildOptions(_)
       showNameplateCastbar = MakeToggle({
         name = "Show Nameplate Castbars",
         desc = "Shows castbars on nameplates (client dependent).",
-        cvar = "nameplateShowCastbar",
+        cvar = "nameplateShowCastBars",
         perChar = true,
         order = 62,
         onChange = RefreshNameplates,
@@ -786,7 +791,7 @@ function mod.BuildOptions(_)
       showClassColorInNameplate = MakeToggle({
         name = "Class Colors on Nameplates",
         desc = "Use class colors for nameplate health bars (client dependent).",
-        cvar = "ShowClassColorInNameplate",
+        cvar = "nameplateShowClassColor",
         perChar = true,
         order = 83,
         onChange = RefreshNameplates,
@@ -795,7 +800,7 @@ function mod.BuildOptions(_)
       showClassColorInFriendlyNameplate = MakeToggle({
         name = "Class Colors on Friendly Nameplates",
         desc = "Use class colors for friendly nameplate health bars (client dependent).",
-        cvar = "ShowClassColorInFriendlyNameplate",
+        cvar = "nameplateShowFriendlyClassColor",
         perChar = true,
         order = 84,
         onChange = RefreshNameplates,

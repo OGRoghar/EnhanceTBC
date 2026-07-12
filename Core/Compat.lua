@@ -119,7 +119,7 @@ function C.GetRaidTargetIndexSafe(unit, ...)
 end
 
 -- ---------------------------------------------------------
--- Shared 20505 API wrappers (nil-safe normalized returns)
+-- Shared 20506 API wrappers (nil-safe normalized returns)
 -- ---------------------------------------------------------
 local EMPTY_COOLDOWN = {
   startTime = 0,
