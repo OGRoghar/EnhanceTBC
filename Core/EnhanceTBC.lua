@@ -259,6 +259,10 @@ local function ResolveProfileKey(self, moduleKey)
   return nil
 end
 
+function ETBC:ResolveProfileKey(moduleKey)
+  return ResolveProfileKey(self, moduleKey)
+end
+
 local function MakeTimerHandle(token, cancelFn)
   local handle = {
     _token = token,
@@ -412,7 +416,7 @@ function ETBC:GetDiagnostics()
     platerLoaded = IsAddOnLoaded("Plater") and true or false
   end
 
-  return {
+  local diagnostics = {
     addonVersion = addonVersion or "unknown",
     clientVersion = version or "unknown",
     clientBuild = build or "unknown",
@@ -431,6 +435,10 @@ function ETBC:GetDiagnostics()
     canUndoPreset = global.lastPresetBackup and true or false,
     canUndoImport = global.lastImportBackup and true or false,
   }
+  if self.GetPerformanceSnapshot then
+    diagnostics.performance = self.GetPerformanceSnapshot()
+  end
+  return diagnostics
 end
 
 function ETBC:PrintDiagnostics()
@@ -456,6 +464,18 @@ function ETBC:PrintDiagnostics()
   self:Print(("Profile schema: %s (expected %s)"):format(
     tostring(d.profileSchema), tostring(d.expectedProfileSchema)
   ))
+  local perf = d.performance
+  if perf and perf.available and perf.enabled then
+    local metrics = perf.metrics or {}
+    self:Print(("Performance: recent %.3f ms; session %.3f ms; peak %.3f ms%s"):format(
+      tonumber(metrics.recentAverageMs) or 0,
+      tonumber(metrics.sessionAverageMs) or 0,
+      tonumber(metrics.peakMs) or 0,
+      perf.warning and "; Blizzard warning active" or ""
+    ))
+  elseif perf then
+    self:Print("Performance profiler: " .. tostring(perf.error or (perf.enabled and "unavailable" or "disabled")))
+  end
 end
 
 function ETBC:RunSelfTest()
@@ -471,6 +491,8 @@ function ETBC:RunSelfTest()
     { "Native chat timestamp CVar", type(GetCVar) == "function" and GetCVar("showTimestamps") ~= nil },
     { "Tooltip module", ETBC.Modules and ETBC.Modules.Tooltip ~= nil },
     { "Nameplate module", ETBC.Modules and ETBC.Modules.Nameplates ~= nil },
+    { "C_AddOnProfiler", C_AddOnProfiler and type(C_AddOnProfiler.GetAddOnMetric) == "function" },
+    { "EnhanceTBC public API v1", _G.EnhanceTBC_API and _G.EnhanceTBC_API.API_VERSION == 1 },
   }
 
   local passed = 0
@@ -693,14 +715,17 @@ function ETBC:RefreshAll(_reason)
 end
 
 function ETBC:OnProfileChanged()
+  if self.PublicAPIInternal then self.PublicAPIInternal.OnProfileChanged("profile-changed") end
   self:RefreshAll("profile-changed")
 end
 
 function ETBC:OnProfileCopied()
+  if self.PublicAPIInternal then self.PublicAPIInternal.OnProfileChanged("profile-copied") end
   self:RefreshAll("profile-copied")
 end
 
 function ETBC:OnProfileReset()
+  if self.PublicAPIInternal then self.PublicAPIInternal.OnProfileChanged("profile-reset") end
   self:RefreshAll("profile-reset")
 end
 
@@ -978,6 +1003,10 @@ function ETBC:OnInitialize()
 
   if self.Debug then
     self:Debug("Initialized")
+  end
+
+  if self.PublicAPIInternal then
+    self.PublicAPIInternal.MarkReady()
   end
 
 end

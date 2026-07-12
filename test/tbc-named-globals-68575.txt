@@ -5,6 +5,7 @@ Cooldown
 CooldownFrame_Set
 CooldownFrame_SetTimer
 EnhanceTBC
+EnhanceTBC_API
 ETBC
 FocusFrame
 FocusFrameSpellBar

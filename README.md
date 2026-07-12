@@ -76,6 +76,47 @@ Tip: Most changes apply instantly. Some CVars and UI changes may need a `/reload
 Profile imports display the source, client, interface, and affected setting groups before confirmation.
 The prior profile is retained as a one-level backup so the most recent import can be undone.
 
+## Public API
+
+EnhanceTBC exposes a stable Lua integration facade as `_G.EnhanceTBC_API`.
+API v1 uses namespace-style dot calls and does not expose live database or
+internal registry tables.
+
+```lua
+local API = _G.EnhanceTBC_API
+if API and API.GetAPIVersion() >= 1 then
+  local integration = {}
+
+  API.RegisterCallback(integration, "READY", function(_, apiVersion, addonVersion)
+    print("EnhanceTBC API", apiVersion, "addon", addonVersion)
+  end)
+
+  API.RegisterCallback(integration, "MODULE_STATE_CHANGED", function(_, key, enabled)
+    print(key, enabled and "enabled" or "disabled")
+  end)
+
+  local ok, err = API.SetModuleEnabled("nameplates", true)
+  if not ok then print(err) end
+end
+```
+
+API v1 methods:
+
+- `GetAPIVersion()`, `GetAddonVersion()`, and `IsReady()`
+- `GetModuleKeys()` and `GetModuleState(key)`
+- `SetModuleEnabled(key, enabled)` and `RequestRefresh(key)`
+- `RegisterMover(key, frame, options)` and `UnregisterMover(key)`
+- `BindVisibility(key, frame, ruleProvider, onChange)` and `UnbindVisibility(key)`
+- `GetDiagnostics()` and `GetPerformanceSnapshot()`
+- `RegisterCallback(owner, event, handler)`, `UnregisterCallback(owner, event)`,
+  and `UnregisterAllCallbacks(owner)`
+
+Callback events are `READY`, `MODULE_STATE_CHANGED`, `PROFILE_CHANGED`, and
+`SETTINGS_APPLIED`. Mutating methods return `true` on success or
+`false, reason` on rejection. Returned tables are copies and may be modified by
+the consumer. API v1 signatures remain compatible until a future major API
+version.
+
 ## Safety
 
 - Addon Lua is never executed by the development syntax checker.

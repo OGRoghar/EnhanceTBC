@@ -190,6 +190,17 @@ function M.new(root)
     SetNamePlateSize = function() end,
   }
   env.C_AddOns = { GetAddOnMetadata = function(_, field) if field == "Version" then return "test" end end, IsAddOnLoaded = function() return false end }
+  env.Enum = {
+    AddOnProfilerMetric = {
+      SessionAverageTime = 0, RecentAverageTime = 1, LastTime = 3, PeakTime = 4,
+      CountTimeOver1Ms = 5, CountTimeOver5Ms = 6, CountTimeOver10Ms = 7,
+    },
+  }
+  env.C_AddOnProfiler = {
+    IsEnabled = function() return true end,
+    GetAddOnMetric = function(_, metric) return metric + 0.25 end,
+    CheckForPerformanceMessage = function() return nil end,
+  }
   env.C_Item = { GetItemInfo = function() end, GetItemInfoInstant = function() end }
   env.C_UnitAuras = { GetAuraDataByIndex = function() end }
   env.C_GossipInfo = { GetOptions = function() return {} end }
@@ -206,6 +217,27 @@ function M.new(root)
   local AceConfigDialog = { AddToBlizOptions = function() return new_object("OptionsPanel", state) end, Open = function() end }
   local AceDBOptions = { GetOptionsTable = function() return {} end }
   local AceLocale = { NewLocale = function() return {} end, GetLocale = function() return {} end }
+  local CallbackHandler = {}
+  function CallbackHandler:New(target)
+    local handlers = {}
+    target.RegisterCallback = function(owner, event, fn)
+      handlers[event] = handlers[event] or {}
+      handlers[event][owner] = fn
+    end
+    target.UnregisterCallback = function(owner, event)
+      if handlers[event] then handlers[event][owner] = nil end
+    end
+    target.UnregisterAllCallbacks = function(owner)
+      for _, entries in pairs(handlers) do entries[owner] = nil end
+    end
+    return {
+      Fire = function(_, event, ...)
+        for owner, fn in pairs(handlers[event] or {}) do
+          if type(fn) == "string" then owner[fn](owner, event, ...) else fn(event, ...) end
+        end
+      end,
+    }
+  end
   local AceGUI = { constructors = {}, versions = {} }
   function AceGUI:RegisterWidgetType(kind, constructor, version)
     self.constructors[kind], self.versions[kind] = constructor, version
@@ -225,6 +257,7 @@ function M.new(root)
   libraries["AceAddon-3.0"], libraries["AceDB-3.0"] = AceAddon, AceDB
   libraries["AceConfig-3.0"], libraries["AceConfigDialog-3.0"] = AceConfig, AceConfigDialog
   libraries["AceDBOptions-3.0"], libraries["AceLocale-3.0"] = AceDBOptions, AceLocale
+  libraries["CallbackHandler-1.0"] = CallbackHandler
   libraries["AceGUI-3.0"] = AceGUI
   libraries["LibSharedMedia-3.0"] = LSM
   env.LibStub = function(name, silent)

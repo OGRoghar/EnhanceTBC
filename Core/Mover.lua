@@ -603,6 +603,15 @@ function M.GetRegistered(_)
   return registry
 end
 
+function M.Unregister(_, key)
+  if type(key) ~= "string" or key == "" then return false end
+  local handle = handles[key]
+  if handle and handle.Hide then handle:Hide() end
+  handles[key] = nil
+  registry[key] = nil
+  return true
+end
+
 function M.ApplyAnchorFromHandle(_, entry, point, relPoint, x, y)
   local key = FindKeyForEntry(entry)
   if not key then return end

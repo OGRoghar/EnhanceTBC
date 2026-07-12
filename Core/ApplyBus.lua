@@ -45,7 +45,12 @@ local function DispatchKey(key)
       end
     end
   end
-  if not hadError then lastErrors[key] = nil end
+  if not hadError then
+    lastErrors[key] = nil
+    if ETBC.PublicAPIInternal and ETBC.PublicAPIInternal.OnSettingsApplied then
+      ETBC.PublicAPIInternal.OnSettingsApplied(key)
+    end
+  end
 end
 
 local function QueueKey(key)

@@ -1,5 +1,8 @@
 C_AddOns.GetAddOnMetadata
 C_AddOns.IsAddOnLoaded
+C_AddOnProfiler.CheckForPerformanceMessage
+C_AddOnProfiler.GetAddOnMetric
+C_AddOnProfiler.IsEnabled
 C_BattleNet.GetFriendAccountInfo
 C_ClassColor.GetClassColor
 C_CreatureInfo.GetClassInfo

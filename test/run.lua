@@ -292,5 +292,98 @@ test("merchant close cancels its active sell ticker", function()
   equal(ticker.cancelled, true, "vendor ticker survived MERCHANT_CLOSED")
 end)
 
+test("public API v1 supports controlled integrations and ordered callbacks", function()
+  local state = Mock.new(root)
+  for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
+  local api = state.env.EnhanceTBC_API
+  truthy(api, "public API global missing")
+  equal(api.GetAPIVersion(), 1)
+  equal(api.IsReady(), false)
+  truthy(not api.RegisterCallback({}, "UNKNOWN_EVENT", function() end))
+
+  local owner, events = {}, {}
+  api.RegisterCallback(owner, "READY", function(event) events[#events + 1] = event end)
+  api.RegisterCallback(owner, "MODULE_STATE_CHANGED", function(event, key, enabled)
+    events[#events + 1] = event .. ":" .. key .. ":" .. tostring(enabled)
+  end)
+  api.RegisterCallback(owner, "SETTINGS_APPLIED", function(event, key)
+    events[#events + 1] = event .. ":" .. key
+  end)
+  api.RegisterCallback(owner, "PROFILE_CHANGED", function(event, reason)
+    events[#events + 1] = event .. ":" .. reason
+  end)
+
+  state.addon:OnInitialize()
+  equal(api.IsReady(), true)
+  equal(events[1], "READY")
+  local stateCopy = assert(api.GetModuleState("minimapPlus"))
+  equal(stateCopy.key, "minimapplus")
+  truthy(api.SetModuleEnabled("minimapPlus", false))
+  state:runTimers()
+  equal(events[#events - 1], "MODULE_STATE_CHANGED:minimapplus:false")
+  equal(events[#events], "SETTINGS_APPLIED:minimapplus")
+  truthy(not api.SetModuleEnabled("missing", true))
+  truthy(not api.SetModuleEnabled("general", false))
+  truthy(not api.RequestRefresh("missing"))
+
+  local frame = state.env.CreateFrame("Frame")
+  truthy(api.RegisterMover("ExternalMover", frame, { default = { point = "CENTER" } }))
+  truthy(state.addon.Mover:GetRegistered().ExternalMover)
+  truthy(api.UnregisterMover("ExternalMover"))
+  equal(state.addon.Mover:GetRegistered().ExternalMover, nil)
+  truthy(not api.UnregisterMover("InternalMover"))
+
+  truthy(api.BindVisibility("ExternalVisibility", frame, function() return { enabled = true, mode = "ALWAYS" } end))
+  truthy(api.UnbindVisibility("ExternalVisibility"))
+  truthy(not api.UnbindVisibility("InternalVisibility"))
+
+  local diagnostics = assert(api.GetDiagnostics())
+  diagnostics.performance.metrics.peakMs = 999
+  local fresh = assert(api.GetDiagnostics())
+  truthy(fresh.performance.metrics.peakMs ~= 999, "diagnostics exposed mutable internal state")
+  state.addon:OnProfileChanged()
+  equal(state.env.EnhanceTBC_API, api, "public API identity changed")
+  equal(events[#events], "PROFILE_CHANGED:profile-changed")
+end)
+
+test("profiler facade handles availability, enums, restrictions, and warnings", function()
+  local state = Mock.new(root)
+  load_addon_file(state, "Core/PublicAPI.lua")
+  local api = state.env.EnhanceTBC_API
+
+  local snapshot = api.GetPerformanceSnapshot()
+  equal(snapshot.available, true)
+  equal(snapshot.enabled, true)
+  equal(snapshot.metrics.recentAverageMs, 1.25)
+
+  state.env.C_AddOnProfiler.IsEnabled = function() return false end
+  snapshot = api.GetPerformanceSnapshot()
+  equal(snapshot.available, true)
+  equal(snapshot.enabled, false)
+
+  state.env.C_AddOnProfiler.IsEnabled = function() return true end
+  state.env.Enum.AddOnProfilerMetric = nil
+  snapshot = api.GetPerformanceSnapshot()
+  truthy(snapshot.error:find("enum", 1, true))
+
+  state.env.Enum.AddOnProfilerMetric = { RecentAverageTime = 1 }
+  state.env.C_AddOnProfiler.GetAddOnMetric = function() error("restricted") end
+  snapshot = api.GetPerformanceSnapshot()
+  equal(snapshot.metrics.recentAverageMs, nil)
+
+  state.env.C_AddOnProfiler.GetAddOnMetric = function() return 2 end
+  state.env.C_AddOnProfiler.CheckForPerformanceMessage = function()
+    return { addOnName = "EnhanceTBC", metricValue = 2 }
+  end
+  snapshot = api.GetPerformanceSnapshot()
+  equal(snapshot.warning.addOnName, "EnhanceTBC")
+  snapshot.warning.addOnName = "changed"
+  equal(api.GetPerformanceSnapshot().warning.addOnName, "EnhanceTBC")
+
+  state.env.C_AddOnProfiler = nil
+  snapshot = api.GetPerformanceSnapshot()
+  equal(snapshot.available, false)
+end)
+
 print(("RESULT %d passed, %d failed"):format(passed, failed))
 if failed > 0 then os.exit(1) end

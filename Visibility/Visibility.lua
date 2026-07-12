@@ -394,6 +394,11 @@ function V:Unbind(key)
   bindings[key] = nil
 end
 
+function V:IsBound(key)
+  local _ = self
+  return bindings[key] ~= nil
+end
+
 function V:ForceUpdate()
   local _ = self
   for _, b in pairs(bindings) do
@@ -495,4 +500,3 @@ end
 
 ETBC.ApplyBus:Register("visibility", Apply)
 ETBC.ApplyBus:Register("general", Apply)
-
