@@ -70,7 +70,7 @@ local function Constructor()
   bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 
   local barBg = bar:CreateTexture(nil, "BACKGROUND")
-  barBg:SetAllPoints(true)
+  barBg:SetAllPoints()
   barBg:SetColorTexture(0, 0, 0, 0.35)
 
   local barText = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")

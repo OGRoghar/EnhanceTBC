@@ -488,7 +488,7 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate_health_bar.etbc_background:SetVertexColor(0.02, 0.02, 0.02, 0.85)
 
     unit_nameplate_health_bar.focus_texture = CreateFrame("Frame", nil, unit_nameplate_health_bar)
-    unit_nameplate_health_bar.focus_texture:SetAllPoints(true)
+    unit_nameplate_health_bar.focus_texture:SetAllPoints()
     unit_nameplate_health_bar.focus_texture:SetFrameStrata("LOW")
     unit_nameplate_health_bar.focus_texture:Hide()
 
@@ -565,7 +565,7 @@ function mod.StyleUnitNameplate(_, unit)
 
     unit_nameplate_health_bar.absorb.shield_texture =
       unit_nameplate_health_bar.absorb:CreateTexture(nil, "OVERLAY")
-    unit_nameplate_health_bar.absorb.shield_texture:SetAllPoints(true)
+    unit_nameplate_health_bar.absorb.shield_texture:SetAllPoints()
     unit_nameplate_health_bar.absorb.shield_texture:SetTexture(798064)
 
     unit_nameplate_health_bar.absorb.over_absorb_texture =
@@ -654,7 +654,7 @@ function mod.StyleUnitNameplate(_, unit)
 
     unit_nameplate_health_bar.unit_debuff.texture =
       unit_nameplate_health_bar.unit_debuff:CreateTexture(nil, "BACKGROUND")
-    unit_nameplate_health_bar.unit_debuff.texture:SetAllPoints(true)
+    unit_nameplate_health_bar.unit_debuff.texture:SetAllPoints()
     unit_nameplate_health_bar.unit_debuff.texture:SetTexCoord(0.07, 0.94, 0.07, 0.94)
 
     unit_nameplate_health_bar.unit_debuff.backdrop = CreateFrame(
@@ -709,7 +709,7 @@ function mod.StyleUnitNameplate(_, unit)
       player_debuff.aura_count = -1
 
       player_debuff.texture = player_debuff:CreateTexture(nil, "BACKGROUND")
-      player_debuff.texture:SetAllPoints(true)
+      player_debuff.texture:SetAllPoints()
       player_debuff.texture:SetTexCoord(0.07, 0.94, 0.07, 0.94)
 
       player_debuff.backdrop = CreateFrame(
@@ -739,7 +739,7 @@ function mod.StyleUnitNameplate(_, unit)
 
     unit_nameplate_health_bar.unit_stance.texture =
       unit_nameplate_health_bar.unit_stance:CreateTexture(nil, "BACKGROUND")
-    unit_nameplate_health_bar.unit_stance.texture:SetAllPoints(true)
+    unit_nameplate_health_bar.unit_stance.texture:SetAllPoints()
     unit_nameplate_health_bar.unit_stance.texture:SetTexCoord(0.07, 0.94, 0.07, 0.94)
 
     unit_nameplate_health_bar.unit_stance.backdrop = CreateFrame(
@@ -838,7 +838,7 @@ function mod.UpdateExistingNameplatesSize(_)
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
       local unit = GetNameplateUnit(unit_nameplate)
-      local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
+      local nameplate = unit and C_NamePlate.GetNamePlateForUnit(unit, false)
       if nameplate and nameplate.UnitFrame and nameplate.UnitFrame == unit_nameplate
         and UnitExists(unit) and not SafeUnitIsUnit("player", unit)
       then
@@ -852,7 +852,7 @@ function mod.UpdateExistingNameplatesColor(_)
   for _, unit_nameplate in pairs(unit_nameplates) do
     if unit_nameplate.healthBarWrapper then
       local unit = GetNameplateUnit(unit_nameplate)
-      local nameplate = C_NamePlate.GetNamePlateForUnit(unit, false)
+      local nameplate = unit and C_NamePlate.GetNamePlateForUnit(unit, false)
       if nameplate and nameplate.UnitFrame and nameplate.UnitFrame == unit_nameplate
         and UnitExists(unit) and not SafeUnitIsUnit("player", unit)
       then

@@ -108,14 +108,14 @@ function C.SafeCall(fn, ...)
   end
 end
 
-function C.GetRaidTargetIndexSafe(unit, ...)
+function C.GetRaidTargetIndexSafe(unit)
   if type(unit) ~= "string" or unit == "" then
     return nil
   end
   if type(GetRaidTargetIndex) ~= "function" then
     return nil
   end
-  return GetRaidTargetIndex(unit, ...)
+  return GetRaidTargetIndex(unit)
 end
 
 -- ---------------------------------------------------------

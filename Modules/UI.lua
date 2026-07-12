@@ -193,7 +193,7 @@ local function Apply()
   local generalEnabled = ETBC.db.profile.general and ETBC.db.profile.general.enabled
 
   if not (generalEnabled and db.enabled) then
-    mod:RestoreCameraZoom(true)
+    mod.RestoreCameraZoom(true)
     driver:UnregisterAllEvents()
     driver:SetScript("OnEvent", nil)
     driver:Hide()
@@ -204,7 +204,7 @@ local function Apply()
   if db.cameraMaxZoom then
     mod.ApplyCameraZoomOneShot()
   else
-    mod:RestoreCameraZoom(false)
+    mod.RestoreCameraZoom(false)
   end
 
   -- One-shot apply at login/entering world (no CVAR_UPDATE reapply)

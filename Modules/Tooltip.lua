@@ -594,7 +594,7 @@ end
 local function EnsureStatusBarText()
   if not GameTooltipStatusBar or GameTooltipStatusBar.unit_health_text then return end
   GameTooltipStatusBar.unit_health_text = GameTooltipStatusBar:CreateFontString(nil, "OVERLAY")
-  GameTooltipStatusBar.unit_health_text:SetAllPoints(true)
+  GameTooltipStatusBar.unit_health_text:SetAllPoints()
   if ETBC.Theme and ETBC.Theme.ApplyFontString then
     ETBC.Theme:ApplyFontString(GameTooltipStatusBar.unit_health_text, nil, 10)
   else

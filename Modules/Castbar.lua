@@ -534,7 +534,7 @@ local function EnsurePreviewBar()
   bar:Hide()
 
   bar.bg = bar:CreateTexture(nil, "BACKGROUND")
-  bar.bg:SetAllPoints(true)
+  bar.bg:SetAllPoints()
   bar.bg:SetTexture("Interface\\Buttons\\WHITE8x8")
   bar.bg:SetVertexColor(0, 0, 0, 0.35)
 

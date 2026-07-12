@@ -169,7 +169,7 @@ local function Apply()
 
     inCombat = IsPlayerInCombat()
     if inCombat and db.autoMuteInCombat then
-      SnapshotForCombat(db)
+      SnapshotForCombat()
       ApplyCombatMute(db)
     end
 

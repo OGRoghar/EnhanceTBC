@@ -177,8 +177,12 @@ local function Constructor()
     if self.editbox.SetEnabled then
       self.editbox:SetEnabled(not disabled)
     end
-    if self.clear and self.clear.Enable then
-      self.clear:Enable(not disabled)
+    if self.clear then
+      if disabled and self.clear.Disable then
+        self.clear:Disable()
+      elseif not disabled and self.clear.Enable then
+        self.clear:Enable()
+      end
     end
     self.frame:SetAlpha(disabled and 0.6 or 1.0)
     UpdatePlaceholder(self)

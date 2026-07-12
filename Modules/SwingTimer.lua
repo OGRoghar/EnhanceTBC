@@ -156,7 +156,7 @@ local function CreateSwingBar(name, anchorData)
   barFrame:SetClampedToScreen(true)
 
   local bg = barFrame:CreateTexture(nil, "BACKGROUND")
-  bg:SetAllPoints(true)
+  bg:SetAllPoints()
   bg:SetTexture("Interface\\Buttons\\WHITE8x8")
 
   local bar = CreateFrame("StatusBar", nil, barFrame)
@@ -652,5 +652,4 @@ mod.Internal.Shared.GetConfigPreviewStyle = GetConfigPreviewStyle
 
 ETBC.ApplyBus:Register("swingtimer", Apply)
 ETBC.ApplyBus:Register("general", Apply)
-
 

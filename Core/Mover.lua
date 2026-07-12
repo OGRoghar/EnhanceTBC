@@ -567,6 +567,9 @@ local function UpdateAllHandles()
   end
 end
 
+-- Forward declaration: SetupChatCommands is defined before the slash helper.
+local EnsureSlash
+
 function M.Register(_, key, frame, opts)
   if not key or key == "" then return end
   if not frame then return end
@@ -843,7 +846,7 @@ ETBC.ApplyBus:Register("general", Apply)
 
 -- Slash helpers (do not conflict with your existing /etbc core)
 -- If you already parse /etbc elsewhere, this safely adds subcommands by hooking if possible.
-local function EnsureSlash()
+EnsureSlash = function()
   if ETBC._moverSlashInstalled then return end
   ETBC._moverSlashInstalled = true
 
