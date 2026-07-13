@@ -80,18 +80,24 @@ function HUD:EvaluateTrackers()
 end
 
 function HUD:Apply()
+  if not Enabled() then
+    if driver then driver:UnregisterAllEvents() end
+    for _, f in pairs(frames) do ETBC.SuiteWidgets:SetShown(f, false) end
+    return
+  end
   if not driver then
     driver = CreateFrame("Frame", "EnhanceTBC_HUDDriver", UIParent)
-    driver:RegisterEvent("PLAYER_ENTERING_WORLD")
-    driver:RegisterEvent("PLAYER_TARGET_CHANGED")
-    driver:RegisterEvent("UNIT_HEALTH")
-    driver:RegisterEvent("UNIT_MAXHEALTH")
-    driver:RegisterEvent("UNIT_POWER_UPDATE")
     driver:SetScript("OnEvent", function(_, _, unit)
       if unit and frames[unit] then UpdateUnit(frames[unit]); return end
       for _, f in pairs(frames) do UpdateUnit(f) end
     end)
   end
+  driver:UnregisterAllEvents()
+  driver:RegisterEvent("PLAYER_ENTERING_WORLD")
+  driver:RegisterEvent("PLAYER_TARGET_CHANGED")
+  driver:RegisterEvent("UNIT_HEALTH")
+  driver:RegisterEvent("UNIT_MAXHEALTH")
+  driver:RegisterEvent("UNIT_POWER_UPDATE")
   if not frames.player then CreateUnitFrame("player", "Player", -150) end
   if not frames.target then CreateUnitFrame("target", "Target", 150) end
   for _, f in pairs(frames) do UpdateUnit(f) end

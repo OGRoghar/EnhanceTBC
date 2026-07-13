@@ -28,21 +28,8 @@ local function ProfileFeature(key)
   return profile.suite[key]
 end
 
-local function IsLoaded(addon)
-  if C_AddOns and C_AddOns.IsAddOnLoaded then return C_AddOns.IsAddOnLoaded(addon) and true or false end
-  if IsAddOnLoaded then return IsAddOnLoaded(addon) and true or false end
-  return false
-end
-
 function Suite:Load(key)
-  local addon = FEATURES[key]
-  if not addon then return false, "unknown feature key" end
-  if IsLoaded(addon) then return true end
-  local loader = LoadAddOn
-  if type(loader) ~= "function" then return false, "addon loader unavailable" end
-  local ok, loaded, reason = pcall(loader, addon)
-  if not ok then return false, tostring(loaded) end
-  if loaded == nil or loaded == false then return false, tostring(reason or "feature addon unavailable") end
+  if not FEATURES[key] then return false, "unknown feature key" end
   return true
 end
 
@@ -50,7 +37,14 @@ function Suite:GetState(key)
   local state = ProfileFeature(key)
   if not state then return nil, "unknown feature key" end
   local addon = FEATURES[key]
-  return { key = key, addon = addon, enabled = state.enabled and true or false, loaded = IsLoaded(addon) }
+  return {
+    key = key,
+    addon = addon,
+    available = true,
+    loaded = true,
+    integrated = true,
+    enabled = state.enabled and true or false,
+  }
 end
 
 function Suite:SetEnabled(key, enabled)
@@ -58,10 +52,6 @@ function Suite:SetEnabled(key, enabled)
   local state = ProfileFeature(key)
   if not state then return false, "unknown feature key" end
   if state.enabled == enabled then return true end
-  if enabled then
-    local ok, reason = self:Load(key)
-    if not ok then return false, reason end
-  end
   state.enabled = enabled
   local owned = ETBC.db.profile[key]
   if type(owned) == "table" then owned.enabled = enabled end
@@ -73,10 +63,7 @@ function Suite:SetEnabled(key, enabled)
 end
 
 function Suite:LoadEnabled()
-  for key in pairs(FEATURES) do
-    local state = ProfileFeature(key)
-    if state and state.enabled then self:Load(key) end
-  end
+  -- Runtime definitions are loaded by EnhanceTBC.toc. ApplyBus controls work.
 end
 
 function Suite:SetEditMode(enabled, scope)

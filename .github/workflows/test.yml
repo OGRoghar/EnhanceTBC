@@ -15,7 +15,7 @@ jobs:
       - name: Parse all first-party Lua
         shell: pwsh
         run: |
-          $files = Get-ChildItem Core,Modules,Options,Settings,UI,Visibility,Children,locales,test -Recurse -File -Filter *.lua
+          $files = Get-ChildItem Core,Modules,Options,Settings,UI,Visibility,locales,test -Recurse -File -Filter *.lua
           foreach ($file in $files) { & luac5.1 -p $file.FullName; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
       - name: Run mocked WoW regression suite
         shell: pwsh
@@ -27,9 +27,6 @@ jobs:
         shell: pwsh
         run: |
           ./test/check-manifest.ps1 -SelfTest
-          ./test/check-manifest.ps1 -Path ./Children/EnhanceTBC_HUD -Toc EnhanceTBC_HUD.toc
-          ./test/check-manifest.ps1 -Path ./Children/EnhanceTBC_Inventory -Toc EnhanceTBC_Inventory.toc
-          ./test/check-manifest.ps1 -Path ./Children/EnhanceTBC_Combat -Toc EnhanceTBC_Combat.toc
       - name: Audit events, CVars, indirect globals, and resources
         shell: pwsh
         run: ./test/check-string-contracts.ps1 -SelfTest
@@ -44,7 +41,6 @@ jobs:
           $entries = Get-Content "$root/EnhanceTBC.toc" | Where-Object { $_ -and -not $_.StartsWith('#') }
           foreach ($entry in $entries) { if (-not (Test-Path (Join-Path $root $entry))) { throw "Missing TOC entry: $entry" } }
           foreach ($artifact in @('.git','.github','.vscode','test')) { if (Test-Path (Join-Path $root $artifact)) { throw "Development artifact packaged: $artifact" } }
-          foreach ($child in @('EnhanceTBC_HUD','EnhanceTBC_Inventory','EnhanceTBC_Combat')) {
-            $childRoot = Join-Path (Split-Path -Parent $root) $child
-            if (-not (Test-Path (Join-Path $childRoot "$child.toc"))) { throw "Missing packaged child addon: $child" }
+          foreach ($feature in @('HUD.lua','Inventory.lua','Combat.lua')) {
+            if (-not (Test-Path (Join-Path $root "Modules/Suite/$feature"))) { throw "Missing integrated suite module: $feature" }
           }

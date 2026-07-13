@@ -375,16 +375,25 @@ test("profiler facade handles availability, enums, restrictions, and warnings", 
   equal(snapshot.available, false)
 end)
 
-test("feature suite loads optional addons and protects provider ownership", function()
+test("feature suite toggles integrated modules and protects provider ownership", function()
   local state = Mock.new(root)
   for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
   state.addon:OnInitialize()
   local api = state.env.EnhanceTBC_API
   local feature = assert(api.GetFeatureState("hud"))
   equal(feature.enabled, false)
+  equal(feature.available, true)
+  equal(feature.loaded, true)
+  equal(feature.integrated, true)
   truthy(api.SetFeatureEnabled("hud", true))
-  equal(state.loadedAddons.EnhanceTBC_HUD, true)
+  state:runTimers()
   equal(assert(api.GetFeatureState("hud")).enabled, true)
+  local hudDriver = state.namedFrames.EnhanceTBC_HUDDriver
+  truthy(hudDriver and hudDriver.events.PLAYER_ENTERING_WORLD, "HUD events were not registered on enable")
+  truthy(api.SetFeatureEnabled("hud", false))
+  state:runTimers()
+  equal(assert(api.GetFeatureState("hud")).enabled, false)
+  equal(next(hudDriver.events), nil, "HUD events remained registered after disable")
 
   local owner = {}
   truthy(api.RegisterDataProvider(owner, "example.ready", { GetValue = function() return { ready = true } end }))
@@ -429,13 +438,12 @@ test("control center change history undoes copied values", function()
   equal(#recent, 0)
 end)
 
-test("combat child aggregates bounded local snapshots", function()
+test("integrated combat suite aggregates bounded local snapshots", function()
   local state = Mock.new(root)
   for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
   state.addon:OnInitialize()
   state.addon.db.profile.suite.combat.enabled = true
   state.addon.db.profile.combat.enabled = true
-  load_addon_file(state, "Children/EnhanceTBC_Combat/Combat.lua")
   local combat = state.addon.CombatSuite
   combat:ProcessEvent(1, "SPELL_DAMAGE", false, "Player-1", "Tester", 0, 0, "Target-1", "Target", 0, 0, 123, "Spell", 1, 250)
   combat:ProcessEvent(2, "SPELL_INTERRUPT", false, "Player-1", "Tester", 0, 0, "Target-1", "Target", 0, 0, 123, "Spell", 1)

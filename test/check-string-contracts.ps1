@@ -4,7 +4,7 @@ param([switch] $SelfTest)
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$files = foreach ($dir in @('Core','Modules','Options','Settings','UI','Visibility','Children')) {
+$files = foreach ($dir in @('Core','Modules','Options','Settings','UI','Visibility')) {
     Get-ChildItem (Join-Path $root $dir) -Recurse -File -Filter '*.lua'
 }
 

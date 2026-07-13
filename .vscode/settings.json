@@ -12,7 +12,8 @@
         "utf8": "disable"
     },
     "Lua.workspace.library": [
-        "~\\.vscode\\extensions\\ketho.wow-api-0.22.3\\Annotations\\Core"
+        "~\\.vscode\\extensions\\ketho.wow-api-0.22.3\\Annotations\\Core",
+        "~\\.vscode\\extensions\\ketho.wow-api-0.22.3\\Annotations\\FrameXML"
     ],
     "Lua.diagnostics.globals": [
         "STANDARD_TEXT_FONT",
@@ -101,19 +102,11 @@
         "FocusFrame",
         "COMBATLOG_OBJECT_REACTION_HOSTILE",
         "MerchantFrame",
-        "GetSpellInfo",
         "GetGossipOptions",
-        "IsAddOnLoaded",
         "InterfaceOptionsFrame_OpenToCategory",
         "InterfaceOptions_AddCategory",
-        "GetAddOnMetadata",
-        "IsActionInRange",
-        "HasAction",
-        "CombatLogGetCurrentEventInfo",
         "SetCVarPerCharacter",
-        "GetCVarInfo",
         "CUSTOM_CLASS_COLORS",
-        "GetSpellDescription",
         "ALLIANCE",
         "HORDE",
         "FriendsList_UpdateFriends",
@@ -139,7 +132,6 @@
         "GetQuestLogTitle",
         "GetNumQuestWatches",
         "GetQuestWatchInfo",
-        "GetItemStats",
         "SetNameplateUnitInterrupt",
         "SetNameplateUnitStance",
         "SetNameplatePlayerMindControl",
@@ -147,9 +139,14 @@
         "GetContainerItemInfo",
         "UseContainerItem",
         "GetNumPartyMembers",
-        "GetNumRaidMembers"
+        "GetNumRaidMembers",
+        "RESET_TO_DEFAULT",
+        "HUD_EDIT_MODE_RESET_POSITION",
+        "CHARACTER",
+        "SETTING_GROUP_SYSTEM"
     ],
     "Lua.diagnostics.disable": [
         "assign-type-mismatch"
-    ]
+    ],
+    "Lua.type.weakUnionCheck": true
 }

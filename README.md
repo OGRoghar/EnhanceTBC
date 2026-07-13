@@ -133,9 +133,9 @@ See [TESTING.md](TESTING.md) for information about running tests locally and con
 
 # Optional Next-Generation Suite
 
-EnhanceTBC ships three opt-in, load-on-demand companion addons. **HUD Studio** provides custom player/target frames and safe no-code trackers, **Inventory Intelligence** exposes equipment and durability audits, and **Combat Suite** records bounded local damage, healing, interrupt, dispel, and death segments. Existing modules remain active unless you choose otherwise.
+EnhanceTBC includes three opt-in integrated systems. **HUD Studio** provides custom player/target frames and safe no-code trackers, **Inventory Intelligence** exposes equipment and durability audits, and **Combat Suite** records bounded local damage, healing, interrupt, dispel, and death segments. Existing modules remain active unless you choose otherwise.
 
-Use `/etbc suite` to start setup and `/etbc edit` to arrange registered frames. The companions share the core profile and never require separate SavedVariables.
+Use `/etbc suite` to start setup and `/etbc edit` to arrange registered frames. All systems share the core profile and never require separate addon folders or SavedVariables.
 
 ## Public API additions
 

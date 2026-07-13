@@ -109,7 +109,6 @@ function M.new(root)
     messages = {},
     globalsWritten = {},
     namedFrames = {},
-    loadedAddons = {},
   }
   local env = {}
   setmetatable(env, { __index = _G, __newindex = function(t, k, v)
@@ -171,6 +170,13 @@ function M.new(root)
   env.InCombatLockdown = function() return state.inCombat or false end
   env.UnitAffectingCombat = function() return state.inCombat or false end
   env.UnitExists = function(unit) return unit ~= nil and unit ~= "" end
+  env.UnitHealth = function() return 100 end
+  env.UnitHealthMax = function() return 100 end
+  env.UnitPower = function() return 100 end
+  env.UnitPowerMax = function() return 100 end
+  env.UnitName = function(unit) return unit end
+  env.UnitIsPlayer = function(unit) return unit == "player" end
+  env.UnitClass = function() return "Warrior", "WARRIOR" end
   env.UnitIsUnit = function(a, b) return a == b end
   env.IsShiftKeyDown = function() return state.shiftDown or false end
   env.PlaySound = function() return true end
@@ -192,9 +198,8 @@ function M.new(root)
   }
   env.C_AddOns = {
     GetAddOnMetadata = function(_, field) if field == "Version" then return "test" end end,
-    IsAddOnLoaded = function(name) return state.loadedAddons[name] and true or false end,
+    IsAddOnLoaded = function() return false end,
   }
-  env.LoadAddOn = function(name) state.loadedAddons[name] = true; return true end
   env.Enum = {
     AddOnProfilerMetric = {
       SessionAverageTime = 0, RecentAverageTime = 1, LastTime = 3, PeakTime = 4,

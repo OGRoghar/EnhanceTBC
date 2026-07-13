@@ -155,5 +155,10 @@ Modules\Objectives.lua
 Modules\AutoGossip.lua
 Modules\CVars.lua
 
+# Integrated optional suite features
+Modules\Suite\HUD.lua
+Modules\Suite\Inventory.lua
+Modules\Suite\Combat.lua
+
 # Visibility
 Visibility\Visibility.lua

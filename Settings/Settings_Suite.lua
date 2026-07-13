@@ -18,7 +18,7 @@ ETBC.SettingsRegistry:RegisterGroup("suite", {
     return {
       description = {
         type = "description",
-        name = "Optional, load-on-demand UI systems. Existing EnhanceTBC modules remain available.",
+        name = "Optional integrated UI systems. Existing EnhanceTBC modules remain available.",
         order = 1,
         width = "full",
       },
