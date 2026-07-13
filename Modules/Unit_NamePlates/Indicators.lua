@@ -42,11 +42,13 @@ function Indicators:Update(nameplate, snapshot, db)
     f.threat:SetText("")
   end
   local policy = mod.Internal.State and mod.Internal.State:GetCategoryPolicy(snapshot, db)
-  local scale = policy and policy.scale or 1
   local alpha = policy and policy.alpha or 1
-  if snapshot.isTarget then scale, alpha = targetCfg.targetScale or 1.08, targetCfg.targetAlpha or 1
+  if snapshot.isTarget then alpha = targetCfg.targetAlpha or 1
   elseif not snapshot.isFocus then alpha = targetCfg.nonTargetAlpha or alpha end
-  nameplate.UnitFrame:SetScale(scale)
+  -- Do not scale Blizzard's UnitFrame. Target changes cause Blizzard to
+  -- reapply native nameplate transforms; scaling that owned frame can move
+  -- custom children (notably the power bar) into a different coordinate
+  -- space. Target/focus emphasis remains explicit through alpha and glow.
   nameplate.UnitFrame:SetAlpha(alpha)
   if nameplate.UnitFrame.healthBar and nameplate.UnitFrame.healthBar.focus_texture then
     nameplate.UnitFrame.healthBar.focus_texture:SetShown(snapshot.isTarget or (snapshot.isFocus and targetCfg.focusGlow ~= false))
@@ -55,6 +57,6 @@ end
 
 function Indicators:Reset(unitFrame)
   if not unitFrame then return end
-  unitFrame:SetScale(1); unitFrame:SetAlpha(1)
+  unitFrame:SetAlpha(1)
   if unitFrame.etbcIndicators then unitFrame.etbcIndicators:Hide() end
 end

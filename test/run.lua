@@ -447,6 +447,7 @@ test("nameplate state, power policy, formatting, and presets are deterministic",
   load_addon_file(state, "Modules/Unit_NamePlates/State.lua")
   load_addon_file(state, "Modules/Unit_NamePlates/Profiles.lua")
   load_addon_file(state, "Modules/Unit_NamePlates/Power.lua")
+  load_addon_file(state, "Modules/Unit_NamePlates/Indicators.lua")
   local internal = state.addon.Modules.Nameplates.Internal
   local snapshot = internal.State:Update("nameplate1", "power")
   equal(snapshot.powerToken, "MANA")
@@ -468,6 +469,12 @@ test("nameplate state, power policy, formatting, and presets are deterministic",
   equal(unitFrame.etbcPowerBar.point[1], "TOP")
   equal(unitFrame.etbcPowerBar.point[2], unitFrame.healthBarWrapper)
   equal(unitFrame.etbcPowerBar.point[3], "BOTTOM")
+  unitFrame.etbcIndicators = false
+  unitFrame.healthBar = false
+  snapshot.isTarget = true
+  internal.Indicators:Update(plate, snapshot, state.addon.db.profile.nameplates)
+  equal(rawget(unitFrame, "scale"), nil, "target emphasis scaled Blizzard's UnitFrame")
+  equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBarWrapper, "target emphasis detached power bar")
   local before = state.addon.db.profile.nameplates.power.enabled
   truthy(internal.Profiles:Apply("MINIMAL"))
   equal(state.addon.db.profile.nameplates.power.enabled, false)
