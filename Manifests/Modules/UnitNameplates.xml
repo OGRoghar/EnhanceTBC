@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="..\..\Modules\Unit_NamePlates.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\Data.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\Render.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\CombatLog.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\Lifecycle.lua"/>
+</Ui>

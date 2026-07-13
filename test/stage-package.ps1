@@ -11,7 +11,7 @@ if ($destinationPath -eq [IO.Path]::GetPathRoot($destinationPath) -or $destinati
 if (Test-Path -LiteralPath $destinationPath) { Remove-Item -LiteralPath $destinationPath -Recurse -Force }
 New-Item -ItemType Directory -Path $destinationPath | Out-Null
 
-$runtime = @('Core','Libs','locales','Media','Modules','Options','Settings','UI','Visibility')
+$runtime = @('Core','Libs','locales','Manifests','Media','Modules','Options','Settings','UI','Visibility')
 foreach ($directory in $runtime) {
     $source = Join-Path $root $directory
     if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $destinationPath -Recurse }

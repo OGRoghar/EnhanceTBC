@@ -5,14 +5,14 @@ ETBC.UI.ControlCenterModel = ETBC.UI.ControlCenterModel or {}
 local Model = ETBC.UI.ControlCenterModel
 
 local CATEGORY = {
-  general = "Core", suite = "Next Generation", ui = "Core", minimapplus = "Core", visibility = "Core",
+  general = "Core", ui = "Core", minimapplus = "Core", visibility = "Core",
   auras = "Combat", combattext = "Combat", actiontracker = "Combat", castbar = "Combat",
   unitframes = "Combat", actionbars = "Combat", swingtimer = "Combat", nameplates = "Combat",
   tooltip = "Utility", sound = "Utility", vendor = "Utility", mailbox = "Utility", mover = "Utility",
   cvars = "Utility", cooldowns = "Utility", objectives = "Utility", autogossip = "Utility",
   chatim = "Social", friends = "Social",
 }
-local CATEGORY_ORDER = { "Core", "Combat", "Utility", "Social", "Next Generation", "Other" }
+local CATEGORY_ORDER = { "Core", "Combat", "Utility", "Social", "Other" }
 local APPEARANCE = { color=true, alpha=true, font=true, size=true, scale=true, width=true, height=true, texture=true, icon=true, border=true }
 local BEHAVIOR = { behavior=true, mode=true, growth=true, direction=true, timing=true, duration=true, delay=true, throttle=true }
 local AUTOMATION = { auto=true, sell=true, repair=true, collect=true, gossip=true, mail=true, vendor=true }

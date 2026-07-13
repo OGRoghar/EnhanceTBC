@@ -37,10 +37,8 @@ jobs:
         shell: pwsh
         run: |
           $root = "$env:RUNNER_TEMP/EnhanceTBC"
+          ./test/check-manifest.ps1 -Path $root -Toc EnhanceTBC.toc
           if ((Get-Content "$root/EnhanceTBC.toc" -Raw) -notmatch '(?m)^## Interface: 20506$') { throw 'Unexpected interface version' }
           $entries = Get-Content "$root/EnhanceTBC.toc" | Where-Object { $_ -and -not $_.StartsWith('#') }
           foreach ($entry in $entries) { if (-not (Test-Path (Join-Path $root $entry))) { throw "Missing TOC entry: $entry" } }
           foreach ($artifact in @('.git','.github','.vscode','test')) { if (Test-Path (Join-Path $root $artifact)) { throw "Development artifact packaged: $artifact" } }
-          foreach ($feature in @('HUD.lua','Inventory.lua','Combat.lua')) {
-            if (-not (Test-Path (Join-Path $root "Modules/Suite/$feature"))) { throw "Missing integrated suite module: $feature" }
-          }

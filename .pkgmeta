@@ -3,7 +3,7 @@ curseforge:
 
 ignore:
   # Exclude everything outside the addon runtime/package allowlist:
-  # Core, Libs, locales, Media, Modules, Options, Settings, UI, Visibility,
+  # Core, Libs, locales, Manifests, Media, Modules, Options, Settings, UI, Visibility,
   # EnhanceTBC.toc, LICENSE, README.md, CHANGELOG.md, TESTING.md
   - .git
   - .github

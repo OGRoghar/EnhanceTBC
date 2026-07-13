@@ -1,0 +1,25 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="..\Settings\Settings_General.lua"/>
+  <Script file="..\Settings\Settings_UI.lua"/>
+  <Script file="..\Settings\Settings_MinimapPlus.lua"/>
+  <Script file="..\Settings\Settings_Castbar.lua"/>
+  <Script file="..\Settings\Settings_UnitFrames.lua"/>
+  <Script file="..\Settings\Settings_Unit_Nameplates.lua"/>
+  <Script file="..\Settings\Settings_ActionBars.lua"/>
+  <Script file="..\Settings\Settings_Tooltip.lua"/>
+  <Script file="..\Settings\Settings_Sound.lua"/>
+  <Script file="..\Settings\Settings_Friends.lua"/>
+  <Script file="..\Settings\Settings_ChatIM.lua"/>
+  <Script file="..\Settings\Settings_SwingTimer.lua"/>
+  <Script file="..\Settings\Settings_Auras.lua"/>
+  <Script file="..\Settings\Settings_CombatText.lua"/>
+  <Script file="..\Settings\Settings_ActionTracker.lua"/>
+  <Script file="..\Settings\Settings_Cooldowns.lua"/>
+  <Script file="..\Settings\Settings_Mover.lua"/>
+  <Script file="..\Settings\Settings_Vendor.lua"/>
+  <Script file="..\Settings\Settings_Mailbox.lua"/>
+  <Script file="..\Settings\Settings_Objectives.lua"/>
+  <Script file="..\Settings\Settings_AutoGossip.lua"/>
+  <Script file="..\Settings\Settings_Visibility.lua"/>
+  <Script file="..\Settings\Settings_CVars.lua"/>
+</Ui>

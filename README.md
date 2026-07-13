@@ -127,29 +127,22 @@ version.
 
 See [TESTING.md](TESTING.md) for information about running tests locally and contributing test coverage.
 
+## Runtime manifests
+
+EnhanceTBC remains one addon. Its TOC loads ordered XML manifests for libraries, locales, core services, the Control Center, settings, and runtime modules. Castbar, Unit Nameplates, and MinimapPlus use recursive subsystem manifests while preserving the established Lua load order.
+
 # Modern Control Center
 
 `/etbc` opens a purpose-built configuration workspace with an adaptive sidebar, global setting search, status dashboard, progressive module sections, favorites, recent changes, accessibility controls, and live per-change undo. Existing profiles and SettingsRegistry definitions remain compatible.
 
-# Optional Next-Generation Suite
-
-EnhanceTBC includes three opt-in integrated systems. **HUD Studio** provides custom player/target frames and safe no-code trackers, **Inventory Intelligence** exposes equipment and durability audits, and **Combat Suite** records bounded local damage, healing, interrupt, dispel, and death segments. Existing modules remain active unless you choose otherwise.
-
-Use `/etbc suite` to start setup and `/etbc edit` to arrange registered frames. All systems share the core profile and never require separate addon folders or SavedVariables.
-
 ## Public API additions
 
-The stable `EnhanceTBC_API` v1 facade now also provides `GetFeatureState`, `SetFeatureEnabled`, `OpenConfiguration`, `EnterEditMode`, `GetEquipmentAudit`, `GetCombatSnapshot`, `RegisterDataProvider`, and `UnregisterDataProvider`. New callbacks are `FEATURE_STATE_CHANGED`, `EDIT_MODE_CHANGED`, `EQUIPMENT_AUDIT_UPDATED`, `COMBAT_SEGMENT_STARTED`, and `COMBAT_SEGMENT_ENDED`.
+The stable `EnhanceTBC_API` v1 facade also provides `OpenConfiguration` and `EnterEditMode`. The `EDIT_MODE_CHANGED` callback reports API-driven edit-mode entry.
 
 ```lua
 local api = EnhanceTBC_API
 if api and api.IsReady() then
-  api.SetFeatureEnabled("hud", true)
-  api.RegisterDataProvider(MyAddon, "myaddon.ready", {
-    GetValue = function(_, context)
-      return context.unit == "player" and true or false
-    end,
-  })
+  api.OpenConfiguration("unitframes")
 end
 ```
 

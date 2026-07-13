@@ -52,14 +52,28 @@ local function manifest_graph()
     local handle = assert(io.open(root .. "/" .. relative, "rb"), "missing manifest path: " .. relative)
     local content = handle:read("*a")
     handle:close()
+    if relative:lower():match("%.xml$") then
+      content = content:gsub("<!%-%-[%s%S]-%-%->", "")
+    end
     seen[relative], active[relative] = true, true
     graph[#graph + 1] = relative
     if relative:lower():match("%.xml$") then
-      for tag, file in content:gmatch("<%s*(Include)%s+[^>]-file%s*=%s*[\"']([^\"']+)[\"'][^>]*/%s*>") do
-        visit(normalize(dirname(relative) .. "/" .. file))
-      end
-      for tag, file in content:gmatch("<%s*(Script)%s+[^>]-file%s*=%s*[\"']([^\"']+)[\"'][^>]*/%s*>") do
-        visit(normalize(dirname(relative) .. "/" .. file))
+      local cursor = 1
+      while true do
+        local includeStart, includeEnd, includeFile = content:find(
+          "<%s*Include%s+[^>]-file%s*=%s*[\"']([^\"']+)[\"'][^>]*>", cursor
+        )
+        local scriptStart, scriptEnd, scriptFile = content:find(
+          "<%s*Script%s+[^>]-file%s*=%s*[\"']([^\"']+)[\"'][^>]*>", cursor
+        )
+        if not includeStart and not scriptStart then break end
+        if includeStart and (not scriptStart or includeStart < scriptStart) then
+          visit(normalize(dirname(relative) .. "/" .. includeFile))
+          cursor = includeEnd + 1
+        else
+          visit(normalize(dirname(relative) .. "/" .. scriptFile))
+          cursor = scriptEnd + 1
+        end
       end
     end
     active[relative] = nil
@@ -85,7 +99,14 @@ test("TOC first-party load order", function()
   local state = Mock.new(root)
   local graph, xmlCount = manifest_graph(), 0
   for _, file in ipairs(graph) do if file:lower():match("%.xml$") then xmlCount = xmlCount + 1 end end
-  equal(xmlCount, 14, "unexpected reachable XML manifest count")
+  equal(xmlCount, 29, "unexpected reachable XML manifest count")
+  local expected = {}
+  for line in io.lines(root .. "/test/expected-first-party-load-order.txt") do
+    if line ~= "" then expected[#expected + 1] = line end
+  end
+  local actual = toc_first_party()
+  equal(#actual, #expected, "first-party load-order length changed")
+  for i = 1, #expected do equal(actual[i], expected[i], "first-party load order changed at index " .. i) end
   for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
   truthy(state.env.ETBC, "global addon namespace missing")
   truthy(state.addon.Modules, "module registry missing")
@@ -315,7 +336,6 @@ test("public API v1 supports controlled integrations and ordered callbacks", fun
   truthy(not api.SetModuleEnabled("missing", true))
   truthy(not api.SetModuleEnabled("general", false))
   truthy(not api.RequestRefresh("missing"))
-
   local frame = state.env.CreateFrame("Frame")
   truthy(api.RegisterMover("ExternalMover", frame, { default = { point = "CENTER" } }))
   truthy(state.addon.Mover:GetRegistered().ExternalMover)
@@ -326,6 +346,8 @@ test("public API v1 supports controlled integrations and ordered callbacks", fun
   truthy(api.BindVisibility("ExternalVisibility", frame, function() return { enabled = true, mode = "ALWAYS" } end))
   truthy(api.UnbindVisibility("ExternalVisibility"))
   truthy(not api.UnbindVisibility("InternalVisibility"))
+  truthy(api.EnterEditMode("all"))
+  equal(state.addon.db.profile.mover.moveMode, true)
 
   local diagnostics = assert(api.GetDiagnostics())
   diagnostics.performance.metrics.peakMs = 999
@@ -375,36 +397,6 @@ test("profiler facade handles availability, enums, restrictions, and warnings", 
   equal(snapshot.available, false)
 end)
 
-test("feature suite toggles integrated modules and protects provider ownership", function()
-  local state = Mock.new(root)
-  for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
-  state.addon:OnInitialize()
-  local api = state.env.EnhanceTBC_API
-  local feature = assert(api.GetFeatureState("hud"))
-  equal(feature.enabled, false)
-  equal(feature.available, true)
-  equal(feature.loaded, true)
-  equal(feature.integrated, true)
-  truthy(api.SetFeatureEnabled("hud", true))
-  state:runTimers()
-  equal(assert(api.GetFeatureState("hud")).enabled, true)
-  local hudDriver = state.namedFrames.EnhanceTBC_HUDDriver
-  truthy(hudDriver and hudDriver.events.PLAYER_ENTERING_WORLD, "HUD events were not registered on enable")
-  truthy(api.SetFeatureEnabled("hud", false))
-  state:runTimers()
-  equal(assert(api.GetFeatureState("hud")).enabled, false)
-  equal(next(hudDriver.events), nil, "HUD events remained registered after disable")
-
-  local owner = {}
-  truthy(api.RegisterDataProvider(owner, "example.ready", { GetValue = function() return { ready = true } end }))
-  truthy(not api.UnregisterDataProvider({}, "example.ready"))
-  local value = assert(state.addon.FeatureSuite:GetProviderValue("example.ready"))
-  equal(value.ready, true)
-  truthy(api.UnregisterDataProvider(owner, "example.ready"))
-  truthy(api.EnterEditMode("hud"))
-  equal(state.addon.FeatureSuite:IsEditMode(), true)
-end)
-
 test("modern control center builds pages, searches, migrates, and reopens safely", function()
   local state = Mock.new(root)
   for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
@@ -436,21 +428,6 @@ test("control center change history undoes copied values", function()
   restored.enabled = true
   local recent = history:GetRecent(5)
   equal(#recent, 0)
-end)
-
-test("integrated combat suite aggregates bounded local snapshots", function()
-  local state = Mock.new(root)
-  for _, file in ipairs(toc_first_party()) do load_addon_file(state, file) end
-  state.addon:OnInitialize()
-  state.addon.db.profile.suite.combat.enabled = true
-  state.addon.db.profile.combat.enabled = true
-  local combat = state.addon.CombatSuite
-  combat:ProcessEvent(1, "SPELL_DAMAGE", false, "Player-1", "Tester", 0, 0, "Target-1", "Target", 0, 0, 123, "Spell", 1, 250)
-  combat:ProcessEvent(2, "SPELL_INTERRUPT", false, "Player-1", "Tester", 0, 0, "Target-1", "Target", 0, 0, 123, "Spell", 1)
-  local snapshot = assert(combat:GetSnapshot("current", "damage"))
-  equal(snapshot.total, 250)
-  equal(snapshot.actors[1].name, "Tester")
-  equal(snapshot.actors[1].value, 250)
 end)
 
 print(("RESULT %d passed, %d failed"):format(passed, failed))

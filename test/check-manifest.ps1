@@ -125,6 +125,39 @@ $result = Invoke-ManifestCheck $Path $Toc
 $resolvedRoot = (Resolve-Path -LiteralPath $Path).Path
 $reachable = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 $result.Loads | ForEach-Object { [void]$reachable.Add($_) }
+
+if ($Toc -eq 'EnhanceTBC.toc') {
+    foreach ($manifest in @(
+        'Manifests/Libraries.xml','Manifests/Locales.xml','Manifests/Core.xml',
+        'Manifests/UI.xml','Manifests/Settings.xml','Manifests/Modules.xml',
+        'Manifests/Modules/Castbar.xml','Manifests/Modules/UnitNameplates.xml','Manifests/Modules/MinimapPlus.xml'
+    )) {
+        if (-not $reachable.Contains($manifest)) { $result.Errors.Add("Required manifest is not reachable: $manifest") }
+    }
+
+    foreach ($directory in @('Core','Modules','Options','Settings','UI','Visibility','locales')) {
+        foreach ($luaFile in Get-ChildItem (Join-Path $resolvedRoot $directory) -Recurse -File -Filter '*.lua') {
+            $relativeLua = [IO.Path]::GetRelativePath($resolvedRoot, $luaFile.FullName).Replace('\','/')
+            if (-not $reachable.Contains($relativeLua)) { $result.Errors.Add("First-party runtime Lua is unreachable: $relativeLua") }
+        }
+    }
+
+    foreach ($acePath in @(
+        'Libs/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua',
+        'Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua',
+        'Libs/AceConfig-3.0/AceConfigDialog-3.0/AceConfigDialog-3.0.lua',
+        'Libs/AceConfig-3.0/AceConfig-3.0.lua'
+    )) {
+        $count = @($result.Loads | Where-Object { $_ -ieq $acePath }).Count
+        if ($count -ne 1) { $result.Errors.Add("AceConfig runtime path must load exactly once: $acePath (found $count)") }
+    }
+
+    foreach ($legacy in @('AceConfigCmd-3.0','AceConfigDialog-3.0','AceConfigRegistry-3.0')) {
+        if (Test-Path -LiteralPath (Join-Path $resolvedRoot (Join-Path 'Libs' $legacy))) {
+            $result.Errors.Add("Obsolete duplicate AceConfig directory remains: Libs/$legacy")
+        }
+    }
+}
 foreach ($xmlFile in Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File -Filter '*.xml') {
     $relativeXml = [IO.Path]::GetRelativePath($resolvedRoot, $xmlFile.FullName).Replace('\','/')
     if ($reachable.Contains($relativeXml)) { continue }

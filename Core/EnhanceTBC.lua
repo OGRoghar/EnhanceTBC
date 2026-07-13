@@ -33,11 +33,17 @@ local blizPanel
 local REMOVED_PROFILE_KEYS = {
   gcdbar = true,
   player_nameplates = true,
+  suite = true,
+  hud = true,
+  inventory = true,
+  combat = true,
 }
 
 local function MigrateProfileSchema(profile)
   if type(profile) ~= "table" then return end
   profile.general = profile.general or {}
+  for key in pairs(REMOVED_PROFILE_KEYS) do profile[key] = nil end
+  profile.general.suiteSetupCompleted = nil
   local current = tonumber(profile.general.profileSchemaVersion) or 0
 
   if current < 2 then
@@ -133,6 +139,9 @@ local function SanitizeProfileTable(profile)
 
   for key in pairs(REMOVED_PROFILE_KEYS) do
     profile[key] = nil
+  end
+  if type(profile.general) == "table" then
+    profile.general.suiteSetupCompleted = nil
   end
 
   SanitizeVisibilityProfile(profile.visibility)
@@ -438,9 +447,6 @@ function ETBC:GetDiagnostics()
   if self.GetPerformanceSnapshot then
     diagnostics.performance = self.GetPerformanceSnapshot()
   end
-  if self.FeatureSuite and self.FeatureSuite.GetDiagnostics then
-    diagnostics.suite = self.FeatureSuite:GetDiagnostics()
-  end
   return diagnostics
 end
 
@@ -527,7 +533,6 @@ local function PrintHelp(self)
   self:Print("/etbc addgossip <pattern>")
   self:Print("/etbc diagnose - Print client/addon diagnostics")
   self:Print("/etbc selftest - Check required client capabilities")
-  self:Print("/etbc suite - Open the optional feature setup")
   self:Print("/etbc edit - Enter visual layout mode")
   self:Print("/etbc lock - Exit visual layout mode")
 end
@@ -813,15 +818,11 @@ function ETBC:SlashCommand(input)
   end
 
   if input == "edit" then
-    if self.FeatureSuite then self.FeatureSuite:SetEditMode(true, "all") end
+    if self.Mover then self.Mover:SetMoveMode(true) end
     return
   end
   if input == "lock" or input == "edit off" then
-    if self.FeatureSuite then self.FeatureSuite:SetEditMode(false, "all") end
-    return
-  end
-  if input == "suite" or input == "setup" then
-    if self.OpenSuiteSetup then self:OpenSuiteSetup() end
+    if self.Mover then self.Mover:SetMoveMode(false) end
     return
   end
 
@@ -1034,7 +1035,6 @@ function ETBC:OnInitialize()
 end
 
 function ETBC:OnEnable()
-  if self.FeatureSuite then self.FeatureSuite:LoadEnabled() end
   self:RefreshAll("enable")
 end
 

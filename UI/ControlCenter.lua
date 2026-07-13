@@ -165,13 +165,11 @@ function CC:RenderDashboard()
   local modules=Font(card,("%s of %s modules enabled"):format(tostring(diag.enabledModules or 0),tostring(diag.knownModules or 0)),10,T.muted); modules:SetPoint("TOPLEFT",status,"BOTTOMLEFT",0,-8)
   local profile=ETBC.db and ETBC.db.GetCurrentProfile and ETBC.db:GetCurrentProfile() or "Default"; local pf=Font(card,"Profile: "..tostring(profile),10,T.muted); pf:SetPoint("LEFT",card,"LEFT",250,-used+8)
   top=top+128
-  local suiteEnabled,suiteTotal=0,0; for _,feature in pairs(diag.suite and diag.suite.features or {}) do suiteTotal=suiteTotal+1; if feature.enabled then suiteEnabled=suiteEnabled+1 end end
-  local perf=diag.performance; local health=Card(canvas,top,"Feature health","Optional systems and performance diagnostics."); health:SetHeight(90)
-  local featureText=Font(health,("%d of %d optional features enabled"):format(suiteEnabled,suiteTotal),10,T.muted); featureText:SetPoint("BOTTOMLEFT",health,"BOTTOMLEFT",16,18)
-  local perfText=Font(health,perf and perf.available and (perf.warning and "Performance warning active" or "Profiler available") or "Profiler unavailable",10,perf and perf.warning and T.red or T.muted); perfText:SetPoint("BOTTOMLEFT",health,"BOTTOMLEFT",260,18)
+  local perf=diag.performance; local health=Card(canvas,top,"Performance health","Live profiler capability and warning status."); health:SetHeight(90)
+  local perfText=Font(health,perf and perf.available and (perf.warning and "Performance warning active" or "Profiler available") or "Profiler unavailable",10,perf and perf.warning and T.red or T.muted); perfText:SetPoint("BOTTOMLEFT",health,"BOTTOMLEFT",16,18)
   top=top+102
   local actions=Card(canvas,top,"Quick actions","Common tools without hunting through module pages."); actions:SetHeight(98)
-  local edit=Button(actions,"Edit layout",112,30,function() ConfigWindow:Close(); if ETBC.FeatureSuite then ETBC.FeatureSuite:SetEditMode(true,"all") elseif ETBC.Mover then ETBC.Mover:SetMoveMode(true) end end); edit:SetPoint("BOTTOMLEFT",actions,"BOTTOMLEFT",16,14)
+  local edit=Button(actions,"Edit layout",112,30,function() ConfigWindow:Close(); if ETBC.Mover then ETBC.Mover:SetMoveMode(true) end end); edit:SetPoint("BOTTOMLEFT",actions,"BOTTOMLEFT",16,14)
   local test=Button(actions,"Run self-test",112,30,function() if ETBC.RunSelfTest then ETBC:RunSelfTest() end end,true); test:SetPoint("LEFT",edit,"RIGHT",8,0)
   local undo=Button(actions,"Undo change",112,30,function() local ok,label=History:UndoLatest(); CC:Toast(ok and ("Restored "..tostring(label)) or tostring(label),false,not ok); CC:RenderRoute(CC.route) end,true); undo:SetPoint("LEFT",test,"RIGHT",8,0)
   top=top+110
@@ -274,7 +272,7 @@ function CC:Build()
   local placeholder=Font(search,"Search every setting…",10,T.muted); placeholder:SetPoint("LEFT",search,"LEFT",12,0); search.placeholder=placeholder
   local function SearchChanged() local q=search:GetText() or ""; placeholder:SetShown(q==""); db.search=q; if CC.searchTimer and CC.searchTimer.Cancel then CC.searchTimer:Cancel() end; local render=function() CC.searchTimer=nil; if q~="" then CC:RenderSearch(q) else CC:RenderRoute(CC.route) end end; if ETBC.StartTimer then CC.searchTimer=ETBC:StartTimer(.12,render) else render() end end
   search:SetScript("OnTextChanged",SearchChanged); search:SetScript("OnEscapePressed",function(self) self:SetText(""); self:ClearFocus() end); search:SetScript("OnArrowPressed",function(_,key) CC:MoveSearchSelection(key=="UP" and -1 or 1) end); search:SetScript("OnEnterPressed",function() CC:ActivateSearchSelection() end)
-  local edit=Button(top,"Edit UI",82,30,function() ConfigWindow:Close(); if ETBC.FeatureSuite then ETBC.FeatureSuite:SetEditMode(true,"all") end end,true); edit:SetPoint("RIGHT",top,"RIGHT",-54,0)
+  local edit=Button(top,"Edit UI",82,30,function() ConfigWindow:Close(); if ETBC.Mover then ETBC.Mover:SetMoveMode(true) end end,true); edit:SetPoint("RIGHT",top,"RIGHT",-54,0)
   local close=Button(top,"×",32,30,function() ConfigWindow:Close() end,true); close:SetPoint("RIGHT",top,"RIGHT",-12,0)
 
   local side=CreateFrame("Frame",nil,f,BackdropTemplateMixin and "BackdropTemplate" or nil); side:SetPoint("TOPLEFT",f,"TOPLEFT",1,-70); side:SetPoint("BOTTOMLEFT",f,"BOTTOMLEFT",1,1); side:SetWidth(220); Color(side,T.surface,{0,0,0,0}); self.sidebar=side

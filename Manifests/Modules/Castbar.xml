@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="..\..\Modules\Castbar.lua"/>
+  <Script file="..\..\Modules\Castbar\Skin.lua"/>
+  <Script file="..\..\Modules\Castbar\Layout.lua"/>
+  <Script file="..\..\Modules\Castbar\Style.lua"/>
+  <Script file="..\..\Modules\Castbar\Timing.lua"/>
+</Ui>

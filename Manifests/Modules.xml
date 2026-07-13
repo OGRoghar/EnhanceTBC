@@ -1,0 +1,23 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="..\Modules\UI.lua"/>
+  <Include file="Modules\Castbar.xml"/>
+  <Script file="..\Modules\UnitFrames.lua"/>
+  <Include file="Modules\UnitNameplates.xml"/>
+  <Script file="..\Modules\ActionBars.lua"/>
+  <Include file="Modules\MinimapPlus.xml"/>
+  <Script file="..\Modules\Auras.lua"/>
+  <Script file="..\Modules\ActionTracker.lua"/>
+  <Script file="..\Modules\CombatText.lua"/>
+  <Script file="..\Modules\FriendsListDecor.lua"/>
+  <Script file="..\Modules\ChatIM.lua"/>
+  <Script file="..\Modules\SwingTimer.lua"/>
+  <Script file="..\Modules\Mailbox.lua"/>
+  <Script file="..\Modules\Sound.lua"/>
+  <Script file="..\Modules\Tooltip.lua"/>
+  <Script file="..\Modules\Vendor.lua"/>
+  <Script file="..\Modules\Cooldowns.lua"/>
+  <Script file="..\Modules\Objectives.lua"/>
+  <Script file="..\Modules\AutoGossip.lua"/>
+  <Script file="..\Modules\CVars.lua"/>
+  <Script file="..\Visibility\Visibility.lua"/>
+</Ui>

@@ -1,0 +1,13 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="..\..\Modules\MinimapPlus.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\Tracking.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\PerformanceFrame.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\IconsFrame.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\Timers.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\Sink.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\SinkButtons.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\SinkFrame.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\SinkScan.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\BlizzardAdapters.lua"/>
+  <Script file="..\..\Modules\MinimapPlus\Events.lua"/>
+</Ui>

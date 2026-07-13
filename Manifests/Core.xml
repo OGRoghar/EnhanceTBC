@@ -1,0 +1,15 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="..\Core\Defaults.lua"/>
+  <Script file="..\Core\Presets.lua"/>
+  <Script file="..\Core\Print.lua"/>
+  <Script file="..\Core\Compat.lua"/>
+  <Script file="..\Core\Theme.lua"/>
+  <Script file="..\Core\ApplyBus.lua"/>
+  <Script file="..\Core\SettingsRegistry.lua"/>
+  <Script file="..\Core\Mover.lua"/>
+  <Script file="..\Core\Init.lua"/>
+  <Script file="..\Options\Options.lua"/>
+  <Script file="..\Core\EnhanceTBC.lua"/>
+  <Script file="..\Core\PublicAPI.lua"/>
+  <Script file="..\Core\MinimapButton.lua"/>
+</Ui>

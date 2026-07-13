@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Script file="..\UI\ConfigWindow.lua"/>
+  <Script file="..\UI\ControlCenter_Model.lua"/>
+  <Script file="..\UI\ControlCenter_History.lua"/>
+  <Script file="..\UI\ControlCenter.lua"/>
+</Ui>

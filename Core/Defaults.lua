@@ -7,38 +7,6 @@ ETBC.defaults = {
       minimap = { enabled = true, hide = false },
       ui = { theme = "WarcraftGreen", scale = 1.0, lock = false },
       debug = false,
-      suiteSetupCompleted = false,
-    },
-
-    suite = {
-      enabled = true,
-      hud = { enabled = false },
-      inventory = { enabled = false },
-      combat = { enabled = false },
-    },
-
-    hud = {
-      enabled = false,
-      preset = "CLASSIC",
-      frames = { player = true, target = true, targettarget = false, focus = false, pet = false, party = false },
-      trackers = {},
-      maxTrackers = 64,
-    },
-
-    inventory = {
-      enabled = false,
-      overlays = true,
-      equipmentAudit = true,
-      lowDurability = 25,
-      cachedCounts = {},
-      junkRules = { maxQuality = 0, exclusions = {} },
-    },
-
-    combat = {
-      enabled = false,
-      maxSegments = 10,
-      maxDeathEvents = 20,
-      window = { shown = true, width = 300, height = 220 },
     },
 
 	    minimapPlus = {
