@@ -68,6 +68,62 @@ local function GetDB()
   if db.useAuraDeltaUpdates == nil then db.useAuraDeltaUpdates = true end
   if db.useSpellIDAuraLookup == nil then db.useSpellIDAuraLookup = true end
 
+  -- Schema 2 keeps legacy scalar settings authoritative while introducing
+  -- component/category policy records. The backup is intentionally retained
+  -- for one migration generation so a profile can be inspected or recovered.
+  if (tonumber(db.schemaVersion) or 0) < 2 then
+    if not db.legacyBackup then
+      db.legacyBackup = {
+        enemy_nameplate_width = db.enemy_nameplate_width,
+        enemy_nameplate_height = db.enemy_nameplate_height,
+        friendly_nameplate_width = db.friendly_nameplate_width,
+        friendly_nameplate_height = db.friendly_nameplate_height,
+        enemy_nameplate_castbar_width = db.enemy_nameplate_castbar_width,
+        enemy_nameplate_castbar_height = db.enemy_nameplate_castbar_height,
+        enemy_nameplate_health_text = db.enemy_nameplate_health_text,
+        enemy_nameplate_debuff = db.enemy_nameplate_debuff,
+      }
+    end
+    db.schemaVersion = 2
+  end
+  db.selectedPreset = db.selectedPreset or "PVE"
+  if db.autoPreset == nil then db.autoPreset = false end
+  db.power = db.power or {}
+  if db.power.enabled == nil then db.power.enabled = true end
+  if db.power.height == nil then db.power.height = 4 end
+  db.power.textMode = db.power.textMode or "NONE"
+  db.power.targetTextMode = db.power.targetTextMode or "PERCENT"
+  if db.power.friendlyAlways == nil then db.power.friendlyAlways = false end
+  if db.power.showEnemyPlayers == nil then db.power.showEnemyPlayers = true end
+  if db.power.showEnemyNPCs == nil then db.power.showEnemyNPCs = true end
+  if db.power.showFriendlyTarget == nil then db.power.showFriendlyTarget = true end
+  db.targeting = db.targeting or {}
+  if db.targeting.targetScale == nil then db.targeting.targetScale = 1.08 end
+  if db.targeting.targetAlpha == nil then db.targeting.targetAlpha = 1 end
+  if db.targeting.nonTargetAlpha == nil then db.targeting.nonTargetAlpha = 0.82 end
+  if db.targeting.focusGlow == nil then db.targeting.focusGlow = true end
+  if db.targeting.showTargetOfTarget == nil then db.targeting.showTargetOfTarget = true end
+  db.threat = db.threat or { enabled = true, showPercent = false }
+  db.indicators = db.indicators or { classification = true, level = true, targetOfTarget = true }
+  db.categories = db.categories or {}
+  local categoryDefaults = {
+    enemyPlayers = { health = true, power = true, cast = true, alpha = 1, scale = 1 },
+    enemyNPCs = { health = true, power = true, cast = true, alpha = 1, scale = 1 },
+    friendlyPlayers = { health = true, power = false, cast = true, alpha = 0.9, scale = 1 },
+    friendlyNPCs = { health = true, power = false, cast = true, alpha = 0.85, scale = 1 },
+    targetFocus = { health = true, power = true, cast = true, alpha = 1, scale = 1.08 },
+    bossesElitesRares = { health = true, power = true, cast = true, alpha = 1, scale = 1.05 },
+    petsGuardians = { health = true, power = false, cast = false, alpha = 0.8, scale = 0.9 },
+    totems = { health = true, power = false, cast = false, alpha = 0.9, scale = 0.85 },
+    minorUnits = { health = true, power = false, cast = false, alpha = 0.65, scale = 0.8 },
+  }
+  for key, defaults in pairs(categoryDefaults) do
+    db.categories[key] = db.categories[key] or {}
+    for option, value in pairs(defaults) do
+      if db.categories[key][option] == nil then db.categories[key][option] = value end
+    end
+  end
+
   return db
 end
 
@@ -408,11 +464,15 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplates[unit_guid] = unit_nameplate.UnitFrame
   end
 
-  if unit ~= "player" then
-    if not IsFriendlyNameplate(unit_nameplate, unit)
-      and not unit_nameplate.nameplate_events:IsEventRegistered("UNIT_AURA") then
-      unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_AURA", unit)
-      unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_THREAT_LIST_UPDATE", unit)
+  if unit ~= "player" and not unit_nameplate.nameplate_events:IsEventRegistered("UNIT_HEALTH") then
+    for _, event in ipairs({
+      "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER",
+      "UNIT_DISPLAYPOWER", "UNIT_THREAT_LIST_UPDATE", "UNIT_AURA",
+      "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_INTERRUPTED",
+      "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
+      "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP",
+    }) do
+      unit_nameplate.nameplate_events:RegisterUnitEvent(event, unit)
     end
   end
 
@@ -758,12 +818,25 @@ function mod.StyleUnitNameplate(_, unit)
         SetNameplatePlayerDebuffs(unit_nameplate, activeUnit)
         SetNameplateAbsorb(unit_nameplate, activeUnit)
       elseif event == "UNIT_THREAT_LIST_UPDATE" and unit_nameplate.UnitFrame
-        and GetDB().nameplate_unit_target_color then
-        SetNameplateHealthBarColor(
-          unit_nameplate,
-          unit_nameplate.UnitFrame.healthBar,
-          GetNameplateUnit(unit_nameplate.UnitFrame)
-        )
+        then
+        local activeUnit = GetNameplateUnit(unit_nameplate.UnitFrame)
+        local snapshot = mod.Internal.State and mod.Internal.State:Update(activeUnit, "threat")
+        if GetDB().nameplate_unit_target_color then
+          SetNameplateHealthBarColor(unit_nameplate, unit_nameplate.UnitFrame.healthBar, activeUnit)
+        end
+        if mod.Internal.Indicators then mod.Internal.Indicators:Update(unit_nameplate, snapshot, GetDB()) end
+      elseif unit_nameplate.UnitFrame then
+        local activeUnit = GetNameplateUnit(unit_nameplate.UnitFrame)
+        local snapshot = mod.Internal.State and mod.Internal.State:Update(activeUnit, event)
+        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+          SetNameplateHealthBarText(unit_nameplate.UnitFrame.healthBar, activeUnit)
+          SetNameplateHealthBarColor(unit_nameplate, unit_nameplate.UnitFrame.healthBar, activeUnit)
+        elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then
+          if mod.Internal.Power then mod.Internal.Power:Update(unit_nameplate, snapshot, GetDB()) end
+        elseif event:find("UNIT_SPELLCAST", 1, true) == 1 then
+          if mod.Internal.Casts then mod.Internal.Casts:Update(unit_nameplate, activeUnit, GetDB()) end
+        end
+        if mod.Internal.Indicators then mod.Internal.Indicators:Update(unit_nameplate, snapshot, GetDB()) end
       end
     end)
 
@@ -819,6 +892,10 @@ function mod.StyleUnitNameplate(_, unit)
   SetNameplateUnitDebuff(unit_nameplate, unit)
   SetNameplatePlayerDebuffs(unit_nameplate, unit)
   SetNameplateAbsorb(unit_nameplate, unit)
+  local snapshot = mod.Internal.State and mod.Internal.State:Update(unit, "all")
+  if mod.Internal.Power then mod.Internal.Power:Update(unit_nameplate, snapshot, GetDB()) end
+  if mod.Internal.Casts then mod.Internal.Casts:Update(unit_nameplate, unit, GetDB()) end
+  if mod.Internal.Indicators then mod.Internal.Indicators:Update(unit_nameplate, snapshot, GetDB()) end
 end
 
 local function GetLifecycleInternal()
@@ -949,6 +1026,20 @@ function mod.UpdateExistingNameplatesTextures(_)
   end
 end
 
+function mod.UpdateExistingNameplateComponents(_)
+  local db = GetDB()
+  for _, unitFrame in pairs(unit_nameplates) do
+    local unit = GetNameplateUnit(unitFrame)
+    local nameplate = unit and C_NamePlate.GetNamePlateForUnit(unit, false)
+    if nameplate and UnitExists(unit) then
+      local snapshot = mod.Internal.State and mod.Internal.State:Update(unit, "settings")
+      if mod.Internal.Power then mod.Internal.Power:Update(nameplate, snapshot, db) end
+      if mod.Internal.Casts then mod.Internal.Casts:Update(nameplate, unit, db) end
+      if mod.Internal.Indicators then mod.Internal.Indicators:Update(nameplate, snapshot, db) end
+    end
+  end
+end
+
 local function HookEvents()
   local H = GetLifecycleInternal()
   if H and H.HookEvents then
@@ -1000,6 +1091,7 @@ mod.Internal.Shared.SetNameplateUnitStance = SetNameplateUnitStance
 mod.Internal.Shared.SetNameplatePlayerMindControl = SetNameplatePlayerMindControl
 
 function mod.Apply(_)
+  if mod.Internal.Profiles then mod.Internal.Profiles:ApplyContext() end
   if IsPlaterLoaded() then
     UnhookEvents()
     ResetNameplates()
@@ -1034,6 +1126,7 @@ function mod.Apply(_)
   mod:UpdateExistingNameplatesStance()
   mod:UpdateExistingNameplatesText()
   mod:UpdateExistingNameplatesTextures()
+  mod:UpdateExistingNameplateComponents()
 end
 
 if ETBC.ApplyBus and ETBC.ApplyBus.Register then

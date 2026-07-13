@@ -18,6 +18,7 @@ local function new_object(kind, state)
   function methods:GetScript(name) return self.scripts[name] end
   function methods:HookScript(name, fn) self.scripts[name] = fn end
   function methods:RegisterEvent(name) self.events[name] = true end
+  function methods:RegisterUnitEvent(name, unit) self.events[name] = unit or true end
   function methods:UnregisterEvent(name) self.events[name] = nil end
   function methods:UnregisterAllEvents() self.events = {} end
   function methods:IsEventRegistered(name) return self.events[name] and true or false end
@@ -174,6 +175,15 @@ function M.new(root)
   env.UnitHealthMax = function() return 100 end
   env.UnitPower = function() return 100 end
   env.UnitPowerMax = function() return 100 end
+  env.UnitPowerType = function() return 0, "MANA" end
+  env.UnitLevel = function() return 70 end
+  env.UnitClassification = function() return "normal" end
+  env.UnitCreatureType = function() return "Humanoid" end
+  env.UnitReaction = function() return 3 end
+  env.UnitIsFriend = function(_, unit) return unit == "player" end
+  env.UnitPlayerControlled = function(unit) return unit == "player" end
+  env.UnitIsDeadOrGhost = function() return false end
+  env.UnitIsConnected = function() return true end
   env.UnitName = function(unit) return unit end
   env.UnitIsPlayer = function(unit) return unit == "player" end
   env.UnitClass = function() return "Warrior", "WARRIOR" end

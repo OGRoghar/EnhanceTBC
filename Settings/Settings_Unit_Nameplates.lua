@@ -49,6 +49,19 @@ local function GetDB()
   if db.totem_nameplate_colors == nil then db.totem_nameplate_colors = true end
   if db.useAuraDeltaUpdates == nil then db.useAuraDeltaUpdates = true end
   if db.useSpellIDAuraLookup == nil then db.useSpellIDAuraLookup = true end
+  db.selectedPreset = db.selectedPreset or "PVE"
+  if db.autoPreset == nil then db.autoPreset = false end
+  db.power = db.power or {}
+  if db.power.enabled == nil then db.power.enabled = true end
+  if db.power.height == nil then db.power.height = 4 end
+  db.power.textMode = db.power.textMode or "NONE"
+  db.power.targetTextMode = db.power.targetTextMode or "PERCENT"
+  if db.power.friendlyAlways == nil then db.power.friendlyAlways = false end
+  db.targeting = db.targeting or {}
+  if db.targeting.showTargetOfTarget == nil then db.targeting.showTargetOfTarget = true end
+  db.threat = db.threat or {}
+  if db.threat.enabled == nil then db.threat.enabled = true end
+  if db.threat.showPercent == nil then db.threat.showPercent = false end
 
   return db
 end
@@ -92,6 +105,75 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
         width = "full",
         get = function() return db.enabled end,
         set = function(_, v) db.enabled = v and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+
+      presetsHeader = { type = "header", name = "Presets and preview", order = 2 },
+      selectedPreset = {
+        type = "select", name = "Nameplate preset", order = 3,
+        desc = "Applies a curated nameplate-only layout. The previous nameplate profile can be restored once with Undo.",
+        values = { MINIMAL = "Minimal", PVE = "PvE", TANK = "Tank", HEALER = "Healer", PVP = "PvP" },
+        get = function() return db.selectedPreset or "PVE" end,
+        set = function(_, value)
+          local profiles = ETBC.Modules and ETBC.Modules.Nameplates and ETBC.Modules.Nameplates.Internal.Profiles
+          if profiles then profiles:Apply(value) end
+        end,
+      },
+      autoPreset = {
+        type = "toggle", name = "Automatic context preset", order = 4,
+        desc = "Uses PvP in arenas and battlegrounds, then assigned tank/healer roles. Ambiguous solo roles keep your selected preset.",
+        get = function() return db.autoPreset == true end,
+        set = function(_, value)
+          db.autoPreset = value and true or false
+          ETBC.ApplyBus:Notify("nameplates")
+        end,
+      },
+      undoPreset = {
+        type = "execute", name = "Undo last preset", order = 5,
+        disabled = function() return type(db.presetUndo) ~= "table" end,
+        func = function()
+          local profiles = ETBC.Modules and ETBC.Modules.Nameplates and ETBC.Modules.Nameplates.Internal.Profiles
+          if profiles then profiles:Undo() end
+        end,
+      },
+
+      powerHeader = { type = "header", name = "Health and power", order = 6 },
+      powerEnabled = {
+        type = "toggle", name = "Primary power bar", order = 6.1,
+        desc = "Shows mana, rage, energy, focus, and any other valid primary resource beneath health.",
+        get = function() return db.power and db.power.enabled ~= false end,
+        set = function(_, value) db.power.enabled = value and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      powerHeight = {
+        type = "range", name = "Power bar height", order = 6.2, min = 2, max = 10, step = 1,
+        disabled = function() return not db.enabled or not db.power.enabled end,
+        get = function() return db.power.height or 4 end,
+        set = function(_, value) db.power.height = value; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      powerTextMode = {
+        type = "select", name = "Power text", order = 6.3,
+        values = { NONE = "None", PERCENT = "Percent", VALUE = "Value", VALUE_MAX = "Value / maximum" },
+        disabled = function() return not db.enabled or not db.power.enabled end,
+        get = function() return db.power.textMode or "NONE" end,
+        set = function(_, value) db.power.textMode = value; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      friendlyPowerAlways = {
+        type = "toggle", name = "Power on all friendly plates", order = 6.4,
+        desc = "Off by default. Friendly target and focus power remains visible when available.",
+        disabled = function() return not db.enabled or not db.power.enabled end,
+        get = function() return db.power.friendlyAlways == true end,
+        set = function(_, value) db.power.friendlyAlways = value and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+
+      combatHeader = { type = "header", name = "Threat and targeting", order = 7 },
+      threatPercent = {
+        type = "toggle", name = "Show threat percentage", order = 7.1,
+        get = function() return db.threat and db.threat.showPercent == true end,
+        set = function(_, value) db.threat.showPercent = value and true or false; ETBC.ApplyBus:Notify("nameplates") end,
+      },
+      targetOfTarget = {
+        type = "toggle", name = "Show target-of-target", order = 7.2,
+        get = function() return db.targeting and db.targeting.showTargetOfTarget ~= false end,
+        set = function(_, value) db.targeting.showTargetOfTarget = value and true or false; ETBC.ApplyBus:Notify("nameplates") end,
       },
 
       enemyHeader = { type = "header", name = "Enemy Nameplates", order = 10 },

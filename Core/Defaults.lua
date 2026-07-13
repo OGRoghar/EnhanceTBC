@@ -57,6 +57,53 @@ ETBC.defaults = {
 
     nameplates = {
       enabled = true,
+      schemaVersion = 2,
+      selectedPreset = "PVE",
+      autoPreset = false,
+
+      power = {
+        enabled = true,
+        height = 4,
+        textMode = "NONE",
+        targetTextMode = "PERCENT",
+        friendlyAlways = false,
+        showEnemyPlayers = true,
+        showEnemyNPCs = true,
+        showFriendlyTarget = true,
+      },
+      targeting = {
+        targetScale = 1.08,
+        targetAlpha = 1,
+        nonTargetAlpha = 0.82,
+        focusGlow = true,
+        showTargetOfTarget = true,
+      },
+      threat = {
+        enabled = true,
+        showPercent = false,
+      },
+      indicators = {
+        classification = true,
+        level = true,
+        targetOfTarget = true,
+      },
+      auraLanes = {
+        priorityCC = { enabled = true, iconSize = 26, maxIcons = 1, sort = "PRIORITY" },
+        dispellable = { enabled = true, iconSize = 20, maxIcons = 3, sort = "REMAINING" },
+        playerDebuffs = { enabled = true, iconSize = 20, maxIcons = 4, sort = "REMAINING" },
+        defensives = { enabled = true, iconSize = 20, maxIcons = 3, sort = "PRIORITY" },
+      },
+      categories = {
+        enemyPlayers = { health = true, power = true, cast = true, alpha = 1, scale = 1 },
+        enemyNPCs = { health = true, power = true, cast = true, alpha = 1, scale = 1 },
+        friendlyPlayers = { health = true, power = false, cast = true, alpha = 0.9, scale = 1 },
+        friendlyNPCs = { health = true, power = false, cast = true, alpha = 0.85, scale = 1 },
+        targetFocus = { health = true, power = true, cast = true, alpha = 1, scale = 1.08 },
+        bossesElitesRares = { health = true, power = true, cast = true, alpha = 1, scale = 1.05 },
+        petsGuardians = { health = true, power = false, cast = false, alpha = 0.8, scale = 0.9 },
+        totems = { health = true, power = false, cast = false, alpha = 0.9, scale = 0.85 },
+        minorUnits = { health = true, power = false, cast = false, alpha = 0.65, scale = 0.8 },
+      },
 
       enemy_nameplate_width = 109,
       enemy_nameplate_height = 12.5,

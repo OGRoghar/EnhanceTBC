@@ -430,5 +430,38 @@ test("control center change history undoes copied values", function()
   equal(#recent, 0)
 end)
 
+test("nameplate state, power policy, formatting, and presets are deterministic", function()
+  local state = Mock.new(root)
+  state.addon.Modules = { Nameplates = { Internal = { Shared = {} } } }
+  state.addon.db = { profile = { nameplates = {
+    enabled = true,
+    power = { enabled = true, height = 4, textMode = "NONE", targetTextMode = "PERCENT", friendlyAlways = false, showEnemyPlayers = true, showEnemyNPCs = true, showFriendlyTarget = true },
+    categories = { enemyNPCs = { power = true }, targetFocus = { power = true }, friendlyNPCs = { power = false } },
+  } } }
+  state.addon.ApplyBus = { Notify = function(_, key) state.notified = key end }
+  state.env.UnitGUID = function(unit) return "guid-" .. unit end
+  state.env.UnitName = function(unit) if unit == "nameplate1target" then return "player" end return unit end
+  state.env.UnitPower = function() return 35 end
+  state.env.UnitPowerMax = function() return 100 end
+  state.env.UnitIsUnit = function(a, b) return a == b end
+  load_addon_file(state, "Modules/Unit_NamePlates/State.lua")
+  load_addon_file(state, "Modules/Unit_NamePlates/Profiles.lua")
+  load_addon_file(state, "Modules/Unit_NamePlates/Power.lua")
+  local internal = state.addon.Modules.Nameplates.Internal
+  local snapshot = internal.State:Update("nameplate1", "power")
+  equal(snapshot.powerToken, "MANA")
+  equal(snapshot.category, "enemyNPCs")
+  equal(internal.Power.FormatText("PERCENT", 35, 100), "35%")
+  truthy(internal.Power:ShouldShow(snapshot, state.addon.db.profile.nameplates))
+  snapshot.powerMax = 0
+  equal(internal.Power:ShouldShow(snapshot, state.addon.db.profile.nameplates), false)
+  local before = state.addon.db.profile.nameplates.power.enabled
+  truthy(internal.Profiles:Apply("MINIMAL"))
+  equal(state.addon.db.profile.nameplates.power.enabled, false)
+  truthy(internal.Profiles:Undo())
+  equal(state.addon.db.profile.nameplates.power.enabled, before)
+  equal(state.notified, "nameplates")
+end)
+
 print(("RESULT %d passed, %d failed"):format(passed, failed))
 if failed > 0 then os.exit(1) end

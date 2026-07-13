@@ -47,6 +47,11 @@ Modules/Castbar/Timing.lua
 Modules/UnitFrames.lua
 Modules/Unit_NamePlates.lua
 Modules/Unit_NamePlates/Data.lua
+Modules/Unit_NamePlates/State.lua
+Modules/Unit_NamePlates/Profiles.lua
+Modules/Unit_NamePlates/Power.lua
+Modules/Unit_NamePlates/Casts.lua
+Modules/Unit_NamePlates/Indicators.lua
 Modules/Unit_NamePlates/Render.lua
 Modules/Unit_NamePlates/CombatLog.lua
 Modules/Unit_NamePlates/Lifecycle.lua

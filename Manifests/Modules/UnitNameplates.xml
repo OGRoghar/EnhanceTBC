@@ -1,6 +1,11 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
   <Script file="..\..\Modules\Unit_NamePlates.lua"/>
   <Script file="..\..\Modules\Unit_NamePlates\Data.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\State.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\Profiles.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\Power.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\Casts.lua"/>
+  <Script file="..\..\Modules\Unit_NamePlates\Indicators.lua"/>
   <Script file="..\..\Modules\Unit_NamePlates\Render.lua"/>
   <Script file="..\..\Modules\Unit_NamePlates\CombatLog.lua"/>
   <Script file="..\..\Modules\Unit_NamePlates\Lifecycle.lua"/>

@@ -53,6 +53,11 @@ local function RemoveUnitNameplate(unit)
       unit_nameplate.nameplate_events:UnregisterAllEvents()
     end
 
+    if mod.Internal.Power then mod.Internal.Power:Reset(unit_nameplate_unit_frame) end
+    if mod.Internal.Casts then mod.Internal.Casts:Reset(unit_nameplate_unit_frame) end
+    if mod.Internal.Indicators then mod.Internal.Indicators:Reset(unit_nameplate_unit_frame) end
+    if mod.Internal.State then mod.Internal.State:Remove(unit, unit_guid) end
+
     if not unit_nameplate_health_bar then
       unit_nameplates[unit_guid] = nil
       return
@@ -157,8 +162,14 @@ local function HookEvents()
   driver:RegisterEvent("DUEL_FINISHED")
   driver:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
   driver:RegisterEvent("PLAYER_REGEN_ENABLED")
+  driver:RegisterEvent("PLAYER_TARGET_CHANGED")
+  driver:RegisterEvent("PLAYER_FOCUS_CHANGED")
 
   driver:SetScript("OnEvent", function(_, event, unit)
+    if event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED" then
+      if mod.UpdateExistingNameplateComponents then mod:UpdateExistingNameplateComponents() end
+      return
+    end
     if event == "PLAYER_ENTERING_WORLD" or event == "DISPLAY_SIZE_CHANGED" then
       SetNameplatePadding()
       return
@@ -258,6 +269,7 @@ local function ResetNameplates()
       RemoveUnitNameplate(unit)
     end
   end
+  if mod.Internal.State then mod.Internal.State:Clear() end
 end
 
 H.RemoveUnitNameplate = RemoveUnitNameplate
