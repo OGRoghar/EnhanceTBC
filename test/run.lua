@@ -455,6 +455,19 @@ test("nameplate state, power policy, formatting, and presets are deterministic",
   truthy(internal.Power:ShouldShow(snapshot, state.addon.db.profile.nameplates))
   snapshot.powerMax = 0
   equal(internal.Power:ShouldShow(snapshot, state.addon.db.profile.nameplates), false)
+  local unitFrame = state.env.CreateFrame("Frame", nil, state.env.UIParent)
+  unitFrame.etbcPowerBar = false
+  unitFrame.castBarWrapper = false
+  unitFrame.healthBarWrapper = state.env.CreateFrame("Frame", nil, unitFrame)
+  unitFrame.healthBarWrapper:SetSize(109, 13)
+  local plate = { UnitFrame = unitFrame }
+  snapshot.powerMax, snapshot.power = 100, 35
+  internal.Power:Update(plate, snapshot, state.addon.db.profile.nameplates)
+  equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBarWrapper, "power bar detached from health wrapper")
+  equal(unitFrame.etbcPowerBar:GetWidth(), 109, "power bar width did not match health")
+  equal(unitFrame.etbcPowerBar.point[1], "TOP")
+  equal(unitFrame.etbcPowerBar.point[2], unitFrame.healthBarWrapper)
+  equal(unitFrame.etbcPowerBar.point[3], "BOTTOM")
   local before = state.addon.db.profile.nameplates.power.enabled
   truthy(internal.Profiles:Apply("MINIMAL"))
   equal(state.addon.db.profile.nameplates.power.enabled, false)

@@ -63,14 +63,18 @@ function Power:Layout(unitFrame, shown, db)
   local bar, health, cast = unitFrame.etbcPowerBar, unitFrame.healthBarWrapper, unitFrame.castBarWrapper
   if not health then return end
   if bar then
+    -- Blizzard's nameplate UnitFrame can be substantially wider than its
+    -- visible health widget. Keep the resource component in the health
+    -- wrapper's coordinate space and give it an explicit width so anchors
+    -- cannot stretch it to the native plate bounds.
+    if bar:GetParent() ~= health then bar:SetParent(health) end
     bar:ClearAllPoints()
-    bar:SetPoint("TOPLEFT", health, "BOTTOMLEFT", 0, -1)
-    bar:SetPoint("TOPRIGHT", health, "BOTTOMRIGHT", 0, -1)
-    bar:SetHeight((db.power and db.power.height) or 4)
+    bar:SetPoint("TOP", health, "BOTTOM", 0, 0)
+    bar:SetSize(health:GetWidth(), (db.power and db.power.height) or 4)
   end
   if cast then
     cast:ClearAllPoints()
-    cast:SetPoint("TOP", shown and bar or health, "BOTTOM", 0, shown and -1 or -3)
+    cast:SetPoint("TOP", shown and bar or health, "BOTTOM", 0, shown and 0 or -3)
   end
 end
 
