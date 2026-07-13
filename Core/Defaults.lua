@@ -63,7 +63,7 @@ ETBC.defaults = {
 
       power = {
         enabled = true,
-        height = 4,
+        height = 6,
         textMode = "NONE",
         targetTextMode = "PERCENT",
         friendlyAlways = false,

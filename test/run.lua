@@ -461,20 +461,50 @@ test("nameplate state, power policy, formatting, and presets are deterministic",
   unitFrame.castBarWrapper = false
   unitFrame.healthBarWrapper = state.env.CreateFrame("Frame", nil, unitFrame)
   unitFrame.healthBarWrapper:SetSize(109, 13)
+  unitFrame.healthBar = state.env.CreateFrame("StatusBar", nil, unitFrame)
+  unitFrame.healthBar:SetSize(109, 13)
+  unitFrame.healthBar.focus_texture = false
   local plate = { UnitFrame = unitFrame }
   snapshot.powerMax, snapshot.power = 100, 35
   internal.Power:Update(plate, snapshot, state.addon.db.profile.nameplates)
-  equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBarWrapper, "power bar detached from health wrapper")
+  equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBar, "power bar detached from visible health bar")
   equal(unitFrame.etbcPowerBar:GetWidth(), 109, "power bar width did not match health")
   equal(unitFrame.etbcPowerBar.point[1], "TOP")
-  equal(unitFrame.etbcPowerBar.point[2], unitFrame.healthBarWrapper)
+  equal(unitFrame.etbcPowerBar.point[2], unitFrame.healthBar)
   equal(unitFrame.etbcPowerBar.point[3], "BOTTOM")
   unitFrame.etbcIndicators = false
-  unitFrame.healthBar = false
   snapshot.isTarget = true
   internal.Indicators:Update(plate, snapshot, state.addon.db.profile.nameplates)
   equal(rawget(unitFrame, "scale"), nil, "target emphasis scaled Blizzard's UnitFrame")
-  equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBarWrapper, "target emphasis detached power bar")
+  equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBar, "target emphasis detached power bar")
+  state.env.UnitGUID = function(unit) return state.currentNameplateGUID or ("guid-" .. unit) end
+  state.currentNameplateGUID = "guid-old"
+  local oldSnapshot = internal.State:Update("nameplate2", "all")
+  state.currentNameplateGUID = "guid-new"
+  local newSnapshot = internal.State:Update("nameplate2", "all")
+  equal(internal.State.byGUID[oldSnapshot.guid], nil, "reused token leaked its old GUID snapshot")
+  internal.State:Remove("nameplate2", oldSnapshot.guid)
+  equal(internal.State.byUnit.nameplate2, newSnapshot, "stale GUID removal cleared the reused token")
+  local sizeRefreshes, componentRefreshes = 0, 0
+  state.addon.Modules.Nameplates.UpdateExistingNameplatesSize = function() sizeRefreshes = sizeRefreshes + 1 end
+  state.addon.Modules.Nameplates.UpdateExistingNameplateComponents = function() componentRefreshes = componentRefreshes + 1 end
+  state.addon.Modules.Nameplates.Internal.Shared.unit_nameplates = {}
+  state.addon.Modules.Nameplates.Internal.Shared.runtime = { hooked = true }
+  load_addon_file(state, "Modules/Unit_NamePlates/Lifecycle.lua")
+  internal.Lifecycle.ScheduleTargetLayoutRefresh()
+  equal(sizeRefreshes, 1, "target layout was not refreshed immediately")
+  equal(componentRefreshes, 1, "target components were not refreshed immediately")
+  state:runTimers()
+  equal(sizeRefreshes, 3, "deferred target layout refreshes did not run")
+  equal(componentRefreshes, 3, "deferred target component refreshes did not run")
+  local orphanFrame = state.env.CreateFrame("Frame", nil, false)
+  orphanFrame.healthBar = false
+  orphanFrame.etbcPowerBar = false
+  orphanFrame.etbcCastDetails = false
+  orphanFrame.etbcIndicators = false
+  internal.Shared.unit_nameplates.orphan = orphanFrame
+  internal.Lifecycle.RemoveUnitNameplate(nil, "orphan")
+  equal(internal.Shared.unit_nameplates.orphan, nil, "tokenless recycled plate was not removed")
   local before = state.addon.db.profile.nameplates.power.enabled
   truthy(internal.Profiles:Apply("MINIMAL"))
   equal(state.addon.db.profile.nameplates.power.enabled, false)

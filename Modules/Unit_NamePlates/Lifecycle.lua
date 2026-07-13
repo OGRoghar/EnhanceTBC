@@ -28,15 +28,39 @@ local GetNameplateUnit = shared.GetNameplateUnit
 
 local ApplyExistingNameplates
 
-local function RemoveUnitNameplate(unit)
-  if not unit then return end
-  local unit_guid = UnitGUID(unit)
+local function RefreshTargetLayouts()
+  if mod.UpdateExistingNameplatesSize then mod:UpdateExistingNameplatesSize() end
+  if mod.UpdateExistingNameplateComponents then mod:UpdateExistingNameplateComponents() end
+end
+
+local function ScheduleTargetLayoutRefresh()
+  runtime.targetLayoutGeneration = (runtime.targetLayoutGeneration or 0) + 1
+  local generation = runtime.targetLayoutGeneration
+
+  -- Update immediately for responsive emphasis, then reassert the complete
+  -- stack after Blizzard's target/focus handlers have finished reanchoring
+  -- the native health bar. The second bounded pass covers clients which defer
+  -- their selected-nameplate layout by one additional update.
+  RefreshTargetLayouts()
+  if not C_Timer or not C_Timer.After then return end
+  local function DeferredRefresh()
+    if runtime.hooked and runtime.targetLayoutGeneration == generation then
+      RefreshTargetLayouts()
+    end
+  end
+  C_Timer.After(0, DeferredRefresh)
+  C_Timer.After(0.05, DeferredRefresh)
+end
+
+local function RemoveUnitNameplate(unit, knownGUID)
+  if not unit and not knownGUID then return end
+  local unit_guid = knownGUID or (unit and UnitGUID(unit))
   if not unit_guid then
     -- Blizzard can invalidate a nameplate token before the removal callback is
     -- processed. Fall back to the token cached on the styled unit frame so the
     -- GUID-keyed entry and its event frame do not leak.
     for cached_guid, cached_frame in pairs(unit_nameplates) do
-      if cached_frame and ((GetNameplateUnit and GetNameplateUnit(cached_frame)) or cached_frame.displayedUnit) == unit then
+      if unit and cached_frame and ((GetNameplateUnit and GetNameplateUnit(cached_frame)) or cached_frame.displayedUnit) == unit then
         unit_guid = cached_guid
         break
       end
@@ -167,7 +191,7 @@ local function HookEvents()
 
   driver:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED" then
-      if mod.UpdateExistingNameplateComponents then mod:UpdateExistingNameplateComponents() end
+      ScheduleTargetLayoutRefresh()
       return
     end
     if event == "PLAYER_ENTERING_WORLD" or event == "DISPLAY_SIZE_CHANGED" then
@@ -254,7 +278,7 @@ ApplyExistingNameplates = function()
       and unit
       and UnitExists(unit) then
       local unit_guid = UnitGUID(unit)
-      if unit_guid and not unit_nameplates[unit_guid] then
+      if unit_guid and unit_nameplates[unit_guid] ~= nameplate.UnitFrame then
         mod:StyleUnitNameplate(unit)
       end
     end
@@ -262,12 +286,14 @@ ApplyExistingNameplates = function()
 end
 
 local function ResetNameplates()
-  for _, unit_nameplate in pairs(unit_nameplates) do
+  local pending = {}
+  for guid, unit_nameplate in pairs(unit_nameplates) do
     local unit = unit_nameplate and ((GetNameplateUnit and GetNameplateUnit(unit_nameplate))
       or unit_nameplate.displayedUnit)
-    if unit then
-      RemoveUnitNameplate(unit)
-    end
+    pending[#pending + 1] = { unit = unit, guid = guid }
+  end
+  for _, entry in ipairs(pending) do
+    RemoveUnitNameplate(entry.unit, entry.guid)
   end
   if mod.Internal.State then mod.Internal.State:Clear() end
 end
@@ -279,3 +305,4 @@ H.HookEvents = HookEvents
 H.UnhookEvents = UnhookEvents
 H.ApplyExistingNameplates = ApplyExistingNameplates
 H.ResetNameplates = ResetNameplates
+H.ScheduleTargetLayoutRefresh = ScheduleTargetLayoutRefresh

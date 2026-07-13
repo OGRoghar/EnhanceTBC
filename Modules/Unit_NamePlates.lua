@@ -90,7 +90,7 @@ local function GetDB()
   if db.autoPreset == nil then db.autoPreset = false end
   db.power = db.power or {}
   if db.power.enabled == nil then db.power.enabled = true end
-  if db.power.height == nil then db.power.height = 4 end
+  if db.power.height == nil then db.power.height = 6 end
   db.power.textMode = db.power.textMode or "NONE"
   db.power.targetTextMode = db.power.targetTextMode or "PERCENT"
   if db.power.friendlyAlways == nil then db.power.friendlyAlways = false end
@@ -460,20 +460,34 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate.nameplate_events = CreateFrame("Frame", nil, unit_nameplate)
   end
 
-  if not unit_nameplates[unit_guid] then
-    unit_nameplates[unit_guid] = unit_nameplate.UnitFrame
+  local previousFrame = unit_nameplates[unit_guid]
+  if previousFrame and previousFrame ~= unit_nameplate.UnitFrame then
+    local previousPlate = previousFrame.GetParent and previousFrame:GetParent()
+    if previousPlate and previousPlate.nameplate_events then
+      previousPlate.nameplate_events:UnregisterAllEvents()
+    end
+    if mod.Internal.Power then mod.Internal.Power:Reset(previousFrame) end
+    if mod.Internal.Casts then mod.Internal.Casts:Reset(previousFrame) end
+    if mod.Internal.Indicators then mod.Internal.Indicators:Reset(previousFrame) end
   end
+  unit_nameplates[unit_guid] = unit_nameplate.UnitFrame
 
   if unit ~= "player" and not unit_nameplate.nameplate_events:IsEventRegistered("UNIT_HEALTH") then
-    for _, event in ipairs({
-      "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER",
-      "UNIT_DISPLAYPOWER", "UNIT_THREAT_LIST_UPDATE", "UNIT_AURA",
-      "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_INTERRUPTED",
-      "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
-      "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP",
-    }) do
-      unit_nameplate.nameplate_events:RegisterUnitEvent(event, unit)
-    end
+    -- Keep these registrations explicit so the build contract validator can
+    -- audit every event. Build 68575 does not expose the later
+    -- UNIT_SPELLCAST_(NOT_)INTERRUPTIBLE events.
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_HEALTH", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_MAXHEALTH", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_MAXPOWER", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_DISPLAYPOWER", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_THREAT_LIST_UPDATE", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_AURA", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_SPELLCAST_START", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_SPELLCAST_STOP", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTED", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_START", unit)
+    unit_nameplate.nameplate_events:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_STOP", unit)
   end
 
   local unit_nameplate_health_bar = unit_nameplate.UnitFrame.healthBar
@@ -563,7 +577,7 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate_health_bar.focus_texture.texture_top:SetTexture(952656)
     unit_nameplate_health_bar.focus_texture.texture_top:SetTexCoord(0.04, 0.74, 0.7, 0.651)
     unit_nameplate_health_bar.focus_texture.texture_top:SetBlendMode("ADD")
-    unit_nameplate_health_bar.focus_texture.texture_top:SetVertexColor(0, 1, 0.6)
+    unit_nameplate_health_bar.focus_texture.texture_top:SetVertexColor(1, 0.72, 0.12, 0.78)
 
     unit_nameplate_health_bar.focus_texture.texture_bottom =
       unit_nameplate_health_bar.focus_texture:CreateTexture(nil, "OVERLAY")
@@ -576,7 +590,7 @@ function mod.StyleUnitNameplate(_, unit)
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetTexture(952656)
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetTexCoord(0.04, 0.74, 0.651, 0.7)
     unit_nameplate_health_bar.focus_texture.texture_bottom:SetBlendMode("ADD")
-    unit_nameplate_health_bar.focus_texture.texture_bottom:SetVertexColor(0, 1, 0.6)
+    unit_nameplate_health_bar.focus_texture.texture_bottom:SetVertexColor(1, 0.72, 0.12, 0.78)
 
     if container_border and type(container_border.SetVertexColor) == "function" then
       hooksecurefunc(container_border, "SetVertexColor", function(_, r, g, b)

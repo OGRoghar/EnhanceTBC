@@ -53,7 +53,7 @@ local function GetDB()
   if db.autoPreset == nil then db.autoPreset = false end
   db.power = db.power or {}
   if db.power.enabled == nil then db.power.enabled = true end
-  if db.power.height == nil then db.power.height = 4 end
+  if db.power.height == nil then db.power.height = 6 end
   db.power.textMode = db.power.textMode or "NONE"
   db.power.targetTextMode = db.power.targetTextMode or "PERCENT"
   if db.power.friendlyAlways == nil then db.power.friendlyAlways = false end
@@ -146,11 +146,12 @@ ETBC.SettingsRegistry:RegisterGroup("nameplates", {
       powerHeight = {
         type = "range", name = "Power bar height", order = 6.2, min = 2, max = 10, step = 1,
         disabled = function() return not db.enabled or not db.power.enabled end,
-        get = function() return db.power.height or 4 end,
+        get = function() return db.power.height or 6 end,
         set = function(_, value) db.power.height = value; ETBC.ApplyBus:Notify("nameplates") end,
       },
       powerTextMode = {
         type = "select", name = "Power text", order = 6.3,
+        desc = "Text is kept inside the resource bar and hidden automatically on bars below 6 pixels high.",
         values = { NONE = "None", PERCENT = "Percent", VALUE = "Value", VALUE_MAX = "Value / maximum" },
         disabled = function() return not db.enabled or not db.power.enabled end,
         get = function() return db.power.textMode or "NONE" end,

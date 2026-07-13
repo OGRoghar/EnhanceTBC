@@ -37,6 +37,10 @@ function State:Update(unit, dirty)
   if type(unit) ~= "string" or unit == "" or call(UnitExists, unit) == false then return nil end
   local guid = call(UnitGUID, unit)
   if not guid then return nil end
+  local previous = self.byUnit[unit]
+  if previous and previous.guid ~= guid then
+    self.byGUID[previous.guid] = nil
+  end
   local s = self.byGUID[guid] or {}
   s.guid, s.token, s.dirty = guid, unit, dirty or "all"
   s.name = call(UnitName, unit)
@@ -77,9 +81,12 @@ function State:Get(unit)
 end
 
 function State:Remove(unit, guid)
-  local s = guid and self.byGUID[guid] or self.byUnit[unit]
+  local s
+  if guid then s = self.byGUID[guid] else s = self.byUnit[unit] end
   if not s then return end
-  self.byGUID[s.guid], self.byUnit[s.token] = nil, nil
+  self.byGUID[s.guid] = nil
+  if self.byUnit[s.token] == s then self.byUnit[s.token] = nil end
+  if unit and self.byUnit[unit] == s then self.byUnit[unit] = nil end
 end
 
 function State:Clear()
