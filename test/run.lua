@@ -439,11 +439,22 @@ test("nameplate state, power policy, formatting, and presets are deterministic",
     categories = { enemyNPCs = { power = true }, targetFocus = { power = true }, friendlyNPCs = { power = false } },
   } } }
   state.addon.ApplyBus = { Notify = function(_, key) state.notified = key end }
+  state.env.UnitClass = function() return "Mage", "MAGE" end
   state.env.UnitGUID = function(unit) return "guid-" .. unit end
   state.env.UnitName = function(unit) if unit == "nameplate1target" then return "player" end return unit end
   state.env.UnitPower = function() return 35 end
   state.env.UnitPowerMax = function() return 100 end
   state.env.UnitIsUnit = function(a, b) return a == b end
+  state.addon.Modules.Nameplates.Internal.Shared.GetSpellInfoByID = function(spellID)
+    return { name = "spell-" .. tostring(spellID), iconID = spellID }
+  end
+  load_addon_file(state, "Modules/Unit_NamePlates/Data.lua")
+  state.addon.Modules.Nameplates.Internal.Data.BuildData()
+  truthy(state.addon.Modules.Nameplates.Internal.Data.GetFormattedPlayerDebuff("spell-116"),
+    "uppercase UnitClass token did not build the Mage debuff registry")
+  truthy(state.addon.Modules.Nameplates.Internal.Data.ShouldRefreshAurasFromUpdateInfo({
+    addedAuras = { { spellId = 999999, isHarmful = true } },
+  }, { useAuraDeltaUpdates = true }), "unlisted harmful aura rank was skipped")
   load_addon_file(state, "Modules/Unit_NamePlates/State.lua")
   load_addon_file(state, "Modules/Unit_NamePlates/Profiles.lua")
   load_addon_file(state, "Modules/Unit_NamePlates/Power.lua")
@@ -462,13 +473,13 @@ test("nameplate state, power policy, formatting, and presets are deterministic",
   unitFrame.healthBarWrapper = state.env.CreateFrame("Frame", nil, unitFrame)
   unitFrame.healthBarWrapper:SetSize(109, 13)
   unitFrame.healthBar = state.env.CreateFrame("StatusBar", nil, unitFrame)
-  unitFrame.healthBar:SetSize(109, 13)
+  unitFrame.healthBar:SetSize(230, 13)
   unitFrame.healthBar.focus_texture = false
   local plate = { UnitFrame = unitFrame }
   snapshot.powerMax, snapshot.power = 100, 35
   internal.Power:Update(plate, snapshot, state.addon.db.profile.nameplates)
   equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBar, "power bar detached from visible health bar")
-  equal(unitFrame.etbcPowerBar:GetWidth(), 109, "power bar width did not match health")
+  equal(unitFrame.etbcPowerBar:GetWidth(), 109, "power bar width did not match visible health")
   equal(unitFrame.etbcPowerBar.point[1], "TOP")
   equal(unitFrame.etbcPowerBar.point[2], unitFrame.healthBar)
   equal(unitFrame.etbcPowerBar.point[3], "BOTTOM")

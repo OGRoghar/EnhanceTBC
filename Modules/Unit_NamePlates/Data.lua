@@ -409,9 +409,11 @@ local function BuildData()
   end
 
   local player_class = select(2, UnitClass("player"))
+  if type(player_class) == "string" then player_class = string.upper(player_class) end
   for _, debuff_type_list in pairs(player_debuffs) do
     for _, debuff in pairs(debuff_type_list) do
-      if debuff.class == player_class then
+      local debuffClass = type(debuff.class) == "string" and string.upper(debuff.class) or debuff.class
+      if debuffClass == player_class then
         local info = GetSpellInfoByID(debuff.spell_id)
         if info and info.name then
           debuff.name = info.name
@@ -530,7 +532,10 @@ local function ShouldRefreshAurasFromUpdateInfo(updateInfo, db)
 
   if type(updateInfo.addedAuras) == "table" then
     for _, auraData in ipairs(updateInfo.addedAuras) do
-      if auraData and IsTrackedSpellID(auraData.spellId) then
+      -- Rank variants can share a tracked spell name without sharing its
+      -- configured spell ID. Any newly harmful aura merits the bounded scan;
+      -- helpful additions still use the tighter priority/absorb ID filter.
+      if auraData and (auraData.isHarmful or IsTrackedSpellID(auraData.spellId)) then
         return true
       end
     end

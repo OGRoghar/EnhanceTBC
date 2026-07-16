@@ -85,7 +85,11 @@ function Power:Layout(unitFrame, shown, db)
     if bar:GetParent() ~= anchor then bar:SetParent(anchor) end
     bar:ClearAllPoints()
     bar:SetPoint("TOP", anchor, "BOTTOM", 0, 0)
-    bar:SetSize(anchor:GetWidth(), (db.power and db.power.height) or 6)
+    -- The native StatusBar can retain Blizzard's full nameplate width even
+    -- while our wrapper constrains the visible health fill. Size power from
+    -- that visible wrapper so health and power always scale together.
+    local visibleWidth = wrapper and wrapper:GetWidth() or anchor:GetWidth()
+    bar:SetSize(visibleWidth, (db.power and db.power.height) or 6)
     if bar.SetFrameLevel and anchor.GetFrameLevel then
       local level = anchor:GetFrameLevel()
       if type(level) == "number" then bar:SetFrameLevel(level + 1) end

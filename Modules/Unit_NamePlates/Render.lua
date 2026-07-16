@@ -552,10 +552,6 @@ local function SetNameplateUnitDebuff(nameplate, unit)
     if not nameplate_debuff then return end
 
     if IsFriendlyNameplate(nameplate, unit) or SafeUnitIsUnit(unit, "player") then
-      if nameplate.nameplate_events then
-        nameplate.nameplate_events:UnregisterEvent("UNIT_AURA")
-      end
-
       nameplate_debuff.current_debuff = nil
       nameplate_debuff.cooldown_started = -1
       nameplate_debuff.cooldown_duration = -1
