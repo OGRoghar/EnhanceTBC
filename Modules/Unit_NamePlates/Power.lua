@@ -6,6 +6,7 @@ if not mod then return end
 mod.Internal = mod.Internal or {}
 local Power = {}
 mod.Internal.Power = Power
+local shared = mod.Internal.Shared or {}
 
 local FALLBACK = {
   MANA = { r = 0.12, g = 0.42, b = 1 }, RAGE = { r = 0.85, g = 0.12, b = 0.12 },
@@ -56,6 +57,24 @@ function Power:Ensure(unitFrame)
   if bar.text.SetShadowOffset then bar.text:SetShadowOffset(1, -1) end
   bar:Hide()
   unitFrame.etbcPowerBar = bar
+
+  local health = unitFrame.healthBar
+  if health and health.HookScript and not unitFrame.etbcWidthSyncHooked then
+    unitFrame.etbcWidthSyncHooked = true
+    health:HookScript("OnSizeChanged", function()
+      if unitFrame.etbcSyncingWidth or unitFrame.etbcWidthSyncPending then return end
+      unitFrame.etbcWidthSyncPending = true
+      local function RepairWidth()
+        unitFrame.etbcWidthSyncPending = false
+        if not unitFrame.etbcPowerBar then return end
+        local db = shared.GetDB and shared.GetDB()
+        if db then
+          Power:Layout(unitFrame, unitFrame.etbcPowerBar:IsShown(), db)
+        end
+      end
+      if C_Timer and C_Timer.After then C_Timer.After(0, RepairWidth) else RepairWidth() end
+    end)
+  end
   return bar
 end
 
@@ -77,6 +96,17 @@ function Power:Layout(unitFrame, shown, db)
     unitFrame.healthBar, unitFrame.castBarWrapper
   local anchor = health or wrapper
   if not anchor then return end
+  local visibleWidth = wrapper and wrapper:GetWidth() or anchor:GetWidth()
+
+  -- Blizzard applies selected-nameplate sizing directly to its StatusBar.
+  -- Reassert the wrapper as the one width authority for both visible bars.
+  if health and wrapper and type(visibleWidth) == "number" then
+    unitFrame.etbcSyncingWidth = true
+    health:ClearAllPoints()
+    health:SetPoint("BOTTOM", wrapper, "BOTTOM", 0, 0)
+    health:SetSize(visibleWidth, wrapper:GetHeight())
+    unitFrame.etbcSyncingWidth = false
+  end
   if bar then
     -- Attach to the actual Blizzard health StatusBar, not only our sizing
     -- wrapper. Blizzard can reanchor its selected health bar after
@@ -88,7 +118,6 @@ function Power:Layout(unitFrame, shown, db)
     -- The native StatusBar can retain Blizzard's full nameplate width even
     -- while our wrapper constrains the visible health fill. Size power from
     -- that visible wrapper so health and power always scale together.
-    local visibleWidth = wrapper and wrapper:GetWidth() or anchor:GetWidth()
     bar:SetSize(visibleWidth, (db.power and db.power.height) or 6)
     if bar.SetFrameLevel and anchor.GetFrameLevel then
       local level = anchor:GetFrameLevel()

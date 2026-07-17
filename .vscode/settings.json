@@ -143,7 +143,27 @@
         "RESET_TO_DEFAULT",
         "HUD_EDIT_MODE_RESET_POSITION",
         "CHARACTER",
-        "SETTING_GROUP_SYSTEM"
+        "SETTING_GROUP_SYSTEM",
+        "INSPECT",
+        "ADVENTURE_JOURNAL",
+        "ITEM_SOCKETING",
+        "FRIENDS_LIST",
+        "MINIMAP_TRACKING_TRAINER_CLASS",
+        "BANK",
+        "MERCHANT",
+        "SPECIALIZATION",
+        "ID",
+        "STAT_AVERAGE_ITEM_LEVEL",
+        "ITEM_LEVEL",
+        "GameTooltipStatusBarTexture",
+        "TOTAL",
+        "SELL_PRICE",
+        "MACRO",
+        "UNIT_POPUP_RIGHT_CLICK",
+        "PVP",
+        "DUNGEON_SCORE",
+        "ACCOUNT_BANK_PANEL_TITLE",
+        "RANK"
     ],
     "Lua.diagnostics.disable": [
         "assign-type-mismatch"

@@ -479,6 +479,9 @@ test("nameplate state, power policy, formatting, and presets are deterministic",
   snapshot.powerMax, snapshot.power = 100, 35
   internal.Power:Update(plate, snapshot, state.addon.db.profile.nameplates)
   equal(unitFrame.etbcPowerBar:GetParent(), unitFrame.healthBar, "power bar detached from visible health bar")
+  equal(unitFrame.healthBar:GetWidth(), 109, "selected health width did not match its wrapper")
+  equal(unitFrame.healthBar.point[1], "BOTTOM", "selected health was not centered on its wrapper")
+  equal(unitFrame.healthBar.point[2], unitFrame.healthBarWrapper, "selected health left its wrapper")
   equal(unitFrame.etbcPowerBar:GetWidth(), 109, "power bar width did not match visible health")
   equal(unitFrame.etbcPowerBar.point[1], "TOP")
   equal(unitFrame.etbcPowerBar.point[2], unitFrame.healthBar)
